@@ -1,0 +1,33 @@
+# /etc/conf.d/babacoind: config file for /etc/init.d/babacoind
+
+# Config file location
+#BITCOIND_CONFIGFILE="/etc/babacoin/babacoin.conf"
+
+# What directory to write pidfile to?  (created and owned by $BITCOIND_USER)
+#BITCOIND_PIDDIR="/var/run/babacoind"
+
+# What filename to give the pidfile
+#BITCOIND_PIDFILE="${BITCOIND_PIDDIR}/babacoind.pid"
+
+# Where to write babacoind data (be mindful that the blockchain is large)
+#BITCOIND_DATADIR="/var/lib/babacoind"
+
+# User and group to own babacoind process
+#BITCOIND_USER="babacoin"
+#BITCOIND_GROUP="babacoin"
+
+# Path to babacoind executable
+#BITCOIND_BIN="/usr/bin/babacoind"
+
+# Nice value to run babacoind under
+#BITCOIND_NICE=0
+
+# Additional options (avoid -conf and -datadir, use flags above)
+#BITCOIND_OPTS=""
+
+# The timeout in seconds OpenRC will wait for babacoind to terminate
+# after a SIGTERM has been raised.
+# Note that this will be mapped as argument to start-stop-daemon's
+# '--retry' option, which means you can specify a retry schedule
+# here. For more information see man 8 start-stop-daemon.
+BITCOIND_SIGTERM_TIMEOUT=60

@@ -1,0 +1,25 @@
+<!DOCTYPE RCC><RCC version="1.0">
+    <qresource prefix="/translations">
+        <file alias="ar">locale/babacoin_ar.qm</file>
+        <file alias="bg">locale/babacoin_bg.qm</file>
+        <file alias="de">locale/babacoin_de.qm</file>
+        <file alias="en">locale/babacoin_en.qm</file>
+        <file alias="es">locale/babacoin_es.qm</file>
+        <file alias="fi">locale/babacoin_fi.qm</file>
+        <file alias="fr">locale/babacoin_fr.qm</file>
+        <file alias="it">locale/babacoin_it.qm</file>
+        <file alias="ja">locale/babacoin_ja.qm</file>
+        <file alias="ko">locale/babacoin_ko.qm</file>
+        <file alias="nl">locale/babacoin_nl.qm</file>
+        <file alias="pl">locale/babacoin_pl.qm</file>
+        <file alias="pt">locale/babacoin_pt.qm</file>
+        <file alias="ro">locale/babacoin_ro.qm</file>
+        <file alias="ru">locale/babacoin_ru.qm</file>
+        <file alias="sk">locale/babacoin_sk.qm</file>
+        <file alias="th">locale/babacoin_th.qm</file>
+        <file alias="tr">locale/babacoin_tr.qm</file>
+        <file alias="vi">locale/babacoin_vi.qm</file>
+        <file alias="zh_CN">locale/babacoin_zh_CN.qm</file>
+        <file alias="zh_TW">locale/babacoin_zh_TW.qm</file>
+    </qresource>
+</RCC>

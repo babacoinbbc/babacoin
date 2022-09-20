@@ -1,0 +1,6 @@
+usr/local/bin/babacoin-qt usr/bin
+share/pixmaps/babacoin32.xpm usr/share/pixmaps
+share/pixmaps/babacoin16.xpm usr/share/pixmaps
+share/pixmaps/babacoin128.png usr/share/pixmaps
+debian/babacoin-qt.desktop usr/share/applications
+debian/babacoin-qt.protocol usr/share/kde4/services/
