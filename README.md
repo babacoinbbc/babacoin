@@ -1,79 +1,57 @@
-Babacoin Core v2.5
-===========================
+### Babacoin Core v1.0
 
-What is Babacoin?
+#### What is Babacoin?
 
-Babacoin is a decentralized financial technology accessible to everyone that is fast, reliable and
-secure with negligible transaction costs. Babacoin has its own blockchain, which is a fork of
-Raptoreum codebase with ASIC resistant POW algorithm and consensus ensuring Smartnodes
-which make the network immune to 51% attacks. Babacoin coins can be mined on both CPU
-and GPU. Babacoin cares about privacy and has an integrated CoinJoin mechanism that allows
-to hide the balance directly in the wallet.
+Babacoin is a decentralized financial technology that is fast, reliable, and secure, with negligible transaction costs. It operates on its own blockchain, which is a fork of the Raptoreum codebase. Babacoin features an ASIC-resistant PoW algorithm and consensus mechanisms powered by Smartnodes, making the network immune to 51% attacks. Babacoin can be mined using both CPUs and GPUs. Furthermore, Babacoin prioritizes privacy through its integrated CoinJoin mechanism, allowing users to hide their balances directly within their wallets.
 
-Problems Babacoin attempts to solve
+#### Problems Babacoin Aims to Solve
 
-Babacoin is a transparent and scalable financial system that aims to make cryptocurrencies
-accessible to everyone. There are four main directions in which we want to contribute.
+Babacoin aspires to create a transparent and scalable financial system that makes cryptocurrencies accessible to everyone. Here are four key areas of focus:
 
-1. Make managing BBC easy for everyone by deploying mobile wallets for the major
-mobile OS, such as Android and IOS.
+1. **User-Friendly Wallets**
+   - Babacoin aims to simplify cryptocurrency management by deploying mobile wallets for major operating systems, such as Android and iOS.
 
-2. Promote the adoption of cryptocurrencies by offering a payment gateway service. The
-service will provide a free plugin for small businesses to facilitate online transactions in
-cryptocurrency. Customers will be able to pay for goods and services in BBC, while an
-entrepreneur will receive fiat money to his/her credit card.
+2. **Cryptocurrency Adoption**
+   - To encourage widespread use, Babacoin plans to offer a payment gateway service. This service will include a free plugin for small businesses, enabling seamless online cryptocurrency transactions. Customers can pay for goods and services using Babacoin (BBC), while entrepreneurs receive fiat currency directly to their credit cards.
 
-3. We think that all cryptocurrencies deserve to have access to the investors and to be
-tradable at an exchange. To achieve this goal we want to remove entry barriers in the form
-of high exchange listing fees and to offer everyone Bitroeum Exchange with its own
-blockchain, where all coins interested in listing can be traded against Bitroeum.
+3. **Exchange Accessibility**
+   - Babacoin envisions a financial ecosystem where all cryptocurrencies can access investors and be traded on an exchange. To achieve this, Babacoin plans to remove high exchange listing fees and launch the Bitroeum Exchange, which will feature its own blockchain and allow any listed coins to trade against Bitroeum.
 
-4. We believe that everyone should be able to get a part of the financial pie with high returns
-that is usually accessible only to rich investors. That is why everyone can earn coins with
-modest initial investment by deploying Smartnodes and contributing to the blockchain
-stability and security.
+4. **Inclusive Financial Opportunities**
+   - Babacoin believes in democratizing access to financial opportunities. By deploying Smartnodes, users with modest initial investments can earn coins while contributing to blockchain stability and security.
 
-The roadmap to our goals can be found at our official webpage https://babacoin.network/
+The roadmap to achieving these goals is available on our official webpage: [https://babacoin.network/](https://babacoin.network/).
 
-License
--------
+#### License
 
-Babacoin Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/licenses/MIT.
+Babacoin Core is released under the terms of the MIT license. For more information, see the `COPYING` file or visit [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT).
 
-Development Process
--------------------
+#### Development Process
 
-The `master` branch is meant to be stable. Development is done in separate branches.
-[Tags](https://github.com/babacoin/babacoin/tags) are created to indicate new official,
-stable release versions of Babacoin Core.
+The `master` branch is intended to remain stable. Development is conducted in separate branches, with tags created to mark new official and stable release versions of Babacoin Core.
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+Details about the contribution workflow can be found in the `CONTRIBUTING.md` file.
 
-Testing
--------
+#### Testing
 
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
+Testing and code review are critical for development. Due to the high volume of pull requests, reviews and tests may take time. Please be patient and assist by testing others’ pull requests. Remember, this is a security-critical project where mistakes could result in significant financial losses.
 
-### Automated Testing
+##### Automated Testing
 
-Developers are strongly encouraged to write [unit tests](src/test/README.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled in configure) with: `make check`. Further details on running
-and extending unit tests can be found in [/src/test/README.md](/src/test/README.md).
+Developers are encouraged to write unit tests for new code and submit unit tests for existing code. Unit tests can be compiled and run (if not disabled during configuration) with:
+```bash
+make check
+```
+Further details on running and extending unit tests are available in `/src/test/README.md`.
 
-There are also [regression and integration tests](/test), written
-in Python, that are run automatically on the build server.
-These tests can be run (if the [test dependencies](/test) are installed) with: `test/functional/test_runner.py`
+Regression and integration tests, written in Python, are automatically run on the build server. These tests can be executed locally (if dependencies are installed) using:
+```bash
+test/functional/test_runner.py
+```
 
-The Travis CI system makes sure that every pull request is built for Windows, Linux, and OS X, and that unit/sanity tests are run automatically.
+The Travis CI system ensures that every pull request is built for Windows, Linux, and macOS, with unit and sanity tests run automatically.
 
-### Manual Quality Assurance (QA) Testing
+##### Manual Quality Assurance (QA) Testing
 
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
+Changes should be tested by someone other than the original developer. This is especially important for substantial or high-risk changes. If testing is not straightforward, including a test plan in the pull request description is highly recommended.
+
