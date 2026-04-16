@@ -228,7 +228,7 @@ jobs:
           ./configure \
             --with-incompatible-bdb \
             --with-boost="$BOOST_PREFIX" \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces \
+            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
             PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
               -L$BOOST_PREFIX/lib \
@@ -320,7 +320,7 @@ jobs:
           ./configure \
             --with-incompatible-bdb \
             --with-boost="$BOOST_PREFIX" \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces \
+            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
             PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
               -L$BOOST_PREFIX/lib \
