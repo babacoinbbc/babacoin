@@ -168,13 +168,14 @@ jobs:
 
       - name: Build and install bls-dash
         run: |
-          GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "/usr/local")
+          BREW_PREFIX=$(brew --prefix)
+          GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "$BREW_PREFIX")
           git clone --depth=1 --branch 1.1.0 \
             https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" \
             -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" \
@@ -187,12 +188,12 @@ jobs:
           if [ -z "$LIB" ]; then
             echo "ERROR: libdashbls.a not found!"; find /tmp/bls-src/build -name "*.a"; exit 1
           fi
-          sudo cp "$LIB" /usr/local/lib/libbls-dash.a
-          sudo mkdir -p /usr/local/include/bls-dash
+          sudo mkdir -p "$BREW_PREFIX/lib" "$BREW_PREFIX/include/bls-dash"
+          sudo cp "$LIB" "$BREW_PREFIX/lib/libbls-dash.a"
           sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} /usr/local/include/bls-dash/ \;
-          echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
-          echo "Headers : $(ls /usr/local/include/bls-dash/)"
+            -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
+          echo "Library : $(ls -lh $BREW_PREFIX/lib/libbls-dash.a)"
+          echo "Headers : $(ls $BREW_PREFIX/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
@@ -251,13 +252,14 @@ jobs:
 
       - name: Build and install bls-dash
         run: |
-          GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "/usr/local")
+          BREW_PREFIX=$(brew --prefix)
+          GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "$BREW_PREFIX")
           git clone --depth=1 --branch 1.1.0 \
             https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" \
             -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" \
@@ -270,12 +272,12 @@ jobs:
           if [ -z "$LIB" ]; then
             echo "ERROR: libdashbls.a not found!"; find /tmp/bls-src/build -name "*.a"; exit 1
           fi
-          sudo cp "$LIB" /usr/local/lib/libbls-dash.a
-          sudo mkdir -p /usr/local/include/bls-dash
+          sudo mkdir -p "$BREW_PREFIX/lib" "$BREW_PREFIX/include/bls-dash"
+          sudo cp "$LIB" "$BREW_PREFIX/lib/libbls-dash.a"
           sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} /usr/local/include/bls-dash/ \;
-          echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
-          echo "Headers : $(ls /usr/local/include/bls-dash/)"
+            -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
+          echo "Library : $(ls -lh $BREW_PREFIX/lib/libbls-dash.a)"
+          echo "Headers : $(ls $BREW_PREFIX/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
