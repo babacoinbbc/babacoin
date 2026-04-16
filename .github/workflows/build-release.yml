@@ -70,7 +70,7 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: macos-13
+            runner: macos-12
           - arch: arm64
             runner: macos-14
 
