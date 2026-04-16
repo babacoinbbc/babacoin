@@ -213,7 +213,6 @@ jobs:
 
       - name: Build and install bls-dash
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
-          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
