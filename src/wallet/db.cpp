@@ -342,7 +342,7 @@ bool BerkeleyBatch::VerifyEnvironment(const fs::path& file_path, std::string& er
     LogPrintf("Using wallet %s\n", walletFile);
 
     // Wallet file must be a plain filename without a directory
-    if (walletFile != path(walletFile).stem().string() + path(walletFile).extension().string())
+    if (walletFile != fs::path(walletFile).stem().string() + fs::path(walletFile).extension().string())
     {
         errorStr = strprintf(_("Wallet %s resides outside wallet directory %s"), walletFile, walletDir.string());
         return false;
