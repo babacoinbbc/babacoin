@@ -48,11 +48,8 @@ AC_DEFUN([BITCOIN_FIND_BDB48],[
       AC_MSG_ERROR([libdb_cxx headers missing, ]AC_PACKAGE_NAME[ requires this library for wallet functionality (--disable-wallet to disable wallet functionality)])
     elif test "x$bdb48path" = "xX"; then
       BITCOIN_SUBDIR_TO_INCLUDE(BDB_CPPFLAGS,[${bdbpath}],db_cxx)
-      AC_ARG_WITH([incompatible-bdb],[AS_HELP_STRING([--with-incompatible-bdb], [allow using a bdb version other than 4.8])],[
-        AC_MSG_WARN([Found Berkeley DB other than 4.8; wallets opened by this build will not be portable!])
-      ],[
-        AC_MSG_ERROR([Found Berkeley DB other than 4.8, required for portable wallets (--with-incompatible-bdb to ignore or --disable-wallet to disable wallet functionality)])
-      ])
+      dnl Ubuntu 20.04+ ships BDB 5.3 - accept it automatically with a warning
+      AC_MSG_WARN([Found Berkeley DB other than 4.8 (likely 5.3 on Ubuntu 20.04+). Wallets may not be portable across versions.])
     else
       BITCOIN_SUBDIR_TO_INCLUDE(BDB_CPPFLAGS,[${bdb48path}],db_cxx)
       bdbpath="${bdb48path}"
@@ -61,10 +58,9 @@ AC_DEFUN([BITCOIN_FIND_BDB48],[
     BDB_CPPFLAGS=${BDB_CFLAGS}
   fi
   AC_SUBST(BDB_CPPFLAGS)
-  
+
   if test "x$BDB_LIBS" = "x"; then
-    # TODO: Ideally this could find the library version and make sure it matches the headers being used
-    for searchlib in db_cxx-4.8 db_cxx; do
+    for searchlib in db_cxx-4.8 db_cxx-5.3 db_cxx; do
       AC_CHECK_LIB([$searchlib],[main],[
         BDB_LIBS="-l${searchlib}"
         break
