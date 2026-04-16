@@ -204,7 +204,11 @@ void ReleaseDirectoryLocks()
 
 bool DirIsWritable(const fs::path& directory)
 {
-    fs::path tmpFile = directory / fs::unique_path();
+    // fs::unique_path removed in Boost 1.86; use a random hex name instead
+    std::string randname;
+    for (int i = 0; i < 8; i++)
+        randname += "0123456789abcdef"[GetRandInt(16)];
+    fs::path tmpFile = directory / ("tmp." + randname);
 
     FILE* file = fsbridge::fopen(tmpFile, "a");
     if (!file) return false;
