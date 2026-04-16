@@ -1,0 +1,28 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    build-essential libtool autotools-dev automake pkg-config \
+    libssl-dev libevent-dev libboost-all-dev \
+    libdb5.3-dev libdb5.3++-dev \
+    libminiupnpc-dev libzmq3-dev python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . .
+
+RUN ./autogen.sh && \
+    ./configure \
+        --with-incompatible-bdb \
+        BDB_LIBS="-ldb_cxx-5.3" \
+        BDB_CFLAGS="-I/usr/include" \
+        --disable-tests --disable-bench --without-gui && \
+    make -j$(nproc) && \
+    strip src/babacoind src/babacoin-cli src/babacoin-tx
+
+RUN mkdir -p /output && \
+    cp src/babacoind src/babacoin-cli src/babacoin-tx /output/
+
+FROM scratch
+COPY --from=0 /output/ /
