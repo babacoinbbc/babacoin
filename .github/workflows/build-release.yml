@@ -36,6 +36,7 @@ jobs:
             https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -109,6 +110,7 @@ jobs:
             https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -184,6 +186,7 @@ jobs:
             https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -214,6 +217,8 @@ jobs:
         run: |
           P=$(brew --prefix)
           BOOST_PREFIX=$(brew --prefix boost 2>/dev/null || echo "$P")
+          BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null || brew --prefix berkeley-db 2>/dev/null || echo "$P")
+          ./autogen.sh
           ./configure \
             --with-incompatible-bdb \
             --with-boost="$BOOST_PREFIX" \
@@ -232,7 +237,6 @@ jobs:
             BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
             BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
-
       - name: Package
         run: |
           mkdir -p dist
@@ -272,6 +276,7 @@ jobs:
             https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -301,8 +306,9 @@ jobs:
       - name: Build Babacoin
         run: |
           P=$(brew --prefix)
-          BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null \
           BOOST_PREFIX=$(brew --prefix boost 2>/dev/null || echo "$P")
+          BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null || brew --prefix berkeley-db 2>/dev/null || echo "$P")
+          ./autogen.sh
           ./configure \
             --with-incompatible-bdb \
             --with-boost="$BOOST_PREFIX" \
@@ -413,6 +419,7 @@ jobs:
             https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
           mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
           cmake .. \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw-w64/toolchain-x86_64-w64-mingw32.cmake \
