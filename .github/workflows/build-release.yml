@@ -44,7 +44,7 @@ jobs:
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
-          LIB=$(find /tmp/bls-src/build -name "libdashbls.a" 2>/dev/null | head -1)
+          LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
             echo "ERROR: libdashbls.a not found after build!"; find /tmp/bls-src/build -name "*.a"; exit 1
           fi
@@ -112,7 +112,7 @@ jobs:
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
-          LIB=$(find /tmp/bls-src/build -name "libdashbls.a" 2>/dev/null | head -1)
+          LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
             echo "ERROR: libdashbls.a not found after build!"; find /tmp/bls-src/build -name "*.a"; exit 1
           fi
@@ -183,7 +183,7 @@ jobs:
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
-          LIB=$(find /tmp/bls-src/build -name "libdashbls.a" 2>/dev/null | head -1)
+          LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
             echo "ERROR: libdashbls.a not found!"; find /tmp/bls-src/build -name "*.a"; exit 1
           fi
@@ -266,7 +266,7 @@ jobs:
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
-          LIB=$(find /tmp/bls-src/build -name "libdashbls.a" 2>/dev/null | head -1)
+          LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
             echo "ERROR: libdashbls.a not found!"; find /tmp/bls-src/build -name "*.a"; exit 1
           fi
