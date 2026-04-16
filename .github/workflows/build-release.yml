@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
 
   # ─────────────────────────────────────────
@@ -38,10 +41,10 @@ jobs:
 
       - name: Package
         run: |
-          mkdir -p release
+          mkdir -p dist
           strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx release/
-          tar -czf babacoin-v2.0.0-linux-ubuntu20.04-x86_64.tar.gz -C release .
+          cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          tar -czf babacoin-v2.0.0-linux-ubuntu20.04-x86_64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
         with:
@@ -78,10 +81,10 @@ jobs:
 
       - name: Package
         run: |
-          mkdir -p release
+          mkdir -p dist
           strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx release/
-          tar -czf babacoin-v2.0.0-linux-ubuntu22.04-x86_64.tar.gz -C release .
+          cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          tar -czf babacoin-v2.0.0-linux-ubuntu22.04-x86_64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
         with:
@@ -89,7 +92,7 @@ jobs:
           path: babacoin-v2.0.0-linux-ubuntu22.04-x86_64.tar.gz
 
   # ─────────────────────────────────────────
-  # macOS Intel (x86_64) — macos-12 runner
+  # macOS Intel (x86_64)
   # ─────────────────────────────────────────
   build-macos-intel:
     name: macOS Intel (x86_64)
@@ -100,29 +103,30 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install autoconf automake libtool pkg-config \
-            openssl@3 libevent boost miniupnpc zeromq berkeley-db@5 || true
+          for pkg in autoconf automake libtool pkg-config openssl@3 libevent boost miniupnpc zeromq berkeley-db@5; do
+            brew install $pkg 2>/dev/null || brew upgrade $pkg 2>/dev/null || true
+          done
 
       - name: Build
         run: |
-          BREW_PFX=$(brew --prefix)
+          P=$(brew --prefix)
           ./autogen.sh
           ./configure \
             --with-incompatible-bdb \
             --disable-tests --disable-bench --without-gui \
-            PKG_CONFIG_PATH="$BREW_PFX/opt/openssl@3/lib/pkgconfig" \
-            LDFLAGS="-L$BREW_PFX/opt/openssl@3/lib -L$BREW_PFX/opt/berkeley-db@5/lib -L$BREW_PFX/opt/libevent/lib -L$BREW_PFX/opt/boost/lib" \
-            CPPFLAGS="-I$BREW_PFX/opt/openssl@3/include -I$BREW_PFX/opt/berkeley-db@5/include -I$BREW_PFX/opt/libevent/include -I$BREW_PFX/opt/boost/include" \
-            BDB_LIBS="-L$BREW_PFX/opt/berkeley-db@5/lib -ldb_cxx" \
-            BDB_CFLAGS="-I$BREW_PFX/opt/berkeley-db@5/include"
+            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig:$P/opt/libevent/lib/pkgconfig" \
+            LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib" \
+            CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include" \
+            BDB_LIBS="-L$P/opt/berkeley-db@5/lib -ldb_cxx" \
+            BDB_CFLAGS="-I$P/opt/berkeley-db@5/include"
           make -j$(sysctl -n hw.logicalcpu)
 
       - name: Package
         run: |
-          mkdir -p release
+          mkdir -p dist
           strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx release/
-          tar -czf babacoin-v2.0.0-macos-x86_64.tar.gz -C release .
+          cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          tar -czf babacoin-v2.0.0-macos-x86_64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
         with:
@@ -130,7 +134,7 @@ jobs:
           path: babacoin-v2.0.0-macos-x86_64.tar.gz
 
   # ─────────────────────────────────────────
-  # macOS Apple Silicon (arm64) — macos-14
+  # macOS Apple Silicon (arm64)
   # ─────────────────────────────────────────
   build-macos-arm64:
     name: macOS Apple Silicon (arm64)
@@ -141,29 +145,30 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install autoconf automake libtool pkg-config \
-            openssl@3 libevent boost miniupnpc zeromq berkeley-db@5 || true
+          for pkg in autoconf automake libtool pkg-config openssl@3 libevent boost miniupnpc zeromq berkeley-db@5; do
+            brew install $pkg 2>/dev/null || brew upgrade $pkg 2>/dev/null || true
+          done
 
       - name: Build
         run: |
-          BREW_PFX=$(brew --prefix)
+          P=$(brew --prefix)
           ./autogen.sh
           ./configure \
             --with-incompatible-bdb \
             --disable-tests --disable-bench --without-gui \
-            PKG_CONFIG_PATH="$BREW_PFX/opt/openssl@3/lib/pkgconfig" \
-            LDFLAGS="-L$BREW_PFX/opt/openssl@3/lib -L$BREW_PFX/opt/berkeley-db@5/lib -L$BREW_PFX/opt/libevent/lib -L$BREW_PFX/opt/boost/lib" \
-            CPPFLAGS="-I$BREW_PFX/opt/openssl@3/include -I$BREW_PFX/opt/berkeley-db@5/include -I$BREW_PFX/opt/libevent/include -I$BREW_PFX/opt/boost/include" \
-            BDB_LIBS="-L$BREW_PFX/opt/berkeley-db@5/lib -ldb_cxx" \
-            BDB_CFLAGS="-I$BREW_PFX/opt/berkeley-db@5/include"
+            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig:$P/opt/libevent/lib/pkgconfig" \
+            LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib" \
+            CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include" \
+            BDB_LIBS="-L$P/opt/berkeley-db@5/lib -ldb_cxx" \
+            BDB_CFLAGS="-I$P/opt/berkeley-db@5/include"
           make -j$(sysctl -n hw.logicalcpu)
 
       - name: Package
         run: |
-          mkdir -p release
+          mkdir -p dist
           strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx release/
-          tar -czf babacoin-v2.0.0-macos-arm64.tar.gz -C release .
+          cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          tar -czf babacoin-v2.0.0-macos-arm64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
         with:
@@ -171,7 +176,7 @@ jobs:
           path: babacoin-v2.0.0-macos-arm64.tar.gz
 
   # ─────────────────────────────────────────
-  # Raspberry Pi (ARM64) — multiarch cross-compile
+  # Raspberry Pi ARM64 — QEMU emulation
   # ─────────────────────────────────────────
   build-raspberrypi:
     name: Raspberry Pi (ARM64)
@@ -179,45 +184,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enable ARM64 multiarch
-        run: |
-          sudo dpkg --add-architecture arm64
-          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-          sudo apt-get update || true
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
 
-      - name: Install cross toolchain and ARM64 libs
-        run: |
-          sudo apt-get install -y \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            autoconf automake libtool pkg-config python3
-          sudo apt-get install -y \
-            libssl-dev:arm64 \
-            libevent-dev:arm64 \
-            libboost-all-dev:arm64 \
-            libdb5.3-dev:arm64 libdb5.3++-dev:arm64 \
-            libzmq3-dev:arm64 \
-            libminiupnpc-dev:arm64 || true
-
-      - name: Build for ARM64
-        run: |
-          ./autogen.sh
-          PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig \
-          ./configure \
-            --host=aarch64-linux-gnu \
-            --with-incompatible-bdb \
-            --disable-tests --disable-bench --without-gui \
-            BDB_LIBS="-ldb_cxx-5.3" \
-            BDB_CFLAGS="-I/usr/include"
-          make -j$(nproc)
+      - name: Build inside ARM64 container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          file: .github/Dockerfile.rpi
+          outputs: type=local,dest=./rpi-output
 
       - name: Package
         run: |
-          mkdir -p release
-          aarch64-linux-gnu-strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx release/
-          tar -czf babacoin-v2.0.0-raspberry-pi-arm64.tar.gz -C release .
+          mkdir -p dist
+          cp rpi-output/babacoind rpi-output/babacoin-cli rpi-output/babacoin-tx dist/ 2>/dev/null || \
+          find rpi-output -name "babacoind" -o -name "babacoin-cli" -o -name "babacoin-tx" | xargs -I{} cp {} dist/
+          tar -czf babacoin-v2.0.0-raspberry-pi-arm64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
         with:
@@ -225,7 +211,7 @@ jobs:
           path: babacoin-v2.0.0-raspberry-pi-arm64.tar.gz
 
   # ─────────────────────────────────────────
-  # Windows x64 (MinGW cross-compile)
+  # Windows x64 (MinGW via depends)
   # ─────────────────────────────────────────
   build-windows:
     name: Windows x64
@@ -233,25 +219,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install MinGW toolchain
+      - name: Install MinGW + depends build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             g++-mingw-w64-x86-64 mingw-w64 \
-            autoconf automake libtool pkg-config python3 nsis
+            autoconf automake libtool pkg-config \
+            python3 nsis curl xz-utils bsdmainutils cmake
 
-      - name: Set POSIX thread model
+      - name: Set POSIX threading
         run: |
-          sudo update-alternatives --set x86_64-w64-mingw32-gcc \
-            /usr/bin/x86_64-w64-mingw32-gcc-posix
-          sudo update-alternatives --set x86_64-w64-mingw32-g++ \
-            /usr/bin/x86_64-w64-mingw32-g++-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
 
-      - name: Build depends
+      - name: Cache depends
+        uses: actions/cache@v4
+        with:
+          path: depends/built
+          key: windows-depends-${{ hashFiles('depends/packages/*.mk') }}
+
+      - name: Build depends (Windows)
         run: |
-          cd depends
-          make HOST=x86_64-w64-mingw32 -j$(nproc) NO_QT=1 NO_QR=1
-          cd ..
+          make -C depends HOST=x86_64-w64-mingw32 -j$(nproc) \
+            NO_QT=1 NO_QR=1 NO_UPNP=0
 
       - name: Build for Windows
         run: |
@@ -266,12 +256,10 @@ jobs:
 
       - name: Package
         run: |
-          mkdir -p release
-          x86_64-w64-mingw32-strip src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe 2>/dev/null || \
-            strip src/babacoind src/babacoin-cli src/babacoin-tx 2>/dev/null || true
-          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe release/ 2>/dev/null || \
-            cp src/babacoind src/babacoin-cli src/babacoin-tx release/ 2>/dev/null || true
-          zip -j babacoin-v2.0.0-windows-x86_64.zip release/*
+          mkdir -p dist
+          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe dist/ 2>/dev/null || \
+            cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          zip -j babacoin-v2.0.0-windows-x86_64.zip dist/*
 
       - uses: actions/upload-artifact@v4
         with:
@@ -279,9 +267,9 @@ jobs:
           path: babacoin-v2.0.0-windows-x86_64.zip
 
   # ─────────────────────────────────────────
-  # GitHub Release
+  # Release assets yükle
   # ─────────────────────────────────────────
-  create-release:
+  upload-release:
     name: Upload to GitHub Release
     needs:
       - build-ubuntu-2004
@@ -292,14 +280,12 @@ jobs:
       - build-windows
     runs-on: ubuntu-22.04
     if: startsWith(github.ref, 'refs/tags/')
-
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Upload to release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: |
