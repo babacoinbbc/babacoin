@@ -6,6 +6,8 @@
 #ifndef BABACOIN_BATCHEDLOGGER_H
 #define BABACOIN_BATCHEDLOGGER_H
 
+#include <cstdint>
+#include <string>
 #include "tinyformat.h"
 
 class CBatchedLogger
@@ -15,7 +17,7 @@ private:
     std::string header;
     std::string msg;
 public:
-    CBatchedLogger(uint64_t _category, const std::string& _header);
+    CBatchedLogger(uint64_t logCategory, const std::string& logHeader);
     virtual ~CBatchedLogger();
 
     template<typename... Args>
