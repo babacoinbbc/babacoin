@@ -156,6 +156,7 @@ jobs:
         run: |
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
+          pip3 install setuptools --break-system-packages 2>/dev/null || true
           cmake .. \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
@@ -218,6 +219,7 @@ jobs:
         run: |
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
+          pip3 install setuptools --break-system-packages 2>/dev/null || true
           cmake .. \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
