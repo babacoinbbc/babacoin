@@ -213,21 +213,20 @@ jobs:
       - name: Build Babacoin
         run: |
           P=$(brew --prefix)
-          BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null \
-            || brew --prefix berkeley-db 2>/dev/null || echo "$P")
-          ./autogen.sh
+          BOOST_PREFIX=$(brew --prefix boost 2>/dev/null || echo "$P")
           ./configure \
             --with-incompatible-bdb \
+            --with-boost="$BOOST_PREFIX" \
             --disable-tests --disable-bench --without-gui \
-            --with-boost=$P/opt/boost \
-            --with-boost-libdir=$P/opt/boost/lib \
             PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
-              -L$P/opt/libevent/lib -L$P/opt/boost/lib \
+              -L$BOOST_PREFIX/lib \
+              -L$P/opt/libevent/lib \
               -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib \
               -L$P/lib" \
             CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include \
-              -I$P/opt/libevent/include -I$P/opt/boost/include \
+              -I$BOOST_PREFIX/include \
+              -I$P/opt/libevent/include \
               -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
               -I$P/include" \
             BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
@@ -303,20 +302,20 @@ jobs:
         run: |
           P=$(brew --prefix)
           BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null \
-            || brew --prefix berkeley-db 2>/dev/null || echo "$P")
-          ./autogen.sh
+          BOOST_PREFIX=$(brew --prefix boost 2>/dev/null || echo "$P")
           ./configure \
             --with-incompatible-bdb \
+            --with-boost="$BOOST_PREFIX" \
             --disable-tests --disable-bench --without-gui \
-            --with-boost=$P/opt/boost \
-            --with-boost-libdir=$P/opt/boost/lib \
             PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
-              -L$P/opt/libevent/lib -L$P/opt/boost/lib \
+              -L$BOOST_PREFIX/lib \
+              -L$P/opt/libevent/lib \
               -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib \
               -L$P/lib" \
             CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include \
-              -I$P/opt/libevent/include -I$P/opt/boost/include \
+              -I$BOOST_PREFIX/include \
+              -I$P/opt/libevent/include \
               -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
               -I$P/include" \
             BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
