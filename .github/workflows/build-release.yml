@@ -8,8 +8,6 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  BLS_VERSION: "1.1.0"
-  BLS_REPO: "https://github.com/dashpay/bls-signatures.git"
 
 jobs:
 
@@ -30,36 +28,23 @@ jobs:
             libssl-dev libevent-dev libboost-all-dev \
             libdb5.3-dev libdb5.3++-dev \
             libminiupnpc-dev libzmq3-dev python3 \
-            cmake libgmp-dev
+            cmake libgmp-dev git
 
-      - name: Cache bls-dash
-        uses: actions/cache@v4
-        id: cache-bls
-        with:
-          path: /tmp/bls-install
-          key: bls-dash-ubuntu-2004-${{ env.BLS_VERSION }}
-
-      - name: Build bls-dash
-        if: steps.cache-bls.outputs.cache-hit != 'true'
+      - name: Build and install bls-dash
         run: |
-          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
-          mkdir -p /tmp/bls-src/build
-          cd /tmp/bls-src/build
+          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/tmp/bls-install \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
-          make install
-
-      - name: Install bls-dash
-        run: |
-          sudo cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash
-          sudo cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/
-          sudo ldconfig
+          sudo find . -name "bls.hpp" | head -1 | xargs dirname | \
+            xargs -I{} sudo cp -r {} /usr/local/include/bls-dash
+          sudo find . -name "libdashbls.a" | xargs -I{} sudo cp {} /usr/local/lib/
+          echo "bls-dash installed: $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
@@ -102,36 +87,23 @@ jobs:
             libssl-dev libevent-dev libboost-all-dev \
             libdb5.3-dev libdb5.3++-dev \
             libminiupnpc-dev libzmq3-dev python3 \
-            cmake libgmp-dev
+            cmake libgmp-dev git
 
-      - name: Cache bls-dash
-        uses: actions/cache@v4
-        id: cache-bls
-        with:
-          path: /tmp/bls-install
-          key: bls-dash-ubuntu-2204-${{ env.BLS_VERSION }}
-
-      - name: Build bls-dash
-        if: steps.cache-bls.outputs.cache-hit != 'true'
+      - name: Build and install bls-dash
         run: |
-          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
-          mkdir -p /tmp/bls-src/build
-          cd /tmp/bls-src/build
+          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/tmp/bls-install \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
-          make install
-
-      - name: Install bls-dash
-        run: |
-          sudo cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash
-          sudo cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/
-          sudo ldconfig
+          sudo find . -name "bls.hpp" | head -1 | xargs dirname | \
+            xargs -I{} sudo cp -r {} /usr/local/include/bls-dash
+          sudo find . -name "libdashbls.a" | xargs -I{} sudo cp {} /usr/local/lib/
+          echo "bls-dash installed: $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
@@ -174,49 +146,22 @@ jobs:
             brew install $pkg 2>/dev/null || true
           done
 
-      - name: Cache bls-dash
-        uses: actions/cache@v4
-        id: cache-bls
-        with:
-          path: /tmp/bls-install
-          key: bls-dash-macos-intel-${{ env.BLS_VERSION }}
-
-      - name: Build bls-dash
-        if: steps.cache-bls.outputs.cache-hit != 'true'
+      - name: Build and install bls-dash
         run: |
-          P=$(brew --prefix)
-          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
+          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/tmp/bls-install \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0 \
-            -DGMP_INCLUDES=$P/opt/gmp/include \
-            -DGMP_LIBRARIES=$P/opt/gmp/lib/libgmp.dylib
+            -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
-          make install
-
-      - name: Build and Install bls-dash
-        run: |
-          P=$(brew --prefix)
-          if [ ! -f /usr/local/include/bls-dash/bls.hpp ]; then
-            git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
-            mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-            cmake .. \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DBUILD_BLS_JS_BINDINGS=0 \
-              -DBUILD_BLS_PYTHON_BINDINGS=0 \
-              -DBUILD_BLS_TESTS=0 \
-              -DBUILD_BLS_BENCHMARKS=0
-            make -j$(sysctl -n hw.logicalcpu)
-            sudo mkdir -p /usr/local/include/bls-dash
-            sudo find . -name "bls.hpp" -path "*/include/*" -exec sh -c 'cp -r $(dirname {})/* /usr/local/include/bls-dash/' \;
-            sudo find . -name "libdashbls.a" -exec cp {} /usr/local/lib/ \;
-          fi
-          echo "✅ bls-dash ready"
+          sudo mkdir -p /usr/local/include/bls-dash
+          find . -name "bls.hpp" | head -1 | xargs dirname | \
+            xargs -I{} sh -c 'sudo cp -r {}/* /usr/local/include/bls-dash/'
+          find . -name "libdashbls.a" | xargs -I{} sudo cp {} /usr/local/lib/
+          echo "bls-dash: $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
@@ -225,7 +170,7 @@ jobs:
           ./configure \
             --with-incompatible-bdb \
             --disable-tests --disable-bench --without-gui \
-            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig:$P/opt/libevent/lib/pkgconfig" \
+            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L/usr/local/lib" \
             CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I/usr/local/include" \
             BDB_LIBS="-L$P/opt/berkeley-db@5/lib -ldb_cxx" \
@@ -261,32 +206,22 @@ jobs:
             brew install $pkg 2>/dev/null || true
           done
 
-      - name: Cache bls-dash
-        uses: actions/cache@v4
-        id: cache-bls
-        with:
-          path: /tmp/bls-install
-          key: bls-dash-macos-arm64-${{ env.BLS_VERSION }}
-
-      - name: Build and Install bls-dash
+      - name: Build and install bls-dash
         run: |
-          P=$(brew --prefix)
-          if [ ! -f /usr/local/include/bls-dash/bls.hpp ]; then
-            git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
-            mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-            cmake .. \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DBUILD_BLS_JS_BINDINGS=0 \
-              -DBUILD_BLS_PYTHON_BINDINGS=0 \
-              -DBUILD_BLS_TESTS=0 \
-              -DBUILD_BLS_BENCHMARKS=0
-            make -j$(sysctl -n hw.logicalcpu)
-            sudo mkdir -p /usr/local/include/bls-dash
-            sudo find . -name "bls.hpp" -path "*/include/*" -exec sh -c 'cp -r $(dirname {})/* /usr/local/include/bls-dash/' \;
-            sudo find . -name "libdashbls.a" -exec cp {} /usr/local/lib/ \;
-          fi
-          ls /usr/local/include/bls-dash/
-          echo "✅ bls-dash ready"
+          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_BLS_JS_BINDINGS=0 \
+            -DBUILD_BLS_PYTHON_BINDINGS=0 \
+            -DBUILD_BLS_TESTS=0 \
+            -DBUILD_BLS_BENCHMARKS=0
+          make -j$(sysctl -n hw.logicalcpu)
+          sudo mkdir -p /usr/local/include/bls-dash
+          find . -name "bls.hpp" | head -1 | xargs dirname | \
+            xargs -I{} sh -c 'sudo cp -r {}/* /usr/local/include/bls-dash/'
+          find . -name "libdashbls.a" | xargs -I{} sudo cp {} /usr/local/lib/
+          echo "bls-dash: $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
@@ -295,7 +230,7 @@ jobs:
           ./configure \
             --with-incompatible-bdb \
             --disable-tests --disable-bench --without-gui \
-            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig:$P/opt/libevent/lib/pkgconfig" \
+            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L/usr/local/lib" \
             CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I/usr/local/include" \
             BDB_LIBS="-L$P/opt/berkeley-db@5/lib -ldb_cxx" \
@@ -367,8 +302,7 @@ jobs:
           sudo apt-get install -y \
             g++-mingw-w64-x86-64 mingw-w64 \
             autoconf automake libtool pkg-config \
-            python3 nsis curl xz-utils bsdmainutils cmake \
-            libgmp-dev
+            python3 nsis curl xz-utils bsdmainutils cmake libgmp-dev
 
       - name: Set POSIX threading
         run: |
@@ -381,28 +315,38 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depends/built
-          key: windows-depends-${{ hashFiles('depends/packages/*.mk') }}-v2
+          key: windows-depends-${{ hashFiles('depends/packages/*.mk') }}-v3
 
-      - name: Build depends
+      - name: Build depends (no bls-dash/cmake)
         run: |
           make -C depends HOST=x86_64-w64-mingw32 -j$(nproc) \
             NO_QT=1 NO_QR=1
 
-      - name: Build bls-dash for Windows
+      - name: Build bls-dash for Windows (cross)
         run: |
-          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-win-src
+          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
           mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=$PWD/../../../babacoin/depends/x86_64-w64-mingw32 \
-            -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32/share/toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw-w64/toolchain-x86_64-w64-mingw32.cmake \
+            -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc-posix \
+            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++-posix \
+            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32 \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0 || true
-          # Fallback: copy Linux bls headers for Windows cross-compile
-          sudo mkdir -p /usr/local/include/bls-dash
-          sudo cp -r /tmp/bls-win-src/include/* /usr/local/include/bls-dash/ 2>/dev/null || true
+            -DBUILD_BLS_BENCHMARKS=0 \
+            -DBUILD_SHARED_LIBS=OFF || true
+          make -j$(nproc) || true
+          # Fallback: just copy headers for compilation
+          DEST=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32/include/bls-dash
+          mkdir -p $DEST
+          find /tmp/bls-win-src/src -name "*.hpp" -path "*/bls/*" \
+            -exec cp {} $DEST/ \; 2>/dev/null || true
+          find /tmp/bls-win-src/include -name "*.hpp" \
+            -exec cp {} $DEST/ \; 2>/dev/null || true
+          echo "Win bls headers: $(ls $DEST 2>/dev/null | head -5)"
 
       - name: Build Babacoin
         run: |
@@ -413,8 +357,8 @@ jobs:
             --host=x86_64-w64-mingw32 \
             --disable-tests --disable-bench --without-gui \
             --with-incompatible-bdb \
-            CPPFLAGS="-I/usr/local/include" \
-            LDFLAGS="-L/usr/local/lib"
+            CPPFLAGS="-I$PWD/depends/x86_64-w64-mingw32/include" \
+            LDFLAGS="-L$PWD/depends/x86_64-w64-mingw32/lib"
           make -j$(nproc)
 
       - name: Package
