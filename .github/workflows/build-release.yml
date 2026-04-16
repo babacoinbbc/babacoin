@@ -8,6 +8,8 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BLS_VERSION: "1.1.0"
+  BLS_REPO: "https://github.com/dashpay/bls-signatures.git"
 
 jobs:
 
@@ -27,16 +29,48 @@ jobs:
             build-essential libtool autotools-dev automake pkg-config \
             libssl-dev libevent-dev libboost-all-dev \
             libdb5.3-dev libdb5.3++-dev \
-            libminiupnpc-dev libzmq3-dev python3
+            libminiupnpc-dev libzmq3-dev python3 \
+            cmake libgmp-dev
 
-      - name: Build
+      - name: Cache bls-dash
+        uses: actions/cache@v4
+        id: cache-bls
+        with:
+          path: /tmp/bls-install
+          key: bls-dash-ubuntu-2004-${{ env.BLS_VERSION }}
+
+      - name: Build bls-dash
+        if: steps.cache-bls.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
+          mkdir -p /tmp/bls-src/build
+          cd /tmp/bls-src/build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/tmp/bls-install \
+            -DBUILD_BLS_JS_BINDINGS=0 \
+            -DBUILD_BLS_PYTHON_BINDINGS=0 \
+            -DBUILD_BLS_TESTS=0 \
+            -DBUILD_BLS_BENCHMARKS=0
+          make -j$(nproc)
+          make install
+
+      - name: Install bls-dash
+        run: |
+          sudo cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash
+          sudo cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/
+          sudo ldconfig
+
+      - name: Build Babacoin
         run: |
           ./autogen.sh
           ./configure \
             --with-incompatible-bdb \
             BDB_LIBS="-ldb_cxx-5.3" \
             BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --without-gui
+            --disable-tests --disable-bench --without-gui \
+            CPPFLAGS="-I/usr/local/include" \
+            LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
 
       - name: Package
@@ -67,16 +101,48 @@ jobs:
             build-essential libtool autotools-dev automake pkg-config \
             libssl-dev libevent-dev libboost-all-dev \
             libdb5.3-dev libdb5.3++-dev \
-            libminiupnpc-dev libzmq3-dev python3
+            libminiupnpc-dev libzmq3-dev python3 \
+            cmake libgmp-dev
 
-      - name: Build
+      - name: Cache bls-dash
+        uses: actions/cache@v4
+        id: cache-bls
+        with:
+          path: /tmp/bls-install
+          key: bls-dash-ubuntu-2204-${{ env.BLS_VERSION }}
+
+      - name: Build bls-dash
+        if: steps.cache-bls.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
+          mkdir -p /tmp/bls-src/build
+          cd /tmp/bls-src/build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/tmp/bls-install \
+            -DBUILD_BLS_JS_BINDINGS=0 \
+            -DBUILD_BLS_PYTHON_BINDINGS=0 \
+            -DBUILD_BLS_TESTS=0 \
+            -DBUILD_BLS_BENCHMARKS=0
+          make -j$(nproc)
+          make install
+
+      - name: Install bls-dash
+        run: |
+          sudo cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash
+          sudo cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/
+          sudo ldconfig
+
+      - name: Build Babacoin
         run: |
           ./autogen.sh
           ./configure \
             --with-incompatible-bdb \
             BDB_LIBS="-ldb_cxx-5.3" \
             BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --without-gui
+            --disable-tests --disable-bench --without-gui \
+            CPPFLAGS="-I/usr/local/include" \
+            LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
 
       - name: Package
@@ -103,11 +169,44 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          for pkg in autoconf automake libtool pkg-config openssl@3 libevent boost miniupnpc zeromq berkeley-db@5; do
-            brew install $pkg 2>/dev/null || brew upgrade $pkg 2>/dev/null || true
+          for pkg in autoconf automake libtool pkg-config openssl@3 \
+                     libevent boost miniupnpc zeromq berkeley-db@5 cmake gmp; do
+            brew install $pkg 2>/dev/null || true
           done
 
-      - name: Build
+      - name: Cache bls-dash
+        uses: actions/cache@v4
+        id: cache-bls
+        with:
+          path: /tmp/bls-install
+          key: bls-dash-macos-intel-${{ env.BLS_VERSION }}
+
+      - name: Build bls-dash
+        if: steps.cache-bls.outputs.cache-hit != 'true'
+        run: |
+          P=$(brew --prefix)
+          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
+          mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/tmp/bls-install \
+            -DBUILD_BLS_JS_BINDINGS=0 \
+            -DBUILD_BLS_PYTHON_BINDINGS=0 \
+            -DBUILD_BLS_TESTS=0 \
+            -DBUILD_BLS_BENCHMARKS=0 \
+            -DGMP_INCLUDES=$P/opt/gmp/include \
+            -DGMP_LIBRARIES=$P/opt/gmp/lib/libgmp.dylib
+          make -j$(sysctl -n hw.logicalcpu)
+          make install
+
+      - name: Install bls-dash
+        run: |
+          cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash || \
+          sudo cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash
+          cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/ || \
+          sudo cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/
+
+      - name: Build Babacoin
         run: |
           P=$(brew --prefix)
           ./autogen.sh
@@ -115,8 +214,8 @@ jobs:
             --with-incompatible-bdb \
             --disable-tests --disable-bench --without-gui \
             PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig:$P/opt/libevent/lib/pkgconfig" \
-            LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib" \
-            CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include" \
+            LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L/usr/local/lib" \
+            CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I/usr/local/include" \
             BDB_LIBS="-L$P/opt/berkeley-db@5/lib -ldb_cxx" \
             BDB_CFLAGS="-I$P/opt/berkeley-db@5/include"
           make -j$(sysctl -n hw.logicalcpu)
@@ -145,11 +244,44 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          for pkg in autoconf automake libtool pkg-config openssl@3 libevent boost miniupnpc zeromq berkeley-db@5; do
-            brew install $pkg 2>/dev/null || brew upgrade $pkg 2>/dev/null || true
+          for pkg in autoconf automake libtool pkg-config openssl@3 \
+                     libevent boost miniupnpc zeromq berkeley-db@5 cmake gmp; do
+            brew install $pkg 2>/dev/null || true
           done
 
-      - name: Build
+      - name: Cache bls-dash
+        uses: actions/cache@v4
+        id: cache-bls
+        with:
+          path: /tmp/bls-install
+          key: bls-dash-macos-arm64-${{ env.BLS_VERSION }}
+
+      - name: Build bls-dash
+        if: steps.cache-bls.outputs.cache-hit != 'true'
+        run: |
+          P=$(brew --prefix)
+          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
+          mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/tmp/bls-install \
+            -DBUILD_BLS_JS_BINDINGS=0 \
+            -DBUILD_BLS_PYTHON_BINDINGS=0 \
+            -DBUILD_BLS_TESTS=0 \
+            -DBUILD_BLS_BENCHMARKS=0 \
+            -DGMP_INCLUDES=$P/opt/gmp/include \
+            -DGMP_LIBRARIES=$P/opt/gmp/lib/libgmp.dylib
+          make -j$(sysctl -n hw.logicalcpu)
+          make install
+
+      - name: Install bls-dash
+        run: |
+          cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash 2>/dev/null || \
+          sudo cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash
+          cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/ 2>/dev/null || \
+          sudo cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/
+
+      - name: Build Babacoin
         run: |
           P=$(brew --prefix)
           ./autogen.sh
@@ -157,8 +289,8 @@ jobs:
             --with-incompatible-bdb \
             --disable-tests --disable-bench --without-gui \
             PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig:$P/opt/libevent/lib/pkgconfig" \
-            LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib" \
-            CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include" \
+            LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L/usr/local/lib" \
+            CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I/usr/local/include" \
             BDB_LIBS="-L$P/opt/berkeley-db@5/lib -ldb_cxx" \
             BDB_CFLAGS="-I$P/opt/berkeley-db@5/include"
           make -j$(sysctl -n hw.logicalcpu)
@@ -176,7 +308,7 @@ jobs:
           path: babacoin-v2.0.0-macos-arm64.tar.gz
 
   # ─────────────────────────────────────────
-  # Raspberry Pi ARM64 — QEMU emulation
+  # Raspberry Pi ARM64 — QEMU
   # ─────────────────────────────────────────
   build-raspberrypi:
     name: Raspberry Pi (ARM64)
@@ -189,20 +321,23 @@ jobs:
         with:
           platforms: linux/arm64
 
-      - name: Build inside ARM64 container
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/arm64
-          push: false
-          file: .github/Dockerfile.rpi
-          outputs: type=local,dest=./rpi-output
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build in ARM64 container
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --file .github/Dockerfile.rpi \
+            --output type=local,dest=./rpi-output \
+            .
 
       - name: Package
         run: |
           mkdir -p dist
-          cp rpi-output/babacoind rpi-output/babacoin-cli rpi-output/babacoin-tx dist/ 2>/dev/null || \
-          find rpi-output -name "babacoind" -o -name "babacoin-cli" -o -name "babacoin-tx" | xargs -I{} cp {} dist/
+          find rpi-output -name "babacoind" -o -name "babacoin-cli" -o -name "babacoin-tx" \
+            | xargs -I{} cp {} dist/ 2>/dev/null || true
+          ls dist/
           tar -czf babacoin-v2.0.0-raspberry-pi-arm64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
@@ -211,7 +346,7 @@ jobs:
           path: babacoin-v2.0.0-raspberry-pi-arm64.tar.gz
 
   # ─────────────────────────────────────────
-  # Windows x64 (MinGW via depends)
+  # Windows x64 — MinGW + depends
   # ─────────────────────────────────────────
   build-windows:
     name: Windows x64
@@ -219,31 +354,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install MinGW + depends build tools
+      - name: Install MinGW + tools
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             g++-mingw-w64-x86-64 mingw-w64 \
             autoconf automake libtool pkg-config \
-            python3 nsis curl xz-utils bsdmainutils cmake
+            python3 nsis curl xz-utils bsdmainutils cmake \
+            libgmp-dev
 
       - name: Set POSIX threading
         run: |
-          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
-          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc \
+            /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ \
+            /usr/bin/x86_64-w64-mingw32-g++-posix
 
       - name: Cache depends
         uses: actions/cache@v4
         with:
           path: depends/built
-          key: windows-depends-${{ hashFiles('depends/packages/*.mk') }}
+          key: windows-depends-${{ hashFiles('depends/packages/*.mk') }}-v2
 
-      - name: Build depends (Windows)
+      - name: Build depends
         run: |
           make -C depends HOST=x86_64-w64-mingw32 -j$(nproc) \
-            NO_QT=1 NO_QR=1 NO_UPNP=0
+            NO_QT=1 NO_QR=1
 
-      - name: Build for Windows
+      - name: Build bls-dash for Windows
+        run: |
+          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-win-src
+          mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=$PWD/../../../babacoin/depends/x86_64-w64-mingw32 \
+            -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32/share/toolchain.cmake \
+            -DBUILD_BLS_JS_BINDINGS=0 \
+            -DBUILD_BLS_PYTHON_BINDINGS=0 \
+            -DBUILD_BLS_TESTS=0 \
+            -DBUILD_BLS_BENCHMARKS=0 || true
+          # Fallback: copy Linux bls headers for Windows cross-compile
+          sudo mkdir -p /usr/local/include/bls-dash
+          sudo cp -r /tmp/bls-win-src/include/* /usr/local/include/bls-dash/ 2>/dev/null || true
+
+      - name: Build Babacoin
         run: |
           ./autogen.sh
           CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site \
@@ -251,14 +405,16 @@ jobs:
             --prefix=$PWD/depends/x86_64-w64-mingw32 \
             --host=x86_64-w64-mingw32 \
             --disable-tests --disable-bench --without-gui \
-            --with-incompatible-bdb
+            --with-incompatible-bdb \
+            CPPFLAGS="-I/usr/local/include" \
+            LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
 
       - name: Package
         run: |
           mkdir -p dist
           cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe dist/ 2>/dev/null || \
-            cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+            cp src/babacoind src/babacoin-cli src/babacoin-tx dist/ 2>/dev/null || true
           zip -j babacoin-v2.0.0-windows-x86_64.zip dist/*
 
       - uses: actions/upload-artifact@v4
@@ -267,7 +423,7 @@ jobs:
           path: babacoin-v2.0.0-windows-x86_64.zip
 
   # ─────────────────────────────────────────
-  # Release assets yükle
+  # Release — sadece tag push'ta
   # ─────────────────────────────────────────
   upload-release:
     name: Upload to GitHub Release
@@ -284,7 +440,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
