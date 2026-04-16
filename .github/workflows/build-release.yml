@@ -416,6 +416,12 @@ jobs:
           path: depends/built
           key: windows-depends-${{ hashFiles('depends/packages/*.mk') }}-v3
 
+      - name: Pre-fetch GMP sources
+        run: |
+          mkdir -p depends/sources
+          curl -L --retry 3 -o depends/sources/gmp-6.3.0.tar.bz2 \
+            https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2
+
       - name: Build depends (no bls-dash/cmake)
         run: |
           make -C depends HOST=x86_64-w64-mingw32 -j$(nproc) \
