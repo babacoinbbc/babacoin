@@ -201,10 +201,12 @@ jobs:
 
       - name: Install bls-dash
         run: |
-          cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash || \
-          sudo cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash
-          cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/ || \
-          sudo cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/
+          BLS_INC=$(find /tmp/bls-install -type d -name "dashbls" 2>/dev/null | head -1)
+          BLS_LIB=$(find /tmp/bls-install -name "libdashbls.a" 2>/dev/null | head -1)
+          [ -z "$BLS_INC" ] && BLS_INC=$(dirname $(find /tmp/bls-install -name "bls.hpp" 2>/dev/null | head -1))
+          sudo mkdir -p /usr/local/include/bls-dash
+          sudo cp -r "$BLS_INC"/. /usr/local/include/bls-dash/
+          sudo cp "$BLS_LIB" /usr/local/lib/libdashbls.a
 
       - name: Build Babacoin
         run: |
@@ -276,10 +278,20 @@ jobs:
 
       - name: Install bls-dash
         run: |
-          cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash 2>/dev/null || \
-          sudo cp -r /tmp/bls-install/include/dashbls /usr/local/include/bls-dash
-          cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/ 2>/dev/null || \
-          sudo cp /tmp/bls-install/lib/libdashbls.a /usr/local/lib/
+          echo "=== BLS install tree ==="
+          find /tmp/bls-install -type f 2>/dev/null || echo "No /tmp/bls-install"
+          BLS_INC=$(find /tmp/bls-install -type d -name "dashbls" 2>/dev/null | head -1)
+          BLS_LIB=$(find /tmp/bls-install -name "libdashbls.a" 2>/dev/null | head -1)
+          if [ -z "$BLS_INC" ]; then
+            echo "dashbls dir not found, searching..."
+            BLS_INC=$(dirname $(find /tmp/bls-install -name "bls.hpp" 2>/dev/null | head -1))
+          fi
+          echo "Header dir: $BLS_INC"
+          echo "Library: $BLS_LIB"
+          sudo mkdir -p /usr/local/include/bls-dash
+          sudo cp -r "$BLS_INC"/. /usr/local/include/bls-dash/
+          sudo cp "$BLS_LIB" /usr/local/lib/libdashbls.a
+          echo "✅ bls-dash installed"
 
       - name: Build Babacoin
         run: |
