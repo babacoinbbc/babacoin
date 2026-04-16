@@ -199,14 +199,24 @@ jobs:
           make -j$(sysctl -n hw.logicalcpu)
           make install
 
-      - name: Install bls-dash
+      - name: Build and Install bls-dash
         run: |
-          BLS_INC=$(find /tmp/bls-install -type d -name "dashbls" 2>/dev/null | head -1)
-          BLS_LIB=$(find /tmp/bls-install -name "libdashbls.a" 2>/dev/null | head -1)
-          [ -z "$BLS_INC" ] && BLS_INC=$(dirname $(find /tmp/bls-install -name "bls.hpp" 2>/dev/null | head -1))
-          sudo mkdir -p /usr/local/include/bls-dash
-          sudo cp -r "$BLS_INC"/. /usr/local/include/bls-dash/
-          sudo cp "$BLS_LIB" /usr/local/lib/libdashbls.a
+          P=$(brew --prefix)
+          if [ ! -f /usr/local/include/bls-dash/bls.hpp ]; then
+            git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
+            mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
+            cmake .. \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_BLS_JS_BINDINGS=0 \
+              -DBUILD_BLS_PYTHON_BINDINGS=0 \
+              -DBUILD_BLS_TESTS=0 \
+              -DBUILD_BLS_BENCHMARKS=0
+            make -j$(sysctl -n hw.logicalcpu)
+            sudo mkdir -p /usr/local/include/bls-dash
+            sudo find . -name "bls.hpp" -path "*/include/*" -exec sh -c 'cp -r $(dirname {})/* /usr/local/include/bls-dash/' \;
+            sudo find . -name "libdashbls.a" -exec cp {} /usr/local/lib/ \;
+          fi
+          echo "✅ bls-dash ready"
 
       - name: Build Babacoin
         run: |
@@ -258,40 +268,25 @@ jobs:
           path: /tmp/bls-install
           key: bls-dash-macos-arm64-${{ env.BLS_VERSION }}
 
-      - name: Build bls-dash
-        if: steps.cache-bls.outputs.cache-hit != 'true'
+      - name: Build and Install bls-dash
         run: |
           P=$(brew --prefix)
-          git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
-          mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/tmp/bls-install \
-            -DBUILD_BLS_JS_BINDINGS=0 \
-            -DBUILD_BLS_PYTHON_BINDINGS=0 \
-            -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0 \
-            -DGMP_INCLUDES=$P/opt/gmp/include \
-            -DGMP_LIBRARIES=$P/opt/gmp/lib/libgmp.dylib
-          make -j$(sysctl -n hw.logicalcpu)
-          make install
-
-      - name: Install bls-dash
-        run: |
-          echo "=== BLS install tree ==="
-          find /tmp/bls-install -type f 2>/dev/null || echo "No /tmp/bls-install"
-          BLS_INC=$(find /tmp/bls-install -type d -name "dashbls" 2>/dev/null | head -1)
-          BLS_LIB=$(find /tmp/bls-install -name "libdashbls.a" 2>/dev/null | head -1)
-          if [ -z "$BLS_INC" ]; then
-            echo "dashbls dir not found, searching..."
-            BLS_INC=$(dirname $(find /tmp/bls-install -name "bls.hpp" 2>/dev/null | head -1))
+          if [ ! -f /usr/local/include/bls-dash/bls.hpp ]; then
+            git clone --depth=1 ${{ env.BLS_REPO }} /tmp/bls-src
+            mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
+            cmake .. \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_BLS_JS_BINDINGS=0 \
+              -DBUILD_BLS_PYTHON_BINDINGS=0 \
+              -DBUILD_BLS_TESTS=0 \
+              -DBUILD_BLS_BENCHMARKS=0
+            make -j$(sysctl -n hw.logicalcpu)
+            sudo mkdir -p /usr/local/include/bls-dash
+            sudo find . -name "bls.hpp" -path "*/include/*" -exec sh -c 'cp -r $(dirname {})/* /usr/local/include/bls-dash/' \;
+            sudo find . -name "libdashbls.a" -exec cp {} /usr/local/lib/ \;
           fi
-          echo "Header dir: $BLS_INC"
-          echo "Library: $BLS_LIB"
-          sudo mkdir -p /usr/local/include/bls-dash
-          sudo cp -r "$BLS_INC"/. /usr/local/include/bls-dash/
-          sudo cp "$BLS_LIB" /usr/local/lib/libdashbls.a
-          echo "✅ bls-dash installed"
+          ls /usr/local/include/bls-dash/
+          echo "✅ bls-dash ready"
 
       - name: Build Babacoin
         run: |
