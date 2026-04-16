@@ -32,22 +32,28 @@ jobs:
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 \
+            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
-          sudo make install
+          LIB=$(find /tmp/bls-src/build -name "libdashbls.a" 2>/dev/null | head -1)
+          if [ -z "$LIB" ]; then
+            echo "ERROR: libdashbls.a not found after build!"; find /tmp/bls-src/build -name "*.a"; exit 1
+          fi
+          sudo cp "$LIB" /usr/local/lib/libbls-dash.a
           sudo mkdir -p /usr/local/include/bls-dash
-          sudo find /tmp/bls-src/src -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
-          sudo find /tmp/bls-src/build -name "libdashbls.a" | head -1 | xargs -I{} sudo cp {} /usr/local/lib/libdashbls.a
-          sudo ln -sf /usr/local/lib/libdashbls.a /usr/local/lib/libbls-dash.a
-          echo "bls-dash installed: $(ls /usr/local/include/bls-dash/)"
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
+            -exec cp {} /usr/local/include/bls-dash/ \;
+          echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
+          echo "Headers : $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
@@ -94,22 +100,28 @@ jobs:
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 \
+            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
-          sudo make install
+          LIB=$(find /tmp/bls-src/build -name "libdashbls.a" 2>/dev/null | head -1)
+          if [ -z "$LIB" ]; then
+            echo "ERROR: libdashbls.a not found after build!"; find /tmp/bls-src/build -name "*.a"; exit 1
+          fi
+          sudo cp "$LIB" /usr/local/lib/libbls-dash.a
           sudo mkdir -p /usr/local/include/bls-dash
-          sudo find /tmp/bls-src/src -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
-          sudo find /tmp/bls-src/build -name "libdashbls.a" | head -1 | xargs -I{} sudo cp {} /usr/local/lib/libdashbls.a
-          sudo ln -sf /usr/local/lib/libdashbls.a /usr/local/lib/libbls-dash.a
-          echo "bls-dash installed: $(ls /usr/local/include/bls-dash/)"
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
+            -exec cp {} /usr/local/include/bls-dash/ \;
+          echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
+          echo "Headers : $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
@@ -148,42 +160,60 @@ jobs:
         run: |
           brew update
           for pkg in autoconf automake libtool pkg-config openssl@3 \
-                     libevent boost miniupnpc zeromq berkeley-db@5 cmake gmp; do
-            brew install $pkg 2>/dev/null || true
+                     libevent boost miniupnpc zeromq cmake gmp; do
+            brew install "$pkg" 2>/dev/null || true
           done
+          brew install berkeley-db@5 2>/dev/null \
+            || brew install berkeley-db 2>/dev/null || true
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "/usr/local")
+          git clone --depth=1 --branch 1.1.0 \
+            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          pip3 install setuptools --break-system-packages 2>/dev/null || true
           cmake .. \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" \
+            -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
-          sudo make install
+          LIB=$(find /tmp/bls-src/build -name "libdashbls.a" 2>/dev/null | head -1)
+          if [ -z "$LIB" ]; then
+            echo "ERROR: libdashbls.a not found!"; find /tmp/bls-src/build -name "*.a"; exit 1
+          fi
+          sudo cp "$LIB" /usr/local/lib/libbls-dash.a
           sudo mkdir -p /usr/local/include/bls-dash
-          sudo find /tmp/bls-src/src -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
-          find /tmp/bls-src/build -name "libdashbls.a" | head -1 | xargs -I{} sudo cp {} /usr/local/lib/libdashbls.a
-          sudo ln -sf /usr/local/lib/libdashbls.a /usr/local/lib/libbls-dash.a
-          echo "bls-dash: $(ls /usr/local/include/bls-dash/)"
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
+            -exec cp {} /usr/local/include/bls-dash/ \;
+          echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
+          echo "Headers : $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
           P=$(brew --prefix)
+          BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null \
+            || brew --prefix berkeley-db 2>/dev/null || echo "$P")
           ./autogen.sh
           ./configure \
             --with-incompatible-bdb \
             --disable-tests --disable-bench --without-gui \
-            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig" \
-            LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L/usr/local/lib" \
-            CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I/usr/local/include" \
-            BDB_LIBS="-L$P/opt/berkeley-db@5/lib -ldb_cxx" \
-            BDB_CFLAGS="-I$P/opt/berkeley-db@5/include"
+            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
+            LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
+              -L$P/opt/libevent/lib -L$P/opt/boost/lib \
+              -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib \
+              -L/usr/local/lib" \
+            CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include \
+              -I$P/opt/libevent/include -I$P/opt/boost/include \
+              -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
+              -I/usr/local/include" \
+            BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
+            BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
 
       - name: Package
@@ -211,42 +241,60 @@ jobs:
         run: |
           brew update
           for pkg in autoconf automake libtool pkg-config openssl@3 \
-                     libevent boost miniupnpc zeromq berkeley-db@5 cmake gmp; do
-            brew install $pkg 2>/dev/null || true
+                     libevent boost miniupnpc zeromq cmake gmp; do
+            brew install "$pkg" 2>/dev/null || true
           done
+          brew install berkeley-db@5 2>/dev/null \
+            || brew install berkeley-db 2>/dev/null || true
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "/usr/local")
+          git clone --depth=1 --branch 1.1.0 \
+            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          pip3 install setuptools --break-system-packages 2>/dev/null || true
           cmake .. \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" \
+            -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
-          sudo make install
+          LIB=$(find /tmp/bls-src/build -name "libdashbls.a" 2>/dev/null | head -1)
+          if [ -z "$LIB" ]; then
+            echo "ERROR: libdashbls.a not found!"; find /tmp/bls-src/build -name "*.a"; exit 1
+          fi
+          sudo cp "$LIB" /usr/local/lib/libbls-dash.a
           sudo mkdir -p /usr/local/include/bls-dash
-          sudo find /tmp/bls-src/src -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
-          find /tmp/bls-src/build -name "libdashbls.a" | head -1 | xargs -I{} sudo cp {} /usr/local/lib/libdashbls.a
-          sudo ln -sf /usr/local/lib/libdashbls.a /usr/local/lib/libbls-dash.a
-          echo "bls-dash: $(ls /usr/local/include/bls-dash/)"
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
+            -exec cp {} /usr/local/include/bls-dash/ \;
+          echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
+          echo "Headers : $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
         run: |
           P=$(brew --prefix)
+          BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null \
+            || brew --prefix berkeley-db 2>/dev/null || echo "$P")
           ./autogen.sh
           ./configure \
             --with-incompatible-bdb \
             --disable-tests --disable-bench --without-gui \
-            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/berkeley-db@5/lib/pkgconfig" \
-            LDFLAGS="-L$P/opt/openssl@3/lib -L$P/opt/berkeley-db@5/lib -L$P/opt/libevent/lib -L$P/opt/boost/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L/usr/local/lib" \
-            CPPFLAGS="-I$P/opt/openssl@3/include -I$P/opt/berkeley-db@5/include -I$P/opt/libevent/include -I$P/opt/boost/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I/usr/local/include" \
-            BDB_LIBS="-L$P/opt/berkeley-db@5/lib -ldb_cxx" \
-            BDB_CFLAGS="-I$P/opt/berkeley-db@5/include"
+            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
+            LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
+              -L$P/opt/libevent/lib -L$P/opt/boost/lib \
+              -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib \
+              -L/usr/local/lib" \
+            CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include \
+              -I$P/opt/libevent/include -I$P/opt/boost/include \
+              -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
+              -I/usr/local/include" \
+            BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
+            BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
 
       - name: Package
@@ -289,8 +337,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          find rpi-output -name "babacoind" -o -name "babacoin-cli" -o -name "babacoin-tx" \
-            | xargs -I{} cp {} dist/ 2>/dev/null || true
+          find rpi-output -name "babacoind" -o -name "babacoin-cli" \
+            -o -name "babacoin-tx" | xargs -I{} cp {} dist/ 2>/dev/null || true
           ls dist/
           tar -czf babacoin-v2.0.0-raspberry-pi-arm64.tar.gz -C dist .
 
@@ -336,11 +384,12 @@ jobs:
 
       - name: Build bls-dash for Windows (cross)
         run: |
-          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
+          git clone --depth=1 --branch 1.1.0 \
+            https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
           mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
           cmake .. \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw-w64/toolchain-x86_64-w64-mingw32.cmake \
             -DCMAKE_SYSTEM_NAME=Windows \
             -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc-posix \
@@ -352,12 +401,9 @@ jobs:
             -DBUILD_BLS_BENCHMARKS=0 \
             -DBUILD_SHARED_LIBS=OFF || true
           make -j$(nproc) || true
-          # Fallback: just copy headers for compilation
           DEST=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32/include/bls-dash
           mkdir -p $DEST
-          find /tmp/bls-win-src/src -name "*.hpp" -path "*/bls/*" \
-            -exec cp {} $DEST/ \; 2>/dev/null || true
-          find /tmp/bls-win-src/include -name "*.hpp" \
+          find /tmp/bls-win-src/src -maxdepth 1 -name "*.hpp" \
             -exec cp {} $DEST/ \; 2>/dev/null || true
           echo "Win bls headers: $(ls $DEST 2>/dev/null | head -5)"
 
@@ -377,7 +423,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe dist/ 2>/dev/null || \
+          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe \
+            dist/ 2>/dev/null || \
             cp src/babacoind src/babacoin-cli src/babacoin-tx dist/ 2>/dev/null || true
           zip -j babacoin-v2.0.0-windows-x86_64.zip dist/*
 
