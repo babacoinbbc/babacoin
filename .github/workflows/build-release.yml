@@ -52,8 +52,13 @@ jobs:
           sudo mkdir -p /usr/local/include/bls-dash
           sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
             -exec cp {} /usr/local/include/bls-dash/ \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include \
+            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include \
+            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
           echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
           echo "Headers : $(ls /usr/local/include/bls-dash/)"
+          echo "Relic   : $(ls /usr/local/include/relic_conf.h 2>/dev/null || echo MISSING)"
 
       - name: Build Babacoin
         run: |
@@ -120,8 +125,13 @@ jobs:
           sudo mkdir -p /usr/local/include/bls-dash
           sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
             -exec cp {} /usr/local/include/bls-dash/ \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include \
+            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include \
+            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
           echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
           echo "Headers : $(ls /usr/local/include/bls-dash/)"
+          echo "Relic   : $(ls /usr/local/include/relic_conf.h 2>/dev/null || echo MISSING)"
 
       - name: Build Babacoin
         run: |
@@ -192,8 +202,13 @@ jobs:
           sudo cp "$LIB" "$BREW_PREFIX/lib/libbls-dash.a"
           sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
             -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include \
+            -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include \
+            -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
           echo "Library : $(ls -lh $BREW_PREFIX/lib/libbls-dash.a)"
           echo "Headers : $(ls $BREW_PREFIX/include/bls-dash/)"
+          echo "Relic   : $(ls $BREW_PREFIX/include/relic_conf.h 2>/dev/null || echo MISSING)"
 
       - name: Build Babacoin
         run: |
@@ -276,8 +291,13 @@ jobs:
           sudo cp "$LIB" "$BREW_PREFIX/lib/libbls-dash.a"
           sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
             -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include \
+            -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include \
+            -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
           echo "Library : $(ls -lh $BREW_PREFIX/lib/libbls-dash.a)"
           echo "Headers : $(ls $BREW_PREFIX/include/bls-dash/)"
+          echo "Relic   : $(ls $BREW_PREFIX/include/relic_conf.h 2>/dev/null || echo MISSING)"
 
       - name: Build Babacoin
         run: |
