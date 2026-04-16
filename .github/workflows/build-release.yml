@@ -91,6 +91,7 @@ jobs:
             libminiupnpc-dev libzmq3-dev python3 \
             cmake libgmp-dev git
 
+      - name: Build and install bls-dash
         run: |
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
