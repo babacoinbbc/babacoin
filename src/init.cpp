@@ -431,7 +431,7 @@ void OnRPCStarted()
 
 void OnRPCStopped()
 {
-    uiInterface.NotifyBlockTip.disconnect(&RPCNotifyBlockChange);
+    uiInterface.NotifyBlockTip.disconnect_all_slots();
     RPCNotifyBlockChange(false, nullptr);
     g_best_block_cv.notify_all();
     LogPrint(BCLog::RPC, "RPC stopped.\n");
@@ -682,6 +682,7 @@ static void BlockNotifyCallback(bool initialSync, const CBlockIndex *pBlockIndex
 static bool fHaveGenesis = false;
 static CWaitableCriticalSection cs_GenesisWait;
 static CConditionVariable condvar_GenesisWait;
+static boost::signals2::connection genesisWaitConnection;
 
 static void BlockNotifyGenesisWait(bool, const CBlockIndex *pBlockIndex)
 {
@@ -2264,7 +2265,7 @@ bool AppInitMain()
     // Either install a handler to notify us when genesis activates, or set fHaveGenesis directly.
     // No locking, as this happens before any background thread is started.
     if (chainActive.Tip() == nullptr) {
-        uiInterface.NotifyBlockTip.connect(BlockNotifyGenesisWait);
+        genesisWaitConnection = uiInterface.NotifyBlockTip.connect(BlockNotifyGenesisWait);
     } else {
         fHaveGenesis = true;
     }
@@ -2288,7 +2289,7 @@ bool AppInitMain()
         while (!fHaveGenesis && !ShutdownRequested()) {
             condvar_GenesisWait.wait_for(lock, std::chrono::milliseconds(500));
         }
-        uiInterface.NotifyBlockTip.disconnect(BlockNotifyGenesisWait);
+        genesisWaitConnection.disconnect();
     }
 
     // As importing blocks can take several minutes, it's possible the user
