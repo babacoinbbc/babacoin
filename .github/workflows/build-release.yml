@@ -209,11 +209,11 @@ jobs:
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
               -L$P/opt/libevent/lib -L$P/opt/boost/lib \
               -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib \
-              -L/usr/local/lib" \
+              -L$P/lib" \
             CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include \
               -I$P/opt/libevent/include -I$P/opt/boost/include \
               -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
-              -I/usr/local/include" \
+              -I$P/include" \
             BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
             BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
@@ -292,11 +292,11 @@ jobs:
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
               -L$P/opt/libevent/lib -L$P/opt/boost/lib \
               -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib \
-              -L/usr/local/lib" \
+              -L$P/lib" \
             CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include \
               -I$P/opt/libevent/include -I$P/opt/boost/include \
               -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
-              -I/usr/local/include" \
+              -I$P/include" \
             BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
             BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
