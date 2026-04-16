@@ -48,7 +48,7 @@ class CPowCache : public unordered_lru_cache<uint256, uint256, std::hash<uint256
             {
                 uint256 headerHash;
                 uint256 powHash;
-                for (int i = 0; i < cacheSize; ++i)
+                for (uint64_t i = 0; i < cacheSize; ++i)
                 {
                     READWRITE(headerHash);
                     READWRITE(powHash);
