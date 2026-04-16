@@ -35,6 +35,7 @@ jobs:
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \\
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
@@ -96,6 +97,7 @@ jobs:
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \\
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
@@ -155,6 +157,7 @@ jobs:
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \\
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
@@ -216,6 +219,7 @@ jobs:
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \\
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
@@ -333,6 +337,7 @@ jobs:
           git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
           mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
           cmake .. \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \\
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw-w64/toolchain-x86_64-w64-mingw32.cmake \
             -DCMAKE_SYSTEM_NAME=Windows \
