@@ -32,7 +32,7 @@ jobs:
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
@@ -41,9 +41,11 @@ jobs:
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
-          sudo find . -name "bls.hpp" | head -1 | xargs dirname | \
-            xargs -I{} sudo cp -r {} /usr/local/include/bls-dash
-          sudo find . -name "libdashbls.a" | xargs -I{} sudo cp {} /usr/local/lib/
+          sudo make install
+          sudo mkdir -p /usr/local/include/bls-dash
+          sudo find /tmp/bls-src/src -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
+          sudo find /tmp/bls-src/build -name "libdashbls.a" | head -1 | xargs -I{} sudo cp {} /usr/local/lib/libdashbls.a
+          sudo ln -sf /usr/local/lib/libdashbls.a /usr/local/lib/libbls-dash.a
           echo "bls-dash installed: $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
@@ -89,9 +91,9 @@ jobs:
             libminiupnpc-dev libzmq3-dev python3 \
             cmake libgmp-dev git
 
-      - name: Build and install bls-dash
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
         run: |
-          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
@@ -100,9 +102,11 @@ jobs:
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
-          sudo find . -name "bls.hpp" | head -1 | xargs dirname | \
-            xargs -I{} sudo cp -r {} /usr/local/include/bls-dash
-          sudo find . -name "libdashbls.a" | xargs -I{} sudo cp {} /usr/local/lib/
+          sudo make install
+          sudo mkdir -p /usr/local/include/bls-dash
+          sudo find /tmp/bls-src/src -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
+          sudo find /tmp/bls-src/build -name "libdashbls.a" | head -1 | xargs -I{} sudo cp {} /usr/local/lib/libdashbls.a
+          sudo ln -sf /usr/local/lib/libdashbls.a /usr/local/lib/libbls-dash.a
           echo "bls-dash installed: $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
@@ -148,7 +152,7 @@ jobs:
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
@@ -157,10 +161,11 @@ jobs:
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
+          sudo make install
           sudo mkdir -p /usr/local/include/bls-dash
-          find . -name "bls.hpp" | head -1 | xargs dirname | \
-            xargs -I{} sh -c 'sudo cp -r {}/* /usr/local/include/bls-dash/'
-          find . -name "libdashbls.a" | xargs -I{} sudo cp {} /usr/local/lib/
+          sudo find /tmp/bls-src/src -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
+          find /tmp/bls-src/build -name "libdashbls.a" | head -1 | xargs -I{} sudo cp {} /usr/local/lib/libdashbls.a
+          sudo ln -sf /usr/local/lib/libdashbls.a /usr/local/lib/libbls-dash.a
           echo "bls-dash: $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
@@ -207,7 +212,7 @@ jobs:
           done
 
       - name: Build and install bls-dash
-        run: |
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           git clone --depth=1 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. \
@@ -217,10 +222,11 @@ jobs:
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
+          sudo make install
           sudo mkdir -p /usr/local/include/bls-dash
-          find . -name "bls.hpp" | head -1 | xargs dirname | \
-            xargs -I{} sh -c 'sudo cp -r {}/* /usr/local/include/bls-dash/'
-          find . -name "libdashbls.a" | xargs -I{} sudo cp {} /usr/local/lib/
+          sudo find /tmp/bls-src/src -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
+          find /tmp/bls-src/build -name "libdashbls.a" | head -1 | xargs -I{} sudo cp {} /usr/local/lib/libdashbls.a
+          sudo ln -sf /usr/local/lib/libdashbls.a /usr/local/lib/libbls-dash.a
           echo "bls-dash: $(ls /usr/local/include/bls-dash/)"
 
       - name: Build Babacoin
