@@ -70,7 +70,7 @@ jobs:
             --with-incompatible-bdb \
             BDB_LIBS="-ldb_cxx-5.3" \
             BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces \
+            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
             CPPFLAGS="-I/usr/local/include" \
             LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
@@ -146,7 +146,7 @@ jobs:
             --with-incompatible-bdb \
             BDB_LIBS="-ldb_cxx-5.3" \
             BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces \
+            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
             CPPFLAGS="-I/usr/local/include" \
             LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
@@ -456,7 +456,7 @@ jobs:
           ./configure \
             --prefix=$PWD/depends/x86_64-w64-mingw32 \
             --host=x86_64-w64-mingw32 \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces \
+            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
             --with-incompatible-bdb \
             CPPFLAGS="-I$PWD/depends/x86_64-w64-mingw32/include" \
             LDFLAGS="-L$PWD/depends/x86_64-w64-mingw32/lib"
