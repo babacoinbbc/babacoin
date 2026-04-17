@@ -245,6 +245,7 @@ jobs:
               -I$P/opt/libevent/include \
               -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
               -I$P/include" \
+            CXXFLAGS="-std=c++17" \
             BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
             BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
@@ -338,6 +339,7 @@ jobs:
               -I$P/opt/libevent/include \
               -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
               -I$P/include" \
+            CXXFLAGS="-std=c++17" \
             BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
             BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
