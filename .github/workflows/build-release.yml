@@ -457,6 +457,13 @@ jobs:
           # Also copy all relic headers alongside
           find /tmp/bls-win-src/build/_deps -name "*.h" \
             -exec cp {} $DEST/ \; 2>/dev/null || true
+          # Relic headers (relic_conf.h gibi)
+          find /tmp/bls-win-src/build -name "relic_conf.h" \
+            -exec cp {} $DEST/ \; 2>/dev/null || true
+          find /tmp/bls-win-src/build/_deps/relic-src/include \
+            -name "*.h" -exec cp {} $DEST/ \; 2>/dev/null || true
+          find /tmp/bls-win-src/build/_deps/relic-build/include \
+            -name "*.h" -exec cp {} $DEST/ \; 2>/dev/null || true
           echo "Win bls headers: $(ls $DEST 2>/dev/null | head -8)"
       - name: Build Babacoin
         run: |
