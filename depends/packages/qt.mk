@@ -122,7 +122,6 @@ define $(package)_extract_cmds
 endef
 
 define $(package)_preprocess_cmds
-  sed -i.old '1i #include <limits>' qtbase/src/corelib/global/qrandom.cpp && \
   sed -i.old '/^#include <QByteArray>/a #include <limits>' qtbase/src/corelib/tools/qbytearraymatcher.h && \
   sed -i.old '/^#include <qstring.h>/a #include <limits>' qtbase/src/corelib/tools/qbytearray.h && \
   sed -i.old "s|FT_Get_Font_Format|FT_Get_X11_Font_Format|" qtbase/src/platformsupport/fontdatabases/freetype/qfontengine_ft.cpp && \
