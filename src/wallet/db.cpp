@@ -824,7 +824,11 @@ bool BerkeleyDatabase::Backup(const std::string& strDest)
                     }
 
                     #if BOOST_VERSION >= 107400
+                    #if BOOST_VERSION >= 107400
                     fs::copy_file(pathSrc, pathDest, fs::copy_options::overwrite_existing);
+#else
+                    fs::copy_file(pathSrc, pathDest, fs::copy_option::overwrite_if_exists);
+#endif
 #else
                     fs::copy_file(pathSrc, pathDest, fs::copy_option::overwrite_if_exists);
 #endif
