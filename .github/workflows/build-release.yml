@@ -424,11 +424,17 @@ jobs:
           path: depends/built
           key: windows-depends-${{ hashFiles('depends/packages/*.mk') }}-v3
 
-      - name: Pre-fetch GMP sources
+      - name: Pre-fetch GMP + Qt sources
         run: |
           mkdir -p depends/sources
           curl -L --retry 3 -o depends/sources/gmp-6.3.0.tar.bz2 \
             https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2
+          curl -L --retry 3 -o depends/sources/qtbase-opensource-src-5.9.6.tar.xz \
+            https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qtbase-opensource-src-5.9.6.tar.xz
+          curl -L --retry 3 -o depends/sources/qttranslations-opensource-src-5.9.6.tar.xz \
+            https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qttranslations-opensource-src-5.9.6.tar.xz
+          curl -L --retry 3 -o depends/sources/qttools-opensource-src-5.9.6.tar.xz \
+            https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qttools-opensource-src-5.9.6.tar.xz
 
       - name: Build depends (bdb, qt, qrencode)
         run: |
