@@ -428,10 +428,9 @@ jobs:
           curl -L --retry 3 -o depends/sources/gmp-6.3.0.tar.bz2 \
             https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2
 
-      - name: Build depends (no bls-dash/cmake)
+      - name: Build depends (bdb, qt, qrencode)
         run: |
-          make -C depends HOST=x86_64-w64-mingw32 -j$(nproc) \
-            NO_QT=1 NO_QR=1
+          make -C depends HOST=x86_64-w64-mingw32 -j$(nproc)
 
       - name: Build bls-dash for Windows (cross)
         run: |
