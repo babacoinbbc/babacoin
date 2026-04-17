@@ -5,6 +5,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <qt/bitcoingui.h>
+// Boost 1.73+: _1, _2 placeholders moved to boost::placeholders namespace
+#include <boost/bind/bind.hpp>
+using namespace boost::placeholders;
+
 
 #include <qt/bitcoinunits.h>
 #include <qt/clientmodel.h>
