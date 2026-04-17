@@ -453,6 +453,10 @@ jobs:
           mkdir -p $DEST
           find /tmp/bls-win-src/src -maxdepth 1 -name "*.hpp" \
             -exec cp {} $DEST/ \; 2>/dev/null || true
+          find /tmp/bls-win-src/build/_deps/relic-src/include \
+            -name "*.h" -exec cp {} $DEST/ \; 2>/dev/null || true
+          find /tmp/bls-win-src/build/_deps/relic-build/include \
+            -name "*.h" -exec cp {} $DEST/ \; 2>/dev/null || true
           echo "Win bls headers: $(ls $DEST 2>/dev/null | head -5)"
 
       - name: Build Babacoin
