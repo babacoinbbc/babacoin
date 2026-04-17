@@ -429,42 +429,45 @@ jobs:
 
       - name: Build bls-dash for Windows (cross)
         run: |
+          INSTALL_PREFIX=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32
           git clone --depth=1 --branch 1.1.0 \
             https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
           mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DCMAKE_C_FLAGS="-fPIC" \
+            -DCMAKE_CXX_FLAGS="-fPIC" \
             -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw-w64/toolchain-x86_64-w64-mingw32.cmake \
             -DCMAKE_SYSTEM_NAME=Windows \
             -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc-posix \
             -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++-posix \
-            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32 \
+            -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
             -DBUILD_BLS_TESTS=0 \
             -DBUILD_BLS_BENCHMARKS=0 \
-            -DBUILD_SHARED_LIBS=OFF || true
-          make -j$(nproc) || true
-          DEST=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32/include/bls-dash
-          mkdir -p $DEST
-          # Copy bls-dash headers
+            -DBUILD_SHARED_LIBS=OFF
+          make -j$(nproc)
+          LIB=$(find /tmp/bls-win-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
+          if [ -z "$LIB" ]; then
+            echo "ERROR: libbls-dash.a not found!"; find /tmp/bls-win-src/build -name "*.a"; exit 1
+          fi
+          mkdir -p $INSTALL_PREFIX/lib $INSTALL_PREFIX/include/bls-dash
+          cp "$LIB" $INSTALL_PREFIX/lib/libbls-dash.a
+          # bls-dash headers → include/bls-dash/
           find /tmp/bls-win-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} $DEST/ \; 2>/dev/null || true
-          # Copy relic_conf.h into bls-dash/ (included as "relic_conf.h")
-          find /tmp/bls-win-src/build -name "relic_conf.h" \
-            -exec cp {} $DEST/ \; 2>/dev/null || true
-          # Also copy all relic headers alongside
-          find /tmp/bls-win-src/build/_deps -name "*.h" \
-            -exec cp {} $DEST/ \; 2>/dev/null || true
-          # Relic headers (relic_conf.h gibi)
-          find /tmp/bls-win-src/build -name "relic_conf.h" \
-            -exec cp {} $DEST/ \; 2>/dev/null || true
+            -exec cp {} $INSTALL_PREFIX/include/bls-dash/ \;
+          # relic headers → include/ (kök dizine, #include "relic_conf.h" için)
           find /tmp/bls-win-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} $DEST/ \; 2>/dev/null || true
+            -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
           find /tmp/bls-win-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} $DEST/ \; 2>/dev/null || true
-          echo "Win bls headers: $(ls $DEST 2>/dev/null | head -8)"
+            -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
+          echo "Library   : $(ls -lh $INSTALL_PREFIX/lib/libbls-dash.a)"
+          echo "Headers   : $(ls $INSTALL_PREFIX/include/bls-dash/ | head -5)"
+          echo "Relic     : $(ls $INSTALL_PREFIX/include/relic_conf.h 2>/dev/null || echo MISSING)"
+
       - name: Build Babacoin
         run: |
           ./autogen.sh
