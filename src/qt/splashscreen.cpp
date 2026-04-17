@@ -6,6 +6,10 @@
 
 #if defined(HAVE_CONFIG_H)
 #include <config/babacoin-config.h>
+// Boost 1.73+: _1, _2 placeholders moved to boost::placeholders namespace
+#include <boost/bind/bind.hpp>
+using namespace boost::placeholders;
+
 #endif
 
 #include <qt/splashscreen.h>
