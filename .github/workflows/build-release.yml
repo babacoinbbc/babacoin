@@ -433,9 +433,6 @@ jobs:
             https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
           mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
           cmake .. \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_C_FLAGS="-fPIC" \
-            -DCMAKE_CXX_FLAGS="-fPIC" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw-w64/toolchain-x86_64-w64-mingw32.cmake \
@@ -451,14 +448,16 @@ jobs:
           make -j$(nproc) || true
           DEST=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32/include/bls-dash
           mkdir -p $DEST
+          # Copy bls-dash headers
           find /tmp/bls-win-src/src -maxdepth 1 -name "*.hpp" \
             -exec cp {} $DEST/ \; 2>/dev/null || true
-          find /tmp/bls-win-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} $DEST/ \; 2>/dev/null || true
-          find /tmp/bls-win-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} $DEST/ \; 2>/dev/null || true
-          echo "Win bls headers: $(ls $DEST 2>/dev/null | head -5)"
-
+          # Copy relic_conf.h into bls-dash/ (included as "relic_conf.h")
+          find /tmp/bls-win-src/build -name "relic_conf.h" \
+            -exec cp {} $DEST/ \; 2>/dev/null || true
+          # Also copy all relic headers alongside
+          find /tmp/bls-win-src/build/_deps -name "*.h" \
+            -exec cp {} $DEST/ \; 2>/dev/null || true
+          echo "Win bls headers: $(ls $DEST 2>/dev/null | head -8)"
       - name: Build Babacoin
         run: |
           ./autogen.sh
