@@ -499,7 +499,6 @@ jobs:
             --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
             --with-incompatible-bdb \
             CPPFLAGS="-I$PWD/depends/x86_64-w64-mingw32/include" \
-            CXXFLAGS="-std=c++14" \
             LDFLAGS="-L$PWD/depends/x86_64-w64-mingw32/lib"
           make -j$(nproc)
 
