@@ -180,7 +180,8 @@ jobs:
         run: |
           brew update
           for pkg in autoconf automake libtool pkg-config openssl@3 \
-                     libevent boost miniupnpc zeromq cmake gmp; do
+                     libevent boost miniupnpc zeromq cmake gmp \
+                     qt@5 protobuf libqrencode; do
             brew install "$pkg" 2>/dev/null || true
           done
           brew install berkeley-db@5 2>/dev/null \
@@ -233,7 +234,7 @@ jobs:
             --with-incompatible-bdb \
             --with-boost="$BOOST_PREFIX" \
             --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
+            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/qt@5/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
               -L$BOOST_PREFIX/lib \
               -L$P/opt/libevent/lib \
@@ -272,7 +273,8 @@ jobs:
         run: |
           brew update
           for pkg in autoconf automake libtool pkg-config openssl@3 \
-                     libevent boost miniupnpc zeromq cmake gmp; do
+                     libevent boost miniupnpc zeromq cmake gmp \
+                     qt@5 protobuf libqrencode; do
             brew install "$pkg" 2>/dev/null || true
           done
           brew install berkeley-db@5 2>/dev/null \
@@ -325,7 +327,7 @@ jobs:
             --with-incompatible-bdb \
             --with-boost="$BOOST_PREFIX" \
             --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
+            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/qt@5/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
               -L$BOOST_PREFIX/lib \
               -L$P/opt/libevent/lib \
