@@ -432,8 +432,7 @@ jobs:
 
       - name: Build depends (bdb, qt, qrencode)
         run: |
-          make -C depends HOST=x86_64-w64-mingw32 -j$(nproc) \
-          NO_QT=1 NO_QR=1
+          make -C depends HOST=x86_64-w64-mingw32 -j$(nproc)
 
       - name: Build bls-dash for Windows (cross)
         run: |
@@ -491,7 +490,7 @@ jobs:
           ./configure \
             --prefix=$PWD/depends/x86_64-w64-mingw32 \
             --host=x86_64-w64-mingw32 \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
+            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
             --with-incompatible-bdb \
             CPPFLAGS="-I$PWD/depends/x86_64-w64-mingw32/include" \
             LDFLAGS="-L$PWD/depends/x86_64-w64-mingw32/lib"
@@ -500,7 +499,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe \
+          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe src/qt/babacoin-qt.exe \
             dist/ 2>/dev/null || \
             cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/ 2>/dev/null || true
           zip -j babacoin-v2.0.0-windows-x86_64.zip dist/*
