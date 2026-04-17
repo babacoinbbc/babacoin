@@ -430,6 +430,18 @@ jobs:
       - name: Build bls-dash for Windows (cross)
         run: |
           INSTALL_PREFIX=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32
+          # Inline toolchain file - /usr/share/mingw-w64/toolchain-*.cmake yok
+          cat > /tmp/mingw-toolchain.cmake <<'EOF'
+          SET(CMAKE_SYSTEM_NAME Windows)
+          SET(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc-posix)
+          SET(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++-posix)
+          SET(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
+          SET(CMAKE_MAKE_PROGRAM make)
+          SET(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)
+          SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+          SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+          SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+          EOF
           git clone --depth=1 --branch 1.1.0 \
             https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
           mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
@@ -439,10 +451,8 @@ jobs:
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DCMAKE_C_FLAGS="-fPIC" \
             -DCMAKE_CXX_FLAGS="-fPIC" \
-            -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw-w64/toolchain-x86_64-w64-mingw32.cmake \
-            -DCMAKE_SYSTEM_NAME=Windows \
-            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc-posix \
-            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++-posix \
+            -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw-toolchain.cmake \
+            -DCMAKE_MAKE_PROGRAM=make \
             -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
             -DBUILD_BLS_JS_BINDINGS=0 \
             -DBUILD_BLS_PYTHON_BINDINGS=0 \
@@ -456,10 +466,8 @@ jobs:
           fi
           mkdir -p $INSTALL_PREFIX/lib $INSTALL_PREFIX/include/bls-dash
           cp "$LIB" $INSTALL_PREFIX/lib/libbls-dash.a
-          # bls-dash headers → include/bls-dash/
           find /tmp/bls-win-src/src -maxdepth 1 -name "*.hpp" \
             -exec cp {} $INSTALL_PREFIX/include/bls-dash/ \;
-          # relic headers → include/ (kök dizine, #include "relic_conf.h" için)
           find /tmp/bls-win-src/build/_deps/relic-src/include \
             -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
           find /tmp/bls-win-src/build/_deps/relic-build/include \
