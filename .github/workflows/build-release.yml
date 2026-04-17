@@ -28,6 +28,8 @@ jobs:
             libssl-dev libevent-dev libboost-all-dev \
             libdb5.3-dev libdb5.3++-dev \
             libminiupnpc-dev libzmq3-dev python3 \
+            qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
+            libprotobuf-dev protobuf-compiler libqrencode-dev \
             cmake libgmp-dev git
 
       - name: Build and install bls-dash
@@ -70,7 +72,7 @@ jobs:
             --with-incompatible-bdb \
             BDB_LIBS="-ldb_cxx-5.3" \
             BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
+            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
             CPPFLAGS="-I/usr/local/include" \
             LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
@@ -104,6 +106,8 @@ jobs:
             libssl-dev libevent-dev libboost-all-dev \
             libdb5.3-dev libdb5.3++-dev \
             libminiupnpc-dev libzmq3-dev python3 \
+            qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
+            libprotobuf-dev protobuf-compiler libqrencode-dev \
             cmake libgmp-dev git
 
       - name: Build and install bls-dash
@@ -146,7 +150,7 @@ jobs:
             --with-incompatible-bdb \
             BDB_LIBS="-ldb_cxx-5.3" \
             BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
+            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
             CPPFLAGS="-I/usr/local/include" \
             LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
@@ -228,7 +232,7 @@ jobs:
           ./configure \
             --with-incompatible-bdb \
             --with-boost="$BOOST_PREFIX" \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
+            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
             PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
               -L$BOOST_PREFIX/lib \
@@ -320,7 +324,7 @@ jobs:
           ./configure \
             --with-incompatible-bdb \
             --with-boost="$BOOST_PREFIX" \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
+            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
             PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
             LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
               -L$BOOST_PREFIX/lib \
@@ -483,7 +487,7 @@ jobs:
           ./configure \
             --prefix=$PWD/depends/x86_64-w64-mingw32 \
             --host=x86_64-w64-mingw32 \
-            --disable-tests --disable-bench --without-gui --disable-stacktraces --disable-shared \
+            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
             --with-incompatible-bdb \
             CPPFLAGS="-I$PWD/depends/x86_64-w64-mingw32/include" \
             LDFLAGS="-L$PWD/depends/x86_64-w64-mingw32/lib"
