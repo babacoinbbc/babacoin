@@ -80,8 +80,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          strip src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt
+          cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/
           tar -czf babacoin-v2.0.0-linux-ubuntu20.04-x86_64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
@@ -158,8 +158,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          strip src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt
+          cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/
           tar -czf babacoin-v2.0.0-linux-ubuntu22.04-x86_64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
@@ -251,8 +251,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          strip src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt
+          cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/
           tar -czf babacoin-v2.0.0-macos-x86_64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
@@ -345,8 +345,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          strip src/babacoind src/babacoin-cli src/babacoin-tx
-          cp src/babacoind src/babacoin-cli src/babacoin-tx dist/
+          strip src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt
+          cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/
           tar -czf babacoin-v2.0.0-macos-arm64.tar.gz -C dist .
 
       - uses: actions/upload-artifact@v4
@@ -498,9 +498,9 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe \
+          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe src/qt/babacoin-qt.exe \
             dist/ 2>/dev/null || \
-            cp src/babacoind src/babacoin-cli src/babacoin-tx dist/ 2>/dev/null || true
+            cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/ 2>/dev/null || true
           zip -j babacoin-v2.0.0-windows-x86_64.zip dist/*
 
       - uses: actions/upload-artifact@v4
