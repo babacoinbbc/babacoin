@@ -579,7 +579,7 @@ public:
         std::vector<FounderRewardStructure> rewardStructures = {  {INT_MAX, 5} };// 5% founder/dev fee forever
         consensus.nFounderPayment = FounderPayment(rewardStructures, 250, "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF");
         consensus.nCollaterals = SmartnodeCollaterals(
-          { {925000, 10000000 * COIN},
+          { {1000000, 10000000 * COIN},
             {INT_MAX, 10000000 * COIN}
           },
           { {5761, 0}, {INT_MAX, 20} }
