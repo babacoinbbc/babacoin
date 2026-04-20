@@ -257,7 +257,12 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, int nHeig
 		FounderPayment founderPayment = Params().GetConsensus().nFounderPayment;
 		CAmount founderReward = founderPayment.getFounderPaymentAmount(nHeight, blockReward);
 		int founderStartHeight = founderPayment.getStartBlock();
-		if(nHeight > founderStartHeight && founderReward && !founderPayment.IsBlockPayeeValid(tx,nHeight,blockReward)) {
+		// Enforcement only after block 950000 — historical blocks (pre-sync) are
+		// trusted even if they don't carry a founder payment output. This allows
+		// v2.0.0 nodes to sync the existing v1.0.0 network chain without false
+		// positives on the founder check.
+		const int FOUNDER_ENFORCEMENT_HEIGHT = 950000;
+		if(nHeight > founderStartHeight && nHeight >= FOUNDER_ENFORCEMENT_HEIGHT && founderReward && !founderPayment.IsBlockPayeeValid(tx,nHeight,blockReward)) {
 			return state.DoS(100, false, REJECT_INVALID, "bad-cb-founder-payment-not-found");
 		}
     }
