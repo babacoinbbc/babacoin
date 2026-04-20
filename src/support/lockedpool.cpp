@@ -27,6 +27,7 @@
 #endif
 
 #include <algorithm>
+#include <stdexcept>  // GCC 13+ needs explicit for std::runtime_error
 #ifdef ARENA_DEBUG
 #include <iomanip>
 #include <iostream>
