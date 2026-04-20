@@ -24,31 +24,13 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential libtool autotools-dev automake pkg-config \
-            libssl-dev libevent-dev libboost-all-dev \
-            libdb5.3-dev libdb5.3++-dev \
-            libminiupnpc-dev libzmq3-dev python3 \
-            qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
-            libprotobuf-dev protobuf-compiler libqrencode-dev \
-            cmake libgmp-dev git
+          sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config libssl-dev libevent-dev libboost-all-dev libdb5.3-dev libdb5.3++-dev libminiupnpc-dev libzmq3-dev python3 qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev libprotobuf-dev protobuf-compiler libqrencode-dev cmake libgmp-dev git
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 --branch 1.1.0 \
-            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          cmake .. \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_C_FLAGS="-fPIC" \
-            -DCMAKE_CXX_FLAGS="-fPIC" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DBUILD_BLS_JS_BINDINGS=0 \
-            -DBUILD_BLS_PYTHON_BINDINGS=0 \
-            -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0
+          cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
           LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
@@ -56,12 +38,9 @@ jobs:
           fi
           sudo cp "$LIB" /usr/local/lib/libbls-dash.a
           sudo mkdir -p /usr/local/include/bls-dash
-          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} /usr/local/include/bls-dash/ \;
-          sudo find /tmp/bls-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
-          sudo find /tmp/bls-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
           echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
           echo "Headers : $(ls /usr/local/include/bls-dash/)"
           echo "Relic   : $(ls /usr/local/include/relic_conf.h 2>/dev/null || echo MISSING)"
@@ -69,13 +48,7 @@ jobs:
       - name: Build Babacoin
         run: |
           ./autogen.sh
-          ./configure \
-            --with-incompatible-bdb \
-            BDB_LIBS="-ldb_cxx-5.3" \
-            BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            CPPFLAGS="-I/usr/local/include" \
-            LDFLAGS="-L/usr/local/lib"
+          ./configure --with-incompatible-bdb BDB_LIBS="-ldb_cxx-5.3" BDB_CFLAGS="-I/usr/include" --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared CPPFLAGS="-I/usr/local/include" LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
 
       - name: Package
@@ -103,31 +76,13 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential libtool autotools-dev automake pkg-config \
-            libssl-dev libevent-dev libboost-all-dev \
-            libdb5.3-dev libdb5.3++-dev \
-            libminiupnpc-dev libzmq3-dev python3 \
-            qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
-            libprotobuf-dev protobuf-compiler libqrencode-dev \
-            cmake libgmp-dev git
+          sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config libssl-dev libevent-dev libboost-all-dev libdb5.3-dev libdb5.3++-dev libminiupnpc-dev libzmq3-dev python3 qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev libprotobuf-dev protobuf-compiler libqrencode-dev cmake libgmp-dev git
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 --branch 1.1.0 \
-            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          cmake .. \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_C_FLAGS="-fPIC" \
-            -DCMAKE_CXX_FLAGS="-fPIC" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DBUILD_BLS_JS_BINDINGS=0 \
-            -DBUILD_BLS_PYTHON_BINDINGS=0 \
-            -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0
+          cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
           LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
@@ -135,12 +90,9 @@ jobs:
           fi
           sudo cp "$LIB" /usr/local/lib/libbls-dash.a
           sudo mkdir -p /usr/local/include/bls-dash
-          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} /usr/local/include/bls-dash/ \;
-          sudo find /tmp/bls-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
-          sudo find /tmp/bls-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
           echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
           echo "Headers : $(ls /usr/local/include/bls-dash/)"
           echo "Relic   : $(ls /usr/local/include/relic_conf.h 2>/dev/null || echo MISSING)"
@@ -148,13 +100,7 @@ jobs:
       - name: Build Babacoin
         run: |
           ./autogen.sh
-          ./configure \
-            --with-incompatible-bdb \
-            BDB_LIBS="-ldb_cxx-5.3" \
-            BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            CPPFLAGS="-I/usr/local/include" \
-            LDFLAGS="-L/usr/local/lib"
+          ./configure --with-incompatible-bdb BDB_LIBS="-ldb_cxx-5.3" BDB_CFLAGS="-I/usr/include" --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared CPPFLAGS="-I/usr/local/include" LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
 
       - name: Package
@@ -182,31 +128,13 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential libtool autotools-dev automake pkg-config \
-            libssl-dev libevent-dev libboost-all-dev \
-            libdb5.3-dev libdb5.3++-dev \
-            libminiupnpc-dev libzmq3-dev python3 \
-            qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
-            libprotobuf-dev protobuf-compiler libqrencode-dev \
-            cmake libgmp-dev git
+          sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config libssl-dev libevent-dev libboost-all-dev libdb5.3-dev libdb5.3++-dev libminiupnpc-dev libzmq3-dev python3 qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev libprotobuf-dev protobuf-compiler libqrencode-dev cmake libgmp-dev git
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 --branch 1.1.0 \
-            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          cmake .. \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_C_FLAGS="-fPIC" \
-            -DCMAKE_CXX_FLAGS="-fPIC" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DBUILD_BLS_JS_BINDINGS=0 \
-            -DBUILD_BLS_PYTHON_BINDINGS=0 \
-            -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0
+          cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
           LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
@@ -214,12 +142,9 @@ jobs:
           fi
           sudo cp "$LIB" /usr/local/lib/libbls-dash.a
           sudo mkdir -p /usr/local/include/bls-dash
-          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} /usr/local/include/bls-dash/ \;
-          sudo find /tmp/bls-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
-          sudo find /tmp/bls-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
           echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
           echo "Headers : $(ls /usr/local/include/bls-dash/)"
           echo "Relic   : $(ls /usr/local/include/relic_conf.h 2>/dev/null || echo MISSING)"
@@ -227,13 +152,7 @@ jobs:
       - name: Build Babacoin
         run: |
           ./autogen.sh
-          ./configure \
-            --with-incompatible-bdb \
-            BDB_LIBS="-ldb_cxx-5.3" \
-            BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            CPPFLAGS="-I/usr/local/include" \
-            LDFLAGS="-L/usr/local/lib"
+          ./configure --with-incompatible-bdb BDB_LIBS="-ldb_cxx-5.3" BDB_CFLAGS="-I/usr/include" --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared CPPFLAGS="-I/usr/local/include" LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
 
       - name: Package
@@ -261,31 +180,13 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential libtool autotools-dev automake pkg-config \
-            libssl-dev libevent-dev libboost-all-dev \
-            libdb5.3-dev libdb5.3++-dev \
-            libminiupnpc-dev libzmq3-dev python3 \
-            qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
-            libprotobuf-dev protobuf-compiler libqrencode-dev \
-            cmake libgmp-dev git
+          sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config libssl-dev libevent-dev libboost-all-dev libdb5.3-dev libdb5.3++-dev libminiupnpc-dev libzmq3-dev python3 qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev libprotobuf-dev protobuf-compiler libqrencode-dev cmake libgmp-dev git
 
       - name: Build and install bls-dash
         run: |
-          git clone --depth=1 --branch 1.1.0 \
-            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          cmake .. \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_C_FLAGS="-fPIC" \
-            -DCMAKE_CXX_FLAGS="-fPIC" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DBUILD_BLS_JS_BINDINGS=0 \
-            -DBUILD_BLS_PYTHON_BINDINGS=0 \
-            -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0
+          cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
           LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
@@ -293,12 +194,9 @@ jobs:
           fi
           sudo cp "$LIB" /usr/local/lib/libbls-dash.a
           sudo mkdir -p /usr/local/include/bls-dash
-          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} /usr/local/include/bls-dash/ \;
-          sudo find /tmp/bls-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
-          sudo find /tmp/bls-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" -exec cp {} /usr/local/include/bls-dash/ \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include -name "*.h" -exec cp {} /usr/local/include/ \; 2>/dev/null || true
           echo "Library : $(ls -lh /usr/local/lib/libbls-dash.a)"
           echo "Headers : $(ls /usr/local/include/bls-dash/)"
           echo "Relic   : $(ls /usr/local/include/relic_conf.h 2>/dev/null || echo MISSING)"
@@ -306,13 +204,7 @@ jobs:
       - name: Build Babacoin
         run: |
           ./autogen.sh
-          ./configure \
-            --with-incompatible-bdb \
-            BDB_LIBS="-ldb_cxx-5.3" \
-            BDB_CFLAGS="-I/usr/include" \
-            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            CPPFLAGS="-I/usr/local/include" \
-            LDFLAGS="-L/usr/local/lib"
+          ./configure --with-incompatible-bdb BDB_LIBS="-ldb_cxx-5.3" BDB_CFLAGS="-I/usr/include" --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared CPPFLAGS="-I/usr/local/include" LDFLAGS="-L/usr/local/lib"
           make -j$(nproc)
 
       - name: Package
@@ -340,34 +232,18 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          for pkg in autoconf automake libtool pkg-config openssl@3 \
-                     libevent boost miniupnpc zeromq cmake gmp \
-                     qt@5 protobuf libqrencode; do
+          for pkg in autoconf automake libtool pkg-config openssl@3 libevent boost miniupnpc zeromq cmake gmp qt@5 protobuf libqrencode; do
             brew install "$pkg" 2>/dev/null || true
           done
-          brew install berkeley-db@5 2>/dev/null \
-            || brew install berkeley-db 2>/dev/null || true
+          brew install berkeley-db@5 2>/dev/null || brew install berkeley-db 2>/dev/null || true
 
       - name: Build and install bls-dash
         run: |
           BREW_PREFIX=$(brew --prefix)
           GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "$BREW_PREFIX")
-          git clone --depth=1 --branch 1.1.0 \
-            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          cmake .. \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_C_FLAGS="-fPIC" \
-            -DCMAKE_CXX_FLAGS="-fPIC" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" \
-            -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" \
-            -DBUILD_BLS_JS_BINDINGS=0 \
-            -DBUILD_BLS_PYTHON_BINDINGS=0 \
-            -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0
+          cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
           LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
@@ -375,12 +251,9 @@ jobs:
           fi
           sudo mkdir -p "$BREW_PREFIX/lib" "$BREW_PREFIX/include/bls-dash"
           sudo cp "$LIB" "$BREW_PREFIX/lib/libbls-dash.a"
-          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
-          sudo find /tmp/bls-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
-          sudo find /tmp/bls-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
           echo "Library : $(ls -lh $BREW_PREFIX/lib/libbls-dash.a)"
           echo "Headers : $(ls $BREW_PREFIX/include/bls-dash/)"
           echo "Relic   : $(ls $BREW_PREFIX/include/relic_conf.h 2>/dev/null || echo MISSING)"
@@ -391,24 +264,7 @@ jobs:
           BOOST_PREFIX=$(brew --prefix boost 2>/dev/null || echo "$P")
           BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null || brew --prefix berkeley-db 2>/dev/null || echo "$P")
           ./autogen.sh
-          ./configure \
-            --with-incompatible-bdb \
-            --with-boost="$BOOST_PREFIX" \
-            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/qt@5/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
-            LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
-              -L$BOOST_PREFIX/lib \
-              -L$P/opt/libevent/lib \
-              -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib \
-              -L$P/lib" \
-            CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include \
-              -I$BOOST_PREFIX/include \
-              -I$P/opt/libevent/include \
-              -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
-              -I$P/include" \
-            CXXFLAGS="-std=c++17" \
-            BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
-            BDB_CFLAGS="-I$BDB_PREFIX/include"
+          ./configure --with-incompatible-bdb --with-boost="$BOOST_PREFIX" --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/qt@5/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib -L$BOOST_PREFIX/lib -L$P/opt/libevent/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L$P/lib" CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include -I$BOOST_PREFIX/include -I$P/opt/libevent/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I$P/include" CXXFLAGS="-std=c++17" BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
       - name: Package
         run: |
@@ -435,34 +291,18 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          for pkg in autoconf automake libtool pkg-config openssl@3 \
-                     libevent boost miniupnpc zeromq cmake gmp \
-                     qt@5 protobuf libqrencode; do
+          for pkg in autoconf automake libtool pkg-config openssl@3 libevent boost miniupnpc zeromq cmake gmp qt@5 protobuf libqrencode; do
             brew install "$pkg" 2>/dev/null || true
           done
-          brew install berkeley-db@5 2>/dev/null \
-            || brew install berkeley-db 2>/dev/null || true
+          brew install berkeley-db@5 2>/dev/null || brew install berkeley-db 2>/dev/null || true
 
       - name: Build and install bls-dash
         run: |
           BREW_PREFIX=$(brew --prefix)
           GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "$BREW_PREFIX")
-          git clone --depth=1 --branch 1.1.0 \
-            https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          cmake .. \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_C_FLAGS="-fPIC" \
-            -DCMAKE_CXX_FLAGS="-fPIC" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" \
-            -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" \
-            -DBUILD_BLS_JS_BINDINGS=0 \
-            -DBUILD_BLS_PYTHON_BINDINGS=0 \
-            -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0
+          cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
           LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
@@ -470,12 +310,9 @@ jobs:
           fi
           sudo mkdir -p "$BREW_PREFIX/lib" "$BREW_PREFIX/include/bls-dash"
           sudo cp "$LIB" "$BREW_PREFIX/lib/libbls-dash.a"
-          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
-          sudo find /tmp/bls-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
-          sudo find /tmp/bls-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
+          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
+          sudo find /tmp/bls-src/build/_deps/relic-src/include -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
+          sudo find /tmp/bls-src/build/_deps/relic-build/include -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
           echo "Library : $(ls -lh $BREW_PREFIX/lib/libbls-dash.a)"
           echo "Headers : $(ls $BREW_PREFIX/include/bls-dash/)"
           echo "Relic   : $(ls $BREW_PREFIX/include/relic_conf.h 2>/dev/null || echo MISSING)"
@@ -486,24 +323,7 @@ jobs:
           BOOST_PREFIX=$(brew --prefix boost 2>/dev/null || echo "$P")
           BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null || brew --prefix berkeley-db 2>/dev/null || echo "$P")
           ./autogen.sh
-          ./configure \
-            --with-incompatible-bdb \
-            --with-boost="$BOOST_PREFIX" \
-            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/qt@5/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" \
-            LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib \
-              -L$BOOST_PREFIX/lib \
-              -L$P/opt/libevent/lib \
-              -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib \
-              -L$P/lib" \
-            CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include \
-              -I$BOOST_PREFIX/include \
-              -I$P/opt/libevent/include \
-              -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include \
-              -I$P/include" \
-            CXXFLAGS="-std=c++17" \
-            BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" \
-            BDB_CFLAGS="-I$BDB_PREFIX/include"
+          ./configure --with-incompatible-bdb --with-boost="$BOOST_PREFIX" --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/qt@5/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib -L$BOOST_PREFIX/lib -L$P/opt/libevent/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L$P/lib" CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include -I$BOOST_PREFIX/include -I$P/opt/libevent/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I$P/include" CXXFLAGS="-std=c++17" BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" BDB_CFLAGS="-I$BDB_PREFIX/include"
           make -j$(sysctl -n hw.logicalcpu)
 
       - name: Package
@@ -538,17 +358,12 @@ jobs:
 
       - name: Build in ARM64 container
         run: |
-          docker buildx build \
-            --platform linux/arm64 \
-            --file .github/Dockerfile.rpi \
-            --output type=local,dest=./rpi-output \
-            .
+          docker buildx build --platform linux/arm64 --file .github/Dockerfile.rpi --output type=local,dest=./rpi-output .
 
       - name: Package
         run: |
           mkdir -p dist
-          find rpi-output -name "babacoind" -o -name "babacoin-cli" \
-            -o -name "babacoin-tx" | xargs -I{} cp {} dist/ 2>/dev/null || true
+          find rpi-output -name "babacoind" -o -name "babacoin-cli" -o -name "babacoin-tx" | xargs -I{} cp {} dist/ 2>/dev/null || true
           ls dist/
           tar -czf babacoin-v2.0.0-raspberry-pi-arm64.tar.gz -C dist .
 
@@ -570,17 +385,12 @@ jobs:
       - name: Install MinGW + tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            g++-mingw-w64-x86-64 mingw-w64 \
-            autoconf automake libtool pkg-config \
-            python3 nsis curl xz-utils bsdmainutils cmake libgmp-dev
+          sudo apt-get install -y g++-mingw-w64-x86-64 mingw-w64 autoconf automake libtool pkg-config python3 nsis curl xz-utils bsdmainutils cmake libgmp-dev
 
       - name: Set POSIX threading
         run: |
-          sudo update-alternatives --set x86_64-w64-mingw32-gcc \
-            /usr/bin/x86_64-w64-mingw32-gcc-posix
-          sudo update-alternatives --set x86_64-w64-mingw32-g++ \
-            /usr/bin/x86_64-w64-mingw32-g++-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
 
       - name: Cache depends
         uses: actions/cache@v4
@@ -591,14 +401,10 @@ jobs:
       - name: Pre-fetch GMP + Qt sources
         run: |
           mkdir -p depends/sources
-          curl -L --retry 3 -o depends/sources/gmp-6.3.0.tar.bz2 \
-            https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2
-          curl -L --retry 3 -o depends/sources/qtbase-opensource-src-5.9.6.tar.xz \
-            https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qtbase-opensource-src-5.9.6.tar.xz
-          curl -L --retry 3 -o depends/sources/qttranslations-opensource-src-5.9.6.tar.xz \
-            https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qttranslations-opensource-src-5.9.6.tar.xz
-          curl -L --retry 3 -o depends/sources/qttools-opensource-src-5.9.6.tar.xz \
-            https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qttools-opensource-src-5.9.6.tar.xz
+          curl -L --retry 3 -o depends/sources/gmp-6.3.0.tar.bz2 https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2
+          curl -L --retry 3 -o depends/sources/qtbase-opensource-src-5.9.6.tar.xz https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qtbase-opensource-src-5.9.6.tar.xz
+          curl -L --retry 3 -o depends/sources/qttranslations-opensource-src-5.9.6.tar.xz https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qttranslations-opensource-src-5.9.6.tar.xz
+          curl -L --retry 3 -o depends/sources/qttools-opensource-src-5.9.6.tar.xz https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qttools-opensource-src-5.9.6.tar.xz
 
       - name: Build depends (bdb, qt, qrencode)
         run: |
@@ -619,23 +425,9 @@ jobs:
           SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           EOF
-          git clone --depth=1 --branch 1.1.0 \
-            https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
+          git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-win-src
           mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_C_FLAGS="-fPIC" \
-            -DCMAKE_CXX_FLAGS="-fPIC" \
-            -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw-toolchain.cmake \
-            -DCMAKE_MAKE_PROGRAM=make \
-            -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
-            -DBUILD_BLS_JS_BINDINGS=0 \
-            -DBUILD_BLS_PYTHON_BINDINGS=0 \
-            -DBUILD_BLS_TESTS=0 \
-            -DBUILD_BLS_BENCHMARKS=0 \
-            -DBUILD_SHARED_LIBS=OFF
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw-toolchain.cmake -DCMAKE_MAKE_PROGRAM=make -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0 -DBUILD_SHARED_LIBS=OFF
           make -j$(nproc)
           LIB=$(find /tmp/bls-win-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
           if [ -z "$LIB" ]; then
@@ -643,12 +435,9 @@ jobs:
           fi
           mkdir -p $INSTALL_PREFIX/lib $INSTALL_PREFIX/include/bls-dash
           cp "$LIB" $INSTALL_PREFIX/lib/libbls-dash.a
-          find /tmp/bls-win-src/src -maxdepth 1 -name "*.hpp" \
-            -exec cp {} $INSTALL_PREFIX/include/bls-dash/ \;
-          find /tmp/bls-win-src/build/_deps/relic-src/include \
-            -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
-          find /tmp/bls-win-src/build/_deps/relic-build/include \
-            -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
+          find /tmp/bls-win-src/src -maxdepth 1 -name "*.hpp" -exec cp {} $INSTALL_PREFIX/include/bls-dash/ \;
+          find /tmp/bls-win-src/build/_deps/relic-src/include -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
+          find /tmp/bls-win-src/build/_deps/relic-build/include -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
           echo "Library   : $(ls -lh $INSTALL_PREFIX/lib/libbls-dash.a)"
           echo "Headers   : $(ls $INSTALL_PREFIX/include/bls-dash/ | head -5)"
           echo "Relic     : $(ls $INSTALL_PREFIX/include/relic_conf.h 2>/dev/null || echo MISSING)"
@@ -656,22 +445,13 @@ jobs:
       - name: Build Babacoin
         run: |
           ./autogen.sh
-          CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site \
-          ./configure \
-            --prefix=$PWD/depends/x86_64-w64-mingw32 \
-            --host=x86_64-w64-mingw32 \
-            --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared \
-            --with-incompatible-bdb \
-            CPPFLAGS="-I$PWD/depends/x86_64-w64-mingw32/include" \
-            LDFLAGS="-L$PWD/depends/x86_64-w64-mingw32/lib"
+          CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site ./configure --prefix=$PWD/depends/x86_64-w64-mingw32 --host=x86_64-w64-mingw32 --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared --with-incompatible-bdb CPPFLAGS="-I$PWD/depends/x86_64-w64-mingw32/include" LDFLAGS="-L$PWD/depends/x86_64-w64-mingw32/lib"
           make -j$(nproc)
 
       - name: Package
         run: |
           mkdir -p dist
-          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe src/qt/babacoin-qt.exe \
-            dist/ 2>/dev/null || \
-            cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/ 2>/dev/null || true
+          cp src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe src/qt/babacoin-qt.exe dist/ 2>/dev/null || cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/ 2>/dev/null || true
           zip -j babacoin-v2.0.0-windows-x86_64.zip dist/*
 
       - uses: actions/upload-artifact@v4
