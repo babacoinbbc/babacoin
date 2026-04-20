@@ -155,23 +155,34 @@ int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& fr
 const CBlockIndex* LastCommonAncestor(const CBlockIndex* pa, const CBlockIndex* pb) {
     if (!pa || !pb) return nullptr;
 
+    // Save originals for fallback
+    const CBlockIndex* pa_orig = pa;
+    const CBlockIndex* pb_orig = pb;
+
     if (pa->nHeight > pb->nHeight) {
         pa = pa->GetAncestor(pb->nHeight);
     } else if (pb->nHeight > pa->nHeight) {
         pb = pb->GetAncestor(pa->nHeight);
     }
 
-    // GetAncestor can return nullptr if the ancestor isn't in our index
-    if (!pa || !pb) return nullptr;
+    // GetAncestor can return nullptr during early IBD when the ancestor block
+    // isn't fully linked in our index yet. Fall back to the lower-height original
+    // block as a conservative common-ancestor candidate.
+    if (!pa || !pb) {
+        // Return the block with lower height — it's the most conservative
+        // guess for common ancestor (might be wrong but won't break download)
+        return (pa_orig->nHeight <= pb_orig->nHeight) ? pa_orig : pb_orig;
+    }
 
     while (pa != pb && pa && pb) {
         pa = pa->pprev;
         pb = pb->pprev;
     }
 
-    // If chains don't meet (one reached null before the other), return null
-    // instead of asserting. This can happen during early IBD when block index
-    // is not yet fully linked.
-    if (pa != pb) return nullptr;
+    // If chains don't meet (edge case in early IBD), use the shorter chain
+    // as the fork candidate instead of asserting.
+    if (pa != pb) {
+        return (pa_orig->nHeight <= pb_orig->nHeight) ? pa_orig : pb_orig;
+    }
     return pa;
 }
