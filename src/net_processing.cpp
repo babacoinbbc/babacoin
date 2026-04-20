@@ -639,6 +639,11 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
     // If the peer reorganized, our previous pindexLastCommonBlock may not be an ancestor
     // of its current tip anymore. Go back enough to fix that.
     state->pindexLastCommonBlock = LastCommonAncestor(state->pindexLastCommonBlock, state->pindexBestKnownBlock);
+    // LastCommonAncestor may return nullptr if chains don't meet (early IBD edge case)
+    // In that case, fall back to genesis block as the common ancestor.
+    if (state->pindexLastCommonBlock == nullptr) {
+        state->pindexLastCommonBlock = chainActive.Genesis();
+    }
     if (state->pindexLastCommonBlock == state->pindexBestKnownBlock)
         return;
 
