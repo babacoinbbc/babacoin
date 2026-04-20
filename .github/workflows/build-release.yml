@@ -29,6 +29,17 @@ jobs:
       - name: Build and install bls-dash
         run: |
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          # GCC 13+ (Ubuntu 24.04) requires explicit <memory> include for unique_ptr
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.cpp
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.hpp 2>/dev/null || true
+          # Also for threshold.hpp and other files that use unique_ptr
+          for f in /tmp/bls-src/src/*.cpp /tmp/bls-src/src/*.hpp; do
+            if grep -q "std::unique_ptr\|std::shared_ptr\|std::weak_ptr" "$f" 2>/dev/null; then
+              if ! head -20 "$f" | grep -q "#include <memory>"; then
+                sed -i '1i #include <memory>' "$f"
+              fi
+            fi
+          done
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
@@ -81,6 +92,17 @@ jobs:
       - name: Build and install bls-dash
         run: |
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          # GCC 13+ (Ubuntu 24.04) requires explicit <memory> include for unique_ptr
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.cpp
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.hpp 2>/dev/null || true
+          # Also for threshold.hpp and other files that use unique_ptr
+          for f in /tmp/bls-src/src/*.cpp /tmp/bls-src/src/*.hpp; do
+            if grep -q "std::unique_ptr\|std::shared_ptr\|std::weak_ptr" "$f" 2>/dev/null; then
+              if ! head -20 "$f" | grep -q "#include <memory>"; then
+                sed -i '1i #include <memory>' "$f"
+              fi
+            fi
+          done
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
@@ -133,6 +155,17 @@ jobs:
       - name: Build and install bls-dash
         run: |
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          # GCC 13+ (Ubuntu 24.04) requires explicit <memory> include for unique_ptr
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.cpp
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.hpp 2>/dev/null || true
+          # Also for threshold.hpp and other files that use unique_ptr
+          for f in /tmp/bls-src/src/*.cpp /tmp/bls-src/src/*.hpp; do
+            if grep -q "std::unique_ptr\|std::shared_ptr\|std::weak_ptr" "$f" 2>/dev/null; then
+              if ! head -20 "$f" | grep -q "#include <memory>"; then
+                sed -i '1i #include <memory>' "$f"
+              fi
+            fi
+          done
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
@@ -185,6 +218,17 @@ jobs:
       - name: Build and install bls-dash
         run: |
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          # GCC 13+ (Ubuntu 24.04) requires explicit <memory> include for unique_ptr
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.cpp
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.hpp 2>/dev/null || true
+          # Also for threshold.hpp and other files that use unique_ptr
+          for f in /tmp/bls-src/src/*.cpp /tmp/bls-src/src/*.hpp; do
+            if grep -q "std::unique_ptr\|std::shared_ptr\|std::weak_ptr" "$f" 2>/dev/null; then
+              if ! head -20 "$f" | grep -q "#include <memory>"; then
+                sed -i '1i #include <memory>' "$f"
+              fi
+            fi
+          done
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(nproc)
@@ -242,6 +286,17 @@ jobs:
           BREW_PREFIX=$(brew --prefix)
           GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "$BREW_PREFIX")
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          # GCC 13+ (Ubuntu 24.04) requires explicit <memory> include for unique_ptr
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.cpp
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.hpp 2>/dev/null || true
+          # Also for threshold.hpp and other files that use unique_ptr
+          for f in /tmp/bls-src/src/*.cpp /tmp/bls-src/src/*.hpp; do
+            if grep -q "std::unique_ptr\|std::shared_ptr\|std::weak_ptr" "$f" 2>/dev/null; then
+              if ! head -20 "$f" | grep -q "#include <memory>"; then
+                sed -i '1i #include <memory>' "$f"
+              fi
+            fi
+          done
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
@@ -301,6 +356,17 @@ jobs:
           BREW_PREFIX=$(brew --prefix)
           GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "$BREW_PREFIX")
           git clone --depth=1 --branch 1.1.0 https://github.com/dashpay/bls-signatures.git /tmp/bls-src
+          # GCC 13+ (Ubuntu 24.04) requires explicit <memory> include for unique_ptr
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.cpp
+          sed -i '1i #include <memory>' /tmp/bls-src/src/threshold.hpp 2>/dev/null || true
+          # Also for threshold.hpp and other files that use unique_ptr
+          for f in /tmp/bls-src/src/*.cpp /tmp/bls-src/src/*.hpp; do
+            if grep -q "std::unique_ptr\|std::shared_ptr\|std::weak_ptr" "$f" 2>/dev/null; then
+              if ! head -20 "$f" | grep -q "#include <memory>"; then
+                sed -i '1i #include <memory>' "$f"
+              fi
+            fi
+          done
           mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
           cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
           make -j$(sysctl -n hw.logicalcpu)
