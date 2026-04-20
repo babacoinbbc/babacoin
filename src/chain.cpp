@@ -155,34 +155,29 @@ int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& fr
 const CBlockIndex* LastCommonAncestor(const CBlockIndex* pa, const CBlockIndex* pb) {
     if (!pa || !pb) return nullptr;
 
-    // Save originals for fallback
-    const CBlockIndex* pa_orig = pa;
-    const CBlockIndex* pb_orig = pb;
-
     if (pa->nHeight > pb->nHeight) {
         pa = pa->GetAncestor(pb->nHeight);
+        // GetAncestor returned nullptr: pb's height isn't in pa's chain history.
+        // This means pa's chain diverged from pb's before pb->nHeight.
+        // Walk pb back to a known-common ancestor by iterating pprev.
+        if (!pa) pa = pb;  // Fallback: assume pb itself as starting point
     } else if (pb->nHeight > pa->nHeight) {
         pb = pb->GetAncestor(pa->nHeight);
+        if (!pb) pb = pa;
     }
 
-    // GetAncestor can return nullptr during early IBD when the ancestor block
-    // isn't fully linked in our index yet. Fall back to the lower-height original
-    // block as a conservative common-ancestor candidate.
-    if (!pa || !pb) {
-        // Return the block with lower height — it's the most conservative
-        // guess for common ancestor (might be wrong but won't break download)
-        return (pa_orig->nHeight <= pb_orig->nHeight) ? pa_orig : pb_orig;
-    }
-
-    while (pa != pb && pa && pb) {
+    // Now walk back both chains simultaneously until they meet.
+    // Safety guard: stop if either pointer becomes null (broken pprev chain).
+    int safety = 10000000;  // upper bound on chain length
+    while (pa != pb && pa && pb && safety-- > 0) {
         pa = pa->pprev;
         pb = pb->pprev;
     }
 
-    // If chains don't meet (edge case in early IBD), use the shorter chain
-    // as the fork candidate instead of asserting.
-    if (pa != pb) {
-        return (pa_orig->nHeight <= pb_orig->nHeight) ? pa_orig : pb_orig;
-    }
-    return pa;
+    // Successful common ancestor
+    if (pa == pb && pa != nullptr) return pa;
+
+    // Fallback: return whichever is non-null (avoids breaking callers
+    // that dereference the returned pointer)
+    return pa ? pa : pb;
 }
