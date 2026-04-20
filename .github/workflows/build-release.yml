@@ -104,6 +104,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+
+  build-ubuntu-2404:
+    name: Ubuntu (24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
             build-essential libtool autotools-dev automake pkg-config \
             libssl-dev libevent-dev libboost-all-dev \
             libdb5.3-dev libdb5.3++-dev \
@@ -529,6 +541,7 @@ jobs:
     needs:
       - build-ubuntu-2004
       - build-ubuntu-2204
+      - build-ubuntu-2404
       - build-macos-intel
       - build-macos-arm64
       - build-raspberrypi
@@ -543,6 +556,7 @@ jobs:
       (
         needs.build-ubuntu-2004.result == 'success' ||
         needs.build-ubuntu-2204.result == 'success' ||
+        needs.build-ubuntu-2404.result == 'success' ||
         needs.build-macos-intel.result == 'success' ||
         needs.build-macos-arm64.result == 'success' ||
         needs.build-raspberrypi.result == 'success' ||
