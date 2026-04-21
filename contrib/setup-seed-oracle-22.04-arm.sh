@@ -146,7 +146,7 @@ PACKAGES=(
     ufw iptables-persistent netfilter-persistent
     libboost-filesystem1.74.0 libboost-system1.74.0 libboost-thread1.74.0
     libboost-program-options1.74.0 libboost-chrono1.74.0 libboost-date-time1.74.0
-    libssl3 libsodium23 libevent-2.1-7 libdb5.3++
+    libssl3 libsodium23 libevent-2.1-7 libevent-pthreads-2.1-7 libdb5.3++
     libminiupnpc17 libzmq5 libqrencode4 libgmp10 libprotobuf23
     openssl
 )
