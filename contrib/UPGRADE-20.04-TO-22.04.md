@@ -1,45 +1,45 @@
-# Oracle ARM Ubuntu 20.04 → 22.04 Upgrade Rehberi
+# Oracle ARM Ubuntu 20.04 → 22.04 Upgrade Guide
 
-> Oracle Cloud üzerindeki ARM (VM.Standard.A1.Flex) Ubuntu 20.04 LTS (Focal) makinelerini 22.04 LTS (Jammy)'e yükseltmek için tam rehber.
+> Complete guide to upgrade Oracle Cloud ARM (VM.Standard.A1.Flex) Ubuntu 20.04 LTS (Focal) machines to 22.04 LTS (Jammy).
 
-## ⚠️ Önce Okumalı
+## ⚠️ Read This First
 
-**In-place upgrade riskleri:**
-- SSH erişimini kaybedebilirsin (cloud-init/netplan çakışması)
-- Bootloader sorunu → VPS açılmayabilir
-- Oracle Cloud'un özel paketleri çakışabilir
+**In-place upgrade risks:**
+- SSH access may be lost (cloud-init / netplan conflicts)
+- Bootloader issues → VPS may fail to boot
+- Oracle Cloud specific packages may conflict
 
-**Bu yüzden snapshot olmadan ASLA başlama.**
+**Never start without a snapshot.**
 
 ---
 
-## 📋 Aşama 0 — Hazırlık (ZORUNLU)
+## 📋 Stage 0 — Preparation (MANDATORY)
 
-### 0.1 — Oracle Cloud Console'dan Snapshot Al
+### 0.1 — Take a Boot Volume Snapshot (Oracle Cloud Console)
 
 1. **Oracle Cloud Console** → menu
-2. **Compute → Instances → [VPS'inin adı]**
-3. Alt kısımda **Boot volume** → volume linkine tıkla
+2. **Compute → Instances → [your instance]**
+3. Scroll down to **Boot volume** → click the volume link
 4. **Block Volume Backups → Create Backup**
-5. Type: **Incremental** (hızlı)
+5. Type: **Incremental** (faster)
 6. Name: `bbc-node-XX-pre-upgrade-22.04-YYYYMMDD`
 7. **Create**
-8. ~5-10 dk bekle — "Available" durumuna geçsin
+8. Wait ~5-10 min for "Available" status
 
-**Not**: Free tier'da ilk 5 incremental backup **ücretsiz** (10 GB'a kadar).
+**Note**: First 5 incremental backups under 10GB are **free** in Oracle Free Tier.
 
-### 0.2 — Yerel Hazırlık
+### 0.2 — Local Preparation
 
 ```bash
-# VPS'e SSH ile bağlan
+# SSH into the VPS
 ssh ubuntu@<VPS_IP>
 
-# Çalışan babacoind'i kapat (varsa)
+# Stop any running babacoind
 sudo systemctl stop babacoind 2>/dev/null || true
 sudo killall babacoind 2>/dev/null || true
 sleep 3
 
-# Önemli dosyaları ~/backup/'a yedekle
+# Back up critical files to ~/backup/
 mkdir -p ~/backup
 cp -r ~/.babacoin/babacoin.conf ~/backup/ 2>/dev/null || true
 cp -r ~/.babacoin/wallet.dat ~/backup/ 2>/dev/null || true
@@ -47,81 +47,81 @@ sudo cp /etc/ssh/sshd_config ~/backup/sshd_config.focal
 sudo cp -r /etc/netplan ~/backup/netplan.focal
 sudo iptables-save > ~/backup/iptables.focal.rules
 
-# Durum özeti
-echo "=== Upgrade öncesi durum ===" | tee ~/upgrade-log.txt
+# Snapshot of system state
+echo "=== Pre-upgrade status ===" | tee ~/upgrade-log.txt
 date >> ~/upgrade-log.txt
 cat /etc/os-release >> ~/upgrade-log.txt
 uname -a >> ~/upgrade-log.txt
 df -h / >> ~/upgrade-log.txt
 free -h >> ~/upgrade-log.txt
 
-echo "✅ Hazırlık tamamlandı"
+echo "Preparation complete"
 ```
 
 ---
 
-## 📋 Aşama 1 — Mevcut 20.04 Sistemini Güncelle
+## 📋 Stage 1 — Fully Update 20.04
 
 ```bash
-# Full update (uzun sürebilir ~5-15 dk)
+# Full update (can take ~5-15 min)
 sudo apt update
 sudo apt upgrade -y
 sudo apt dist-upgrade -y
 sudo apt autoremove --purge -y
 sudo apt autoclean
 
-# update-manager ve screen kur
+# Install update tools
 sudo apt install -y update-manager-core screen
 
-# Upgrade policy → LTS sürümlerine izin ver
+# Set upgrade policy to LTS only
 sudo sed -i 's/^Prompt=.*/Prompt=lts/' /etc/update-manager/release-upgrades
 grep "^Prompt" /etc/update-manager/release-upgrades
-# Beklenen çıktı: Prompt=lts
+# Expected: Prompt=lts
 ```
 
 ---
 
-## 📋 Aşama 2 — Upgrade Metodu Seç
+## 📋 Stage 2 — Choose Upgrade Method
 
-**İki yaklaşım var:**
+**Two approaches:**
 
-### Yöntem A: `do-release-upgrade` (Önerilen, güvenli)
+### Method A: `do-release-upgrade` (Recommended, safer)
 
 ```bash
-# Screen içinde başlat (SSH kopsa bile devam eder)
+# Start inside screen (survives SSH disconnects)
 screen -S upgrade
 
-# Upgrade komutunu çalıştır
+# Run upgrade command
 sudo do-release-upgrade
 ```
 
-**Olası çıktılar:**
+**Possible outcomes:**
 
-#### Durum A1: "No new release found"
+#### Case A1: "No new release found"
 
-20.04 EOL olduğu için prompt gelmeyebilir. Bu durumda:
+When 20.04 reaches EOL, the prompt may fail. In that case:
 
 ```bash
-# Manuel yöntem B'ye geç (aşağıda)
+# Switch to Method B (below)
 ```
 
-#### Durum A2: "Do you want to start the upgrade? [y/N]"
+#### Case A2: "Do you want to start the upgrade? [y/N]"
 
-→ **`y`** + Enter. Süreç başlar.
+→ **`y`** + Enter. Upgrade begins.
 
-### Yöntem B: Manuel Sources.list Değişikliği
+### Method B: Manual `sources.list` Modification
 
-`do-release-upgrade` çalışmazsa:
+When `do-release-upgrade` fails:
 
 ```bash
-# Screen içinde başlat
+# Start inside screen
 screen -S upgrade
 
 # Backup
 sudo cp /etc/apt/sources.list /etc/apt/sources.list.focal
 [ -d /etc/apt/sources.list.d ] && sudo cp -r /etc/apt/sources.list.d /etc/apt/sources.list.d.focal
 
-# focal → jammy değişimi
+# Replace focal with jammy
 sudo sed -i 's/focal/jammy/g' /etc/apt/sources.list
 if [ -d /etc/apt/sources.list.d ]; then
     for f in /etc/apt/sources.list.d/*.list; do
@@ -129,49 +129,44 @@ if [ -d /etc/apt/sources.list.d ]; then
     done
 fi
 
-# Ubuntu ports için (ARM repo) kontrolü
-grep -E "ports.ubuntu.com|archive.ubuntu.com" /etc/apt/sources.list
-
-# Eğer -updates-security listesi de varsa:
+# Also catch -security/-updates/-backports
 sudo sed -i 's/focal-security/jammy-security/g' /etc/apt/sources.list
 sudo sed -i 's/focal-updates/jammy-updates/g' /etc/apt/sources.list
 sudo sed -i 's/focal-backports/jammy-backports/g' /etc/apt/sources.list
 
-# Apt cache temizle
+# Clean apt cache
 sudo rm -rf /var/lib/apt/lists/*
 sudo apt clean
 
-# Yeni repo'dan güncelle
+# Refresh from new repos
 sudo apt update
 
-# Dist-upgrade — config dosyalarını koru
+# Dist-upgrade with config preservation
 sudo DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y \
     -o Dpkg::Options::="--force-confdef" \
     -o Dpkg::Options::="--force-confold"
 
-# Temizlik
+# Cleanup
 sudo apt autoremove --purge -y
 sudo apt autoclean
 ```
 
 ---
 
-## 🚨 Upgrade Sırasında Çıkan Soruları Yanıtlama
+## 🚨 Answering Prompts During `do-release-upgrade` (Method A)
 
-### `do-release-upgrade` ile (Yöntem A) karşına çıkacak sorular:
-
-#### Soru 1: SSH Backup Port
+#### Prompt 1: SSH Backup Port
 ```
-To make recovery in case of failure easier, an additional sshd will 
-be started on port '1022'. If anything goes wrong with the running ssh 
-you can still connect to the additional one. If you run a firewall, 
+To make recovery in case of failure easier, an additional sshd will
+be started on port '1022'. If anything goes wrong with the running ssh
+you can still connect to the additional one. If you run a firewall,
 you may need to temporarily open this port.
 
 Continue? [yN]
 ```
-→ **`y`** (güvenlik ağı)
+→ **`y`** (safety net)
 
-#### Soru 2: Config File Uyarıları
+#### Prompt 2: Config File Decisions
 ```
 Configuration file '/etc/ssh/sshd_config'
  ==> Modified (by you or by a script) since installation.
@@ -183,32 +178,32 @@ Configuration file '/etc/ssh/sshd_config'
    4. show a side-by-side difference between the versions
 ```
 
-Dosya bazında karar:
+Per-file decisions:
 
-| Dosya | Cevap | Sebep |
+| File | Answer | Reason |
 |---|---|---|
-| `/etc/ssh/sshd_config` | **N (keep local)** | SSH erişimini kaybetme |
-| `/etc/netplan/*` | **N (keep local)** | Network ayarları |
-| `/etc/cloud/*` | **N (keep local)** | Oracle cloud-init |
-| `/etc/sudoers` | **N (keep local)** | Sudo erişimi |
-| `/etc/default/grub` | **Y (install new)** | Yeni kernel için |
-| `/etc/apt/sources.list` | **Y (install new)** | Yeni repo URL'leri |
-| Diğer `.conf` | **N (keep local)** | Güvenli default |
+| `/etc/ssh/sshd_config` | **N (keep local)** | Preserve SSH access |
+| `/etc/netplan/*` | **N (keep local)** | Preserve network config |
+| `/etc/cloud/*` | **N (keep local)** | Preserve Oracle cloud-init |
+| `/etc/sudoers` | **N (keep local)** | Preserve sudo access |
+| `/etc/default/grub` | **Y (install new)** | Required for new kernel |
+| `/etc/apt/sources.list` | **Y (install new)** | New repo URLs |
+| Other `.conf` | **N (keep local)** | Safe default |
 
-#### Soru 3: Service Restart
+#### Prompt 3: Service Restarts
 ```
 Daemons using outdated libraries
 Which services should be restarted?
 ```
-→ **Space** ile hepsini seç, **Tab + OK**
+→ **Space** to select all, **Tab + OK**
 
-#### Soru 4: Obsolete Packages
+#### Prompt 4: Obsolete Packages
 ```
 Removing obsolete packages...
 ```
 → **`y`**
 
-#### Soru 5: Reboot
+#### Prompt 5: Reboot
 ```
 System upgrade is complete.
 Restart required.
@@ -219,52 +214,52 @@ Continue? [yN]
 
 ---
 
-## 🔴 SSH Koparsa Ne Yapmalı
+## 🔴 SSH Disconnection Recovery
 
-**Durum 1: Upgrade sırasında SSH koptu**
+**Situation 1: SSH dropped during upgrade**
 
-Normal — screen içinde çalıştırdığın için upgrade **devam ediyor**. 2-3 dakika bekle, tekrar bağlanmayı dene.
+This is normal — since you ran it inside `screen`, the upgrade **continues running**. Wait 2-3 minutes and reconnect:
 
 ```bash
-# Yeni SSH session ile
+# New SSH session
 ssh ubuntu@<VPS_IP>
 
-# Eğer bağlanırsan
+# If successful, rejoin the screen
 screen -r upgrade
-# Upgrade progress'ini gör
+# See upgrade progress
 ```
 
-**Durum 2: SSH hiç bağlanmıyor**
+**Situation 2: SSH won't connect at all**
 
 1. Oracle Cloud Console → **Instance → Console Connection**
-2. **Launch Cloud Shell connection** (veya SSH connection)
-3. Terminalde görürsün ne olduğunu
-4. Eğer upgrade bitmiş ama reboot takılmışsa → **Instance Actions → Reboot**
-5. Hâlâ açılmıyorsa → snapshot'tan restore
+2. **Launch Cloud Shell connection** (or SSH connection)
+3. You'll see what's going on
+4. If upgrade finished but reboot is hung → **Instance Actions → Reboot**
+5. If still won't boot → **restore from boot volume snapshot**
 
-**Durum 3: Backup SSH port 1022'yi kullanma**
+**Situation 3: Using the backup SSH port 1022**
 
-Eğer upgrade sırasında `y` deyip backup SSH başlattıysan:
+If you accepted the backup SSH during upgrade:
 
 ```bash
-# Port 1022 ile bağlan
+# Connect via port 1022
 ssh -p 1022 ubuntu@<VPS_IP>
 ```
 
 ---
 
-## 📋 Aşama 3 — Reboot
+## 📋 Stage 3 — Reboot
 
-Upgrade bittikten sonra:
+After upgrade completes:
 
 ```bash
-# Screen'den çık (Ctrl+A, sonra D)
-# SSH kapat
+# Exit screen (Ctrl+A, then D)
+# Close SSH
 
 sudo reboot
 ```
 
-**1-3 dakika bekle**, sonra yeniden bağlan:
+**Wait 1-3 minutes**, then reconnect:
 
 ```bash
 ssh ubuntu@<VPS_IP>
@@ -272,16 +267,16 @@ ssh ubuntu@<VPS_IP>
 
 ---
 
-## 📋 Aşama 4 — Doğrulama
+## 📋 Stage 4 — Verification
 
 ```bash
-# Versiyon kontrolü
+# Version check
 cat /etc/os-release | grep "VERSION="
-# Beklenen: VERSION="22.04.x LTS (Jammy Jellyfish)"
+# Expected: VERSION="22.04.x LTS (Jammy Jellyfish)"
 
 # Kernel
 uname -r
-# Beklenen: 5.15.x veya üstü
+# Expected: 5.15.x or newer
 
 # Network
 ip -4 addr show
@@ -290,87 +285,82 @@ ping -c 3 github.com
 # Disk
 df -h /
 
-# systemd sağlık
+# systemd health
 systemctl --failed
-# "0 loaded units listed" ideal
+# Ideal: "0 loaded units listed"
 
-# Ağ bağlantıları
+# Listening ports
 ss -tlnp | grep LISTEN
 ```
 
-**Tüm bunlar OK ise → 22.04 başarılı**.
+**All good → Ubuntu 22.04 successfully installed**.
 
 ---
 
-## 🛠️ Aşama 4.5 — Cleanup & Oracle Cloud Repairs
+## 🛠️ Stage 4.5 — Cleanup & Oracle Cloud Repairs
 
-Upgrade sonrası bazı şeyleri kontrol et:
+Post-upgrade sanity checks:
 
 ```bash
-# 1. Broken paketler var mı
+# 1. Any broken packages?
 sudo apt --fix-broken install -y
 
-# 2. Eski kernel'leri temizle
+# 2. Clean old kernels
 sudo apt autoremove --purge -y
 
-# 3. Oracle Cloud agent güncel mi (VPS monitoring için)
+# 3. Oracle Cloud agent (for VPS monitoring)
 sudo systemctl status oracle-cloud-agent 2>/dev/null || true
 
-# 4. SSH servisi doğru dinliyor mu (sadece 22)
+# 4. SSH listens on correct port (22 only)
 sudo ss -tlnp | grep sshd
-# Eğer hâlâ 1022 de varsa (backup SSH), silinebilir:
-# Config'e bak:
+# If port 1022 is still listening (backup SSH), you can remove it:
 sudo cat /etc/ssh/sshd_config | grep -i "port"
 
-# 5. snap güncel
+# 5. Snap updates
 sudo snap refresh
 
-# 6. iptables restore (ihtiyaç olursa)
-# Oracle default INPUT REJECT politikası hâlâ çalışıyor olmalı
+# 6. Iptables restore (if needed)
+# Oracle's default INPUT REJECT should still be active
 sudo iptables -L INPUT -n | head -20
 ```
 
 ---
 
-## 📋 Aşama 5 — BabaCoin'i Yeniden Kur
+## 📋 Stage 5 — Install BabaCoin
 
-Artık 22.04'te olduğumuz için, **tek-tuş script'i** çalıştırabiliriz:
+Now on 22.04, run the **one-shot installer**:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-oracle-22.04-arm.sh | bash
 ```
 
-Ya da eğer seed number belirlemek istersen:
+Or specify the seed number manually:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-oracle-22.04-arm.sh | SEED_NUM=03 bash
 ```
 
-Script:
-- Eski `/usr/bin/babacoind` v1'i otomatik yedekler
-- Yeni `/usr/local/bin/babacoind` v2.0.0 Ubuntu 22.04 ARM64 kurar
-- Tüm bağımlılıkları kurar (boost 1.74, miniupnpc 17, protobuf 23, vb.)
-- Config oluşturur, firewall'u açar, systemd servisi kurar
+The installer:
+- Automatically backs up the old `/usr/bin/babacoind` v1
+- Installs v2.0.0 Ubuntu 22.04 ARM64 to `/usr/local/bin/babacoind`
+- Installs all dependencies (boost 1.74, miniupnpc 17, protobuf 23, etc.)
+- Creates config, configures firewall, installs systemd service
 
 ---
 
-## 🆘 Sorun Giderme
+## 🆘 Troubleshooting
 
-### Sorun 1: `E: The repository 'http://ports.ubuntu.com/ubuntu-ports jammy Release' does not have a Release file`
+### Issue 1: `E: The repository 'http://ports.ubuntu.com/ubuntu-ports jammy Release' does not have a Release file`
 
 ```bash
-# HTTPS'e geçir veya mirror'ı düzelt
-sudo apt edit-sources
-# focal kalmışsa jammy yap
-
-# Ya da elle
+# Fix sources.list manually
 sudo vim /etc/apt/sources.list
-# Tüm satırlar "jammy" olmalı
+# Ensure all lines say "jammy" not "focal"
 
 sudo apt update
 ```
 
-### Sorun 2: `package X has unmet dependencies`
+### Issue 2: `package X has unmet dependencies`
 
 ```bash
 sudo apt --fix-broken install -y
@@ -378,93 +368,91 @@ sudo dpkg --configure -a
 sudo apt dist-upgrade -y
 ```
 
-### Sorun 3: Reboot sonrası VPS açılmıyor
+### Issue 3: VPS won't boot after reboot
 
 1. **Oracle Console → Instance → Console Connection**
-2. Serial console'a bağlan
-3. Error görürsen: genellikle netplan veya grub
-4. **En pratik çözüm: Boot volume'ü snapshot'tan restore**
+2. Connect to serial console
+3. Check errors: typically netplan or grub
+4. **Most practical fix: Restore boot volume from snapshot**
 
-### Sorun 4: "Unable to resolve host"
+### Issue 4: "Unable to resolve host"
 
 ```bash
-# Hostname ayarlarını kontrol
+# Check hostname settings
 hostnamectl
 
-# /etc/hosts kontrol
+# Check /etc/hosts
 cat /etc/hosts
-# "127.0.1.1 node-X.local node-X" satırı olmalı
+# Should contain: "127.0.1.1 node-X.local node-X"
 ```
 
-### Sorun 5: BabaCoin script "libminiupnpc.so.17: cannot open shared object file"
+### Issue 5: BabaCoin script: "libminiupnpc.so.17: cannot open shared object file"
 
-Script bunu otomatik hallediyor ama elle:
+The installer handles this automatically, but manually:
 
 ```bash
 sudo apt install -y libminiupnpc17
-# Ubuntu 22.04'te yoksa:
+# If not available in 22.04:
 sudo apt install -y libminiupnpc18
 sudo ln -sf /usr/lib/aarch64-linux-gnu/libminiupnpc.so.18 /usr/lib/aarch64-linux-gnu/libminiupnpc.so.17
 sudo ldconfig
 ```
 
-### Sorun 6: "do-release-upgrade" diyor "Checking for a new Ubuntu release" ama hiçbir şey olmuyor
+### Issue 6: `do-release-upgrade` says "Checking for a new Ubuntu release" but nothing happens
 
 ```bash
-# Meta package yeniden kur
+# Reinstall meta package
 sudo apt install --reinstall update-manager-core -y
 
-# Cache temizle
+# Clear cache
 sudo rm -rf /var/lib/ubuntu-release-upgrader-core
 
-# Yeniden dene
+# Retry
 sudo do-release-upgrade -d
 
-# Hâlâ olmuyorsa Yöntem B (manuel)
+# If still stuck → use Method B (manual)
 ```
 
 ---
 
-## 📊 Tahmini Süre
+## 📊 Estimated Time
 
-| Aşama | Süre |
+| Stage | Duration |
 |---|---|
-| 0. Snapshot | 5-10 dk |
-| 1. 20.04 güncelleme | 5-15 dk |
-| 2. Upgrade süreci | 20-45 dk |
-| 3. Reboot | 2-3 dk |
-| 4. Doğrulama | 2 dk |
-| 5. BabaCoin kurulum | 3-5 dk |
-| **TOPLAM** | **~1 saat** |
+| 0. Snapshot | 5-10 min |
+| 1. 20.04 update | 5-15 min |
+| 2. Upgrade process | 20-45 min |
+| 3. Reboot | 2-3 min |
+| 4. Verification | 2 min |
+| 5. BabaCoin install | 3-5 min |
+| **TOTAL** | **~1 hour** |
 
-**Sync dahil**: + 4-8 saat
+**With sync**: + 4-8 hours
 
 ---
 
-## 🎯 20 VPS İçin Toplu Plan
+## 🎯 Plan for 20 VPS Upgrades
 
-20 VPS'i paralel işlemek için:
+Parallelize across multiple VPSs:
 
 ```bash
-# Her VPS için 3 terminal aç
+# Open 3 terminals per batch:
 # Terminal 1: node-01
 # Terminal 2: node-02
 # Terminal 3: node-03
-# ... (aynı anda 3-5 VPS yapabilirsin)
-
-# Her birinde aynı adımlar
+# ... (3-5 VPSs at a time is reasonable)
 ```
 
-**Pratik strateji:**
-1. **İlk önce 1 VPS'te tam test** (node-3 şu anda test gibi oldu zaten)
-2. Test başarılıysa, **paralel 5'er grup** halinde diğerlerini yap
-3. Her grup ~1 saat → 20 VPS = ~4 saat
+**Practical strategy:**
+1. **Full test on 1 VPS first** (see if everything works end-to-end)
+2. If successful, **batch 5 at a time** in parallel
+3. Each batch ~1 hour → 20 VPSs = ~4 hours total
 
 ---
 
-## 📝 DNS Güncelleme Hatırlatıcısı
+## 📝 DNS Update Reminder
 
-Her VPS upgrade + BabaCoin kurulumu bitince Cloudflare/DNS'ini güncelle:
+After each VPS's upgrade + BabaCoin install, update DNS (Cloudflare, Route53, etc.):
 
 ```
 seed01.babacoin.network  A  <VPS1_IP>   TTL: 300
@@ -473,13 +461,14 @@ seed02.babacoin.network  A  <VPS2_IP>   TTL: 300
 seed20.babacoin.network  A  <VPS20_IP>  TTL: 300
 ```
 
-IP'ler değişmedi ama seed node'lar artık aktif olduğu için **bu kayıtlar hâlâ aynı IP'yi gösterebilir**. Kontrol et.
+IPs likely didn't change (VPSs weren't recreated), but verify anyway.
 
 ---
 
-## 🎉 Bitti!
+## 🎉 Done!
 
-Bu rehberi takip ederek Oracle ARM Ubuntu 20.04 → 22.04 geçişini güvenli şekilde yapabilirsin. Sorun olursa:
+Following this guide you can safely upgrade Oracle ARM Ubuntu 20.04 → 22.04. For issues:
+
 - Discord: https://discord.babacoin.network
 - Telegram: https://t.me/babacoinbbc
 - GitHub Issues: https://github.com/babacoinbbc/babacoin/issues
