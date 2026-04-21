@@ -569,3 +569,68 @@ cat << 'EOF'
 EOF
 
 printf "\n${G}Installation completed successfully!${N}\n\n"
+
+# ========================================================================
+# POST-INSTALL MONITORING
+# ========================================================================
+# Three modes based on env vars:
+#   FOLLOW_LOGS=1    - Attach tail -f debug.log indefinitely (Ctrl+C to exit)
+#   FOLLOW_LOGS=0    - Skip monitoring entirely
+#   unset (default)  - Show a brief 60s sync progress sampler, then exit
+#                      with clear instructions for continued monitoring.
+
+if [ "${FOLLOW_LOGS:-}" = "0" ]; then
+    log "FOLLOW_LOGS=0 set - skipping log monitor"
+elif [ "${FOLLOW_LOGS:-}" = "1" ]; then
+    title "Attaching to debug.log (Ctrl+C to exit)"
+    log "Showing live log output. Daemon will keep running when you exit."
+    echo ""
+    sleep 2
+    # Wait until the file exists (it's created when daemon starts)
+    for _ in 1 2 3 4 5 6; do
+        [ -f "$DATA_DIR/debug.log" ] && break
+        sleep 2
+    done
+    if [ -f "$DATA_DIR/debug.log" ]; then
+        # Run tail in foreground; user Ctrl+C to stop
+        tail -F "$DATA_DIR/debug.log"
+    else
+        warn "debug.log not found at $DATA_DIR/debug.log"
+        warn "Check: sudo journalctl -u babacoind -n 50"
+    fi
+else
+    # Default: 60 second sampler showing sync progress
+    title "Sync progress sampler (60 seconds)"
+    log "Sampling block / header counts every 10s for the next minute..."
+    log "Press Ctrl+C any time to stop (daemon keeps running)"
+    echo ""
+
+    # Small helper to handle Ctrl+C gracefully
+    trap 'echo ""; log "Sampler stopped - daemon continues in background"; trap - INT; exit 0' INT
+
+    SAMPLES=6
+    for i in $(seq 1 $SAMPLES); do
+        if CHAIN_INFO=$(babacoin-cli -datadir="$DATA_DIR" getblockchaininfo 2>/dev/null); then
+            B=$(echo "$CHAIN_INFO" | grep -Po '"blocks":\s*\K\d+' | head -1)
+            H=$(echo "$CHAIN_INFO" | grep -Po '"headers":\s*\K\d+' | head -1)
+            C_CONN=$(babacoin-cli -datadir="$DATA_DIR" getconnectioncount 2>/dev/null || echo "?")
+            printf "  [%02d/%02d]  %-8s  blocks=${G}%s${N}  headers=${G}%s${N}  peers=${G}%s${N}\n" \
+                "$i" "$SAMPLES" "$(date +%H:%M:%S)" "${B:-?}" "${H:-?}" "$C_CONN"
+        else
+            printf "  [%02d/%02d]  %-8s  ${Y}RPC not ready yet${N}\n" \
+                "$i" "$SAMPLES" "$(date +%H:%M:%S)"
+        fi
+        [ "$i" -lt "$SAMPLES" ] && sleep 10
+    done
+
+    trap - INT
+
+    echo ""
+    log "Sampler finished. Daemon keeps running."
+    echo ""
+    printf "${C}To continue watching progress, run any of these:${N}\n"
+    printf "  ${Y}tail -f ~/.babacoin/debug.log${N}                           # live daemon log\n"
+    printf "  ${Y}sudo journalctl -u babacoind -f${N}                         # systemd log\n"
+    printf "  ${Y}watch -n5 'babacoin-cli getblockchaininfo | grep -E \"blocks|headers\"'${N}\n"
+    echo ""
+fi
