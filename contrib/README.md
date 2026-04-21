@@ -1,46 +1,74 @@
-Repository Tools
----------------------
+# BabaCoin Contrib Scripts
 
-### [Developer tools](/contrib/devtools) ###
-Specific tools for developers working on this repository.
-Contains the script `github-merge.py` for merging GitHub pull requests securely and signing them using GPG.
+Operator scripts and guides for running BabaCoin nodes in production.
 
-### [Verify-Commits](/contrib/verify-commits) ###
-Tool to verify that every merge commit was signed by a developer using the above `github-merge.py` script.
+## Oracle Cloud ARM Scripts
 
-### [Linearize](/contrib/linearize) ###
-Construct a linear, no-fork, best version of the blockchain.
+These scripts target the default **Oracle Cloud VM.Standard.A1.Flex** ARM instance with the stock Ubuntu image.
 
-### [Qos](/contrib/qos) ###
-A Linux bash script that will set up traffic control (tc) to limit the outgoing bandwidth for connections to the Babacoin network. This means one can have an always-on babacoind instance running, and another local babacoind/babacoin-qt instance which connects to this node and receives blocks from it.
+### `setup-seed-oracle-22.04-arm.sh`
 
-### [Seeds](/contrib/seeds) ###
-Utility to generate the pnSeed[] array that is compiled into the client.
+One-shot seed node installer for **Ubuntu 22.04 LTS aarch64**. Installs BabaCoin v2.0.0, configures the daemon, opens firewall ports, and registers a systemd service.
 
-Build Tools and Keys
----------------------
+```bash
+curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-oracle-22.04-arm.sh | bash
 
-### [Debian](/contrib/debian) ###
-Contains files used to package babacoind/babacoin-qt
-for Debian-based Linux systems. If you compile babacoind/babacoin-qt yourself, there are some useful files here.
+# With specific seed number
+curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-oracle-22.04-arm.sh | SEED_NUM=03 bash
 
-### [Gitian-descriptors](/contrib/gitian-descriptors) ###
-Notes on getting Gitian builds up and running using KVM.
+# Non-interactive (for automation)
+curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-oracle-22.04-arm.sh | SEED_NUM=03 AUTO_YES=1 bash
+```
 
-### [Gitian-keys](/contrib/gitian-keys)
-PGP keys used for signing Babacoin Core [Gitian release](/doc/release-process.md) results.
+**What it does:**
+1. Checks for existing v2.0.0 (skip binary install if already installed)
+2. Stops any running daemon gracefully
+3. Installs all runtime dependencies (boost 1.74, miniupnpc 17, etc.)
+4. Downloads and installs v2.0.0 ARM64 binary to `/usr/local/bin/`
+5. Auto-detects external IP
+6. Auto-assigns seed number from hostname (e.g. `node-3` → `03`)
+7. Generates `babacoin.conf` with strong random RPC password
+8. Configures UFW and opens Oracle's default iptables DROP policy
+9. Creates systemd service with auto-restart
+10. Starts the daemon and verifies RPC works
 
-### [MacDeploy](/contrib/macdeploy) ###
-Scripts and notes for Mac builds. 
+### `upgrade-oracle-arm-20-to-22.sh`
 
-### [Gitian-build](/contrib/gitian-build.py) ###
-Script for running full Gitian builds.
+Automated in-place upgrade from **Ubuntu 20.04 (Focal)** to **22.04 (Jammy)** on Oracle ARM instances. Uses manual `sources.list` migration which is more reliable than `do-release-upgrade` on EOL 20.04.
 
-Test and Verify Tools 
----------------------
+```bash
+# ALWAYS run inside screen/tmux!
+screen -S upgrade
 
-### [TestGen](/contrib/testgen) ###
-Utilities to generate test vectors for the data-driven Babacoin tests.
+# Take an Oracle Cloud boot volume snapshot FIRST
+curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/upgrade-oracle-arm-20-to-22.sh | bash
+```
 
-### [Verify Binaries](/contrib/verifybinaries) ###
-This script attempts to download and verify the signature file SHA256SUMS.asc from bitcoin.org.
+Env vars:
+- `AUTO_YES=1` - Skip confirmation prompts (only if you know what you're doing)
+- `AUTO_REBOOT=1` - Automatically reboot when upgrade finishes
+
+After upgrade completes and you've rebooted, run `setup-seed-oracle-22.04-arm.sh` to install BabaCoin on the fresh 22.04 system.
+
+### `UPGRADE-20.04-TO-22.04.md`
+
+Manual step-by-step guide for the 20.04 → 22.04 upgrade, for operators who prefer not to use the automated script or need to troubleshoot issues.
+
+## Assumptions
+
+- Default user is `ubuntu` with passwordless sudo (Oracle Cloud default)
+- SSH access via key (no password auth)
+- Port 6678/tcp allowed in Oracle Cloud Security List (Ingress Rule)
+- Stable network connection during installation/upgrade
+
+## Non-Oracle Environments
+
+These scripts assume Oracle Cloud defaults. For other environments:
+
+- **DigitalOcean, Hetzner, etc.**: Scripts should work if the default user has passwordless sudo. Check `/etc/sudoers.d/` for your distribution's default.
+- **Bare metal / home server**: Add `ubuntu ALL=(ALL) NOPASSWD:ALL` to sudoers (or adapt the scripts to use interactive sudo).
+- **AWS EC2 Ubuntu**: Works as-is (default `ubuntu` user has NOPASSWD sudo).
+
+## License
+
+Same as BabaCoin Core - MIT License.
