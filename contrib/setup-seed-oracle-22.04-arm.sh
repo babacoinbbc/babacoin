@@ -193,15 +193,103 @@ if [ "$SKIP_BINARY_INSTALL" = "0" ]; then
     log "Binary: $FILE_INFO"
     echo "$FILE_INFO" | grep -q "ARM aarch64" || die "Not ARM64 - wrong architecture"
 
-    # Test
-    if ! ./babacoind -version 2>&1 | head -1; then
-        warn "Binary failed to run - checking libraries..."
-        MISSING=$(ldd ./babacoind 2>&1 | grep "not found" || true)
-        if [ -n "$MISSING" ]; then
-            err "Missing libraries:"
-            echo "$MISSING"
-            die "Required libraries are missing"
+    # Test & auto-resolve missing dependencies
+    MAX_LDD_ATTEMPTS=5
+    LDD_ATTEMPT=0
+    while [ $LDD_ATTEMPT -lt $MAX_LDD_ATTEMPTS ]; do
+        LDD_ATTEMPT=$((LDD_ATTEMPT + 1))
+        MISSING_LIBS=$(ldd ./babacoind 2>&1 | awk '/not found/ {print $1}')
+
+        if [ -z "$MISSING_LIBS" ]; then
+            # All libraries resolved - try running the binary
+            if VERSION_OUTPUT=$(./babacoind -version 2>&1 | head -1) && [ -n "$VERSION_OUTPUT" ]; then
+                ok "Binary runs: $VERSION_OUTPUT"
+                break
+            else
+                warn "Binary still fails despite all libs resolved:"
+                ./babacoind -version 2>&1 | head -5 || true
+                die "Unknown binary failure"
+            fi
         fi
+
+        log "Missing libraries (attempt $LDD_ATTEMPT/$MAX_LDD_ATTEMPTS):"
+        echo "$MISSING_LIBS" | sed 's/^/    /'
+
+        # Try to resolve each missing .so via apt-file / dpkg
+        RESOLVED_ANY=0
+        for LIB in $MISSING_LIBS; do
+            log "Resolving $LIB..."
+
+            # Strategy 1: apt-file search (most accurate)
+            if ! command -v apt-file >/dev/null 2>&1; then
+                sudo_run env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq apt-file 2>/dev/null || true
+                sudo_run apt-file update 2>/dev/null || true
+            fi
+
+            PKG=""
+            if command -v apt-file >/dev/null 2>&1; then
+                PKG=$(apt-file search --package-only "/${LIB}$" 2>/dev/null | head -1)
+            fi
+
+            # Strategy 2: dpkg reverse (in case lib is already available but in unusual path)
+            if [ -z "$PKG" ]; then
+                # Try common package name patterns from library name
+                # libfoo-1.2.3.so.4  -> libfoo1.2-4 / libfoo  / libfoo0 etc.
+                BASE=$(echo "$LIB" | sed -E 's/\.so\.[0-9]+.*//; s/^lib//; s/_/-/g')
+                for PKG_GUESS in "lib${BASE}" "lib${BASE}0" "lib${BASE}1"; do
+                    if apt-cache show "$PKG_GUESS" >/dev/null 2>&1; then
+                        PKG="$PKG_GUESS"
+                        break
+                    fi
+                done
+            fi
+
+            # Strategy 3: special cases (hardcoded for known libs)
+            if [ -z "$PKG" ]; then
+                case "$LIB" in
+                    libevent_pthreads*)   PKG="libevent-pthreads-2.1-7" ;;
+                    libevent-*)           PKG="libevent-2.1-7" ;;
+                    libminiupnpc.so.17)   PKG="libminiupnpc17" ;;
+                    libminiupnpc.so.18)   PKG="libminiupnpc18" ;;
+                    libboost_*)           PKG=$(echo "$LIB" | sed -E 's/libboost_([^.]+).*/libboost-\1-dev/' | sed 's/_/-/g') ;;
+                    libdb_cxx*)           PKG="libdb5.3++" ;;
+                    libssl.so.3)          PKG="libssl3" ;;
+                    libzmq.so.5)          PKG="libzmq5" ;;
+                    libprotobuf.so.*)     PKG="libprotobuf23" ;;
+                    libqrencode.so.4)     PKG="libqrencode4" ;;
+                    libgmp.so.10)         PKG="libgmp10" ;;
+                    libsodium.so.23)      PKG="libsodium23" ;;
+                esac
+            fi
+
+            if [ -n "$PKG" ]; then
+                log "  -> Package: $PKG"
+                if sudo_run env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$PKG" 2>&1 | tail -5; then
+                    ok "  Installed: $PKG"
+                    RESOLVED_ANY=1
+                else
+                    warn "  Failed to install $PKG"
+                fi
+            else
+                warn "  Could not find a package that provides $LIB"
+            fi
+        done
+
+        if [ "$RESOLVED_ANY" = "0" ]; then
+            err "No packages resolved in this iteration - stopping to avoid infinite loop"
+            err "Still missing:"
+            ldd ./babacoind 2>&1 | grep "not found" | sed 's/^/    /'
+            die "Cannot resolve remaining dependencies automatically"
+        fi
+
+        # Reload ld cache for new libs
+        sudo_run ldconfig
+    done
+
+    if [ $LDD_ATTEMPT -ge $MAX_LDD_ATTEMPTS ]; then
+        err "Reached max attempts ($MAX_LDD_ATTEMPTS) resolving dependencies"
+        ldd ./babacoind 2>&1 | grep "not found" || true
+        die "Giving up"
     fi
 
     log "Installing to /usr/local/bin/..."
