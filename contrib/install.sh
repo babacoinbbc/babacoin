@@ -268,6 +268,31 @@ ok "No daemon running"
 step "4/10" "Installing runtime dependencies"
 
 log "apt update..."
+
+# Wait for any running apt/dpkg processes (Ubuntu's unattended-upgrades
+# commonly runs on first boot and holds the dpkg lock for 5-15 minutes).
+WAIT_COUNT=0
+while $SUDO_CMD fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+   || $SUDO_CMD fuser /var/lib/dpkg/lock >/dev/null 2>&1 \
+   || pgrep -x unattended-upgr >/dev/null 2>&1; do
+    if [ $WAIT_COUNT -eq 0 ]; then
+        warn "Another apt/dpkg process is running (likely unattended-upgrades)"
+        warn "Waiting up to 10 minutes for it to finish..."
+    fi
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+    if [ $WAIT_COUNT -gt 60 ]; then
+        warn "unattended-upgrades has been running for 10+ minutes"
+        warn "Will force-stop it to continue with the install"
+        $SUDO_CMD systemctl stop unattended-upgrades 2>/dev/null || true
+        $SUDO_CMD killall -9 unattended-upgr 2>/dev/null || true
+        sleep 2
+        break
+    fi
+    sleep 10
+    [ $((WAIT_COUNT % 3)) -eq 0 ] && log "  still waiting... ($((WAIT_COUNT * 10))s)"
+done
+[ $WAIT_COUNT -gt 0 ] && ok "apt lock released, continuing"
+
 $SUDO_CMD DEBIAN_FRONTEND=noninteractive apt-get update -qq
 
 # Package names vary by Ubuntu/Debian version. Use a superset and let apt skip unavailable.
