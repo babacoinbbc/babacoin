@@ -22,7 +22,7 @@
 #   SEED_NUM=XX          Assign seed number (default: auto)
 #   AUTO_YES=1           Skip all confirmations (for CI/automation)
 #   SKIP_WALLET=1        Don't create wallet (just install node)
-#   BBC_VERSION=tag      Override release tag (default: v2.0.0-test)
+#   BBC_VERSION=tag      Override release tag (default: v2.0.1)
 #
 # Requirements:
 #   - Linux (Ubuntu/Debian/Raspberry Pi OS)
@@ -40,7 +40,7 @@ set -euo pipefail
 SEED_NUM="${SEED_NUM:-auto}"
 AUTO_YES="${AUTO_YES:-0}"
 SKIP_WALLET="${SKIP_WALLET:-0}"
-BBC_VERSION="${BBC_VERSION:-v2.0.0-test}"
+BBC_VERSION="${BBC_VERSION:-v2.0.1}"
 WORK_DIR="${HOME}/bbc-install-$(date +%s)"
 DATA_DIR="${HOME}/.babacoin"
 BBC_USER="${USER}"
@@ -171,15 +171,15 @@ ok "External IP: $EXTERNAL_IP"
 step "2/10" "Selecting binary for your system"
 
 # Binary naming convention in releases:
-#   babacoin-v2.0.0-linux-ubuntu{20,22,24}.04-{x86_64,arm64}.tar.gz
-#   babacoin-v2.0.0-raspberry-pi-arm64.tar.gz
+#   babacoin-v2.0.1-linux-ubuntu{20,22,24}.04-{x86_64,arm64}.tar.gz
+#   babacoin-v2.0.1-raspberry-pi-arm64.tar.gz
 #   (others: macos, windows - we don't use them in this Linux installer)
 
 BINARY_FILE=""
 EXPECTED_ARCH_MAGIC=""
 
 if [ "$IS_RASPI" = "1" ] && [ "$ARCH_NAME" = "arm64" ]; then
-    BINARY_FILE="babacoin-v2.0.0-raspberry-pi-arm64.tar.gz"
+    BINARY_FILE="babacoin-v2.0.1-raspberry-pi-arm64.tar.gz"
     EXPECTED_ARCH_MAGIC="ARM aarch64"
     PLATFORM_LABEL="Raspberry Pi (ARM64)"
 elif [ "$OS_ID" = "ubuntu" ] || [ "$OS_ID" = "debian" ] || [ "$ID_LIKE" = "debian" ] 2>/dev/null; then
@@ -208,10 +208,10 @@ elif [ "$OS_ID" = "ubuntu" ] || [ "$OS_ID" = "debian" ] || [ "$ID_LIKE" = "debia
     esac
 
     if [ "$ARCH_NAME" = "x86_64" ]; then
-        BINARY_FILE="babacoin-v2.0.0-linux-ubuntu${UBU_VER}-x86_64.tar.gz"
+        BINARY_FILE="babacoin-v2.0.1-linux-ubuntu${UBU_VER}-x86_64.tar.gz"
         EXPECTED_ARCH_MAGIC="x86-64"
     elif [ "$ARCH_NAME" = "arm64" ]; then
-        BINARY_FILE="babacoin-v2.0.0-linux-ubuntu${UBU_VER}-arm64.tar.gz"
+        BINARY_FILE="babacoin-v2.0.1-linux-ubuntu${UBU_VER}-arm64.tar.gz"
         EXPECTED_ARCH_MAGIC="ARM aarch64"
     else
         die "No binary available for arch: $ARCH_NAME on Ubuntu/Debian"

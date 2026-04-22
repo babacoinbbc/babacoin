@@ -4,19 +4,19 @@
 [![GitHub Release](https://img.shields.io/github/v/release/babacoinbbc/babacoin)](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> ### ⚠️ Critical update — upgrade required
+> ### 🚀 Latest release: v2.0.1 (recommended for all users)
 >
-> All previous `v2.0.0-test` binaries contained a bug that caused every
-> node to stall at block 60 during initial sync. A fix has been released.
+> All previous v2.0.0 binaries contained a critical bug that prevented
+> nodes from syncing past block 60. **Upgrade required.**
 >
-> **→ [Upgrade to the latest v2.0.0-test hotfix](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-test)**
+> **→ [Download v2.0.1](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.1)**
 >
-> Ubuntu 24.04 one-liner:
+> Linux one-command install (Ubuntu 22/24 + ARM64, Raspberry Pi):
 > ```
-> sudo systemctl stop babacoind
-> rm -rf ~/.babacoin/{chainstate,blocks,peers.dat,banlist.dat}
-> curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-ubuntu-24.04.sh | bash
+> curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/install.sh | bash
 > ```
+>
+> Windows / macOS: download the binary from the release page.
 
 ---
 
