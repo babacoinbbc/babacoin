@@ -4,6 +4,20 @@
 [![GitHub Release](https://img.shields.io/github/v/release/babacoinbbc/babacoin)](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> ### ⚠️ Critical update — upgrade required
+>
+> All previous `v2.0.0-test` binaries contained a bug that caused every
+> node to stall at block 60 during initial sync. A fix has been released.
+>
+> **→ [Upgrade to the latest v2.0.0-test hotfix](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-test)**
+>
+> Ubuntu 24.04 one-liner:
+> ```
+> sudo systemctl stop babacoind
+> rm -rf ~/.babacoin/{chainstate,blocks,peers.dat,banlist.dat}
+> curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-ubuntu-24.04.sh | bash
+> ```
+
 ---
 
 ## What is Babacoin?
