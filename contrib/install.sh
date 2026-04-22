@@ -523,21 +523,130 @@ chmod 600 "$DATA_DIR/babacoin.conf"
 ok "Config written"
 
 # ============================================================================
-# Firewall
+# Swap file (required for small Oracle/cloud instances with low RAM)
 # ============================================================================
 
-step "7/10" "Configuring firewall"
+step "6.5/10" "Configuring swap file"
 
-$SUDO_CMD ufw allow 22/tcp comment 'SSH' >/dev/null 2>&1 || true
-$SUDO_CMD ufw allow 6678/tcp comment 'Babacoin P2P' >/dev/null 2>&1 || true
-$SUDO_CMD ufw status | grep -q "Status: active" || $SUDO_CMD ufw --force enable >/dev/null 2>&1 || true
-ok "UFW: 22, 6678/tcp allowed"
+CURRENT_SWAP_MB=$(free -m | awk '/^Swap:/ {print $2}')
+if [ "$CURRENT_SWAP_MB" -lt 1024 ]; then
+    if [ ! -f /swapfile ]; then
+        log "No swap file found. Creating /swapfile (2GB)..."
+        # Use dd for broad compatibility (fallocate can fail on some filesystems)
+        $SUDO_CMD dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
+        $SUDO_CMD chmod 600 /swapfile
+        $SUDO_CMD mkswap /swapfile >/dev/null
+        $SUDO_CMD swapon /swapfile
+        # Persist via fstab (if not already there)
+        if ! grep -q '/swapfile' /etc/fstab; then
+            echo '/swapfile swap swap auto 0 0' | $SUDO_CMD tee -a /etc/fstab >/dev/null
+        fi
+        ok "Swap file created and activated (2GB)"
+    else
+        log "/swapfile exists but not active, activating..."
+        $SUDO_CMD swapon /swapfile 2>/dev/null || true
+    fi
 
-$SUDO_CMD iptables -C INPUT -p tcp --dport 6678 -j ACCEPT 2>/dev/null \
-    || $SUDO_CMD iptables -I INPUT -p tcp --dport 6678 -j ACCEPT
-ok "iptables: 6678/tcp allowed"
+    # Tune swappiness for VPS (prefer RAM, use swap only when needed)
+    $SUDO_CMD sysctl -w vm.swappiness=10 >/dev/null
+    if ! grep -q '^vm.swappiness' /etc/sysctl.conf; then
+        echo 'vm.swappiness = 10' | $SUDO_CMD tee -a /etc/sysctl.conf >/dev/null
+    fi
+    ok "vm.swappiness set to 10"
+else
+    ok "Swap already configured (${CURRENT_SWAP_MB}MB)"
+fi
 
+# ============================================================================
+# Firewall — Oracle Cloud requires all three layers:
+#   1. iptables rules.v4  (Oracle default has INPUT REJECT at position ~6)
+#   2. UFW (user-friendly wrapper, auto-persists)
+#   3. firewalld (some Oracle images use this instead/additionally)
+# ============================================================================
+
+step "7/10" "Configuring firewall (Oracle-compatible, 3 layers)"
+
+# --- Layer 1: iptables rules.v4 (critical on Oracle Cloud) ---
+log "Layer 1: iptables..."
+
+# Make sure iptables-persistent directory exists
+$SUDO_CMD mkdir -p /etc/iptables
+
+RULES_FILE="/etc/iptables/rules.v4"
+RULE_LINE="-A INPUT -p tcp -m state --state NEW -m tcp --dport 6678 -j ACCEPT"
+
+# Create rules.v4 if missing, with a sensible default set
+if [ ! -f "$RULES_FILE" ]; then
+    $SUDO_CMD tee "$RULES_FILE" >/dev/null << 'DEFAULTS'
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
+COMMIT
+DEFAULTS
+    log "Created new rules.v4 with SSH + lo + established rules"
+fi
+
+# Add port 6678 rule if not already present
+if ! $SUDO_CMD grep -qF -- "$RULE_LINE" "$RULES_FILE"; then
+    # Insert before the COMMIT line of the filter table
+    $SUDO_CMD sed -i "/^COMMIT$/i $RULE_LINE" "$RULES_FILE"
+    log "Added port 6678 rule to rules.v4"
+fi
+
+# Apply immediately (without waiting for reboot)
+$SUDO_CMD iptables-restore < "$RULES_FILE" 2>/dev/null || {
+    # Fallback if restore fails — add rule directly
+    $SUDO_CMD iptables -C INPUT -p tcp --dport 6678 -j ACCEPT 2>/dev/null \
+        || $SUDO_CMD iptables -I INPUT -p tcp --dport 6678 -j ACCEPT
+}
+ok "iptables: 6678/tcp rule active and persisted to $RULES_FILE"
+
+# Also save current state via netfilter-persistent if available
 command -v netfilter-persistent >/dev/null && $SUDO_CMD netfilter-persistent save >/dev/null 2>&1 || true
+
+# --- Layer 2: UFW ---
+log "Layer 2: UFW..."
+if command -v ufw >/dev/null 2>&1; then
+    $SUDO_CMD ufw allow 22/tcp comment 'SSH' >/dev/null 2>&1 || true
+    $SUDO_CMD ufw allow 6678/tcp comment 'Babacoin P2P' >/dev/null 2>&1 || true
+    $SUDO_CMD ufw status | grep -q "Status: active" \
+        || $SUDO_CMD ufw --force enable >/dev/null 2>&1 \
+        || warn "UFW enable failed (may conflict with firewalld)"
+    ok "UFW: 22, 6678/tcp allowed"
+else
+    warn "UFW not installed — skipping"
+fi
+
+# --- Layer 3: firewalld (some Oracle images need this) ---
+log "Layer 3: firewalld..."
+if ! command -v firewall-cmd >/dev/null 2>&1; then
+    log "Installing firewalld..."
+    $SUDO_CMD DEBIAN_FRONTEND=noninteractive apt-get install -y -qq firewalld 2>/dev/null || true
+fi
+
+if command -v firewall-cmd >/dev/null 2>&1; then
+    $SUDO_CMD systemctl start firewalld 2>/dev/null || true
+    $SUDO_CMD systemctl enable firewalld >/dev/null 2>&1 || true
+    if $SUDO_CMD systemctl is-active --quiet firewalld; then
+        $SUDO_CMD firewall-cmd --zone=public --permanent --add-port=6678/tcp >/dev/null 2>&1 || true
+        $SUDO_CMD firewall-cmd --zone=public --permanent --add-port=22/tcp >/dev/null 2>&1 || true
+        $SUDO_CMD firewall-cmd --reload >/dev/null 2>&1 || true
+        ok "firewalld: 6678/tcp allowed in public zone"
+    else
+        warn "firewalld service could not be started (UFW may be using the port)"
+    fi
+else
+    warn "firewalld not available — skipping"
+fi
+
+# Oracle Cloud reminder
+warn "REMINDER: Oracle Cloud also requires opening port 6678/tcp in:"
+warn "  Cloud Console → Networking → VCN → Security List → Ingress Rules"
+warn "  Add: Source 0.0.0.0/0, TCP, Dest port 6678"
 
 # ============================================================================
 # systemd service
