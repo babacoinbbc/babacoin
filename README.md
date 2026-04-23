@@ -4,12 +4,12 @@
 [![GitHub Release](https://img.shields.io/github/v/release/babacoinbbc/babacoin)](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> ### 🚀 Latest release: v2.0.1 (recommended for all users)
+> ### 🚀 Latest release: v2.0.2 (recommended for all users)
 >
 > All previous v2.0.0 binaries contained a critical bug that prevented
 > nodes from syncing past block 60. **Upgrade required.**
 >
-> **→ [Download v2.0.1](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.1)**
+> **→ [Download v2.0.2](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.2)**
 >
 > Linux one-command install (Ubuntu 22/24 + ARM64, Raspberry Pi):
 > ```
