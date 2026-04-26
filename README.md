@@ -15,6 +15,23 @@
 > sync. Place it inside your `~/.babacoin/` directory before starting the
 > node.
 
+> ### 🛠️ Restoration phase (April 2026)
+>
+> Babacoin is currently in a community-led restoration phase. v1.0.0
+> remains the live production release; new development is happening
+> on `dev/*` branches in preparation for a v2.x.x.x release line.
+>
+> Goals of this phase:
+> - Stabilize the codebase and improve sync reliability
+> - Add checkpoints and bootstrap support for fast new-node onboarding
+> - Modernize CI / build system
+> - Address known security issues (including spork key rotation)
+> - Establish transparent governance and contribution practices
+>
+> See [`CONTRIBUTING.md`](CONTRIBUTING.md) and
+> [`doc/versioning.md`](doc/versioning.md) for the contributor and
+> release process.
+
 ---
 
 ## What is Babacoin?

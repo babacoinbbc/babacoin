@@ -15,6 +15,29 @@ merging pull requests as well as a "lead maintainer" who is responsible for the
 release cycle, overall merging, moderation and appointment of maintainers.
 
 
+Project Status — Restoration Phase (April 2026)
+-----------------------------------------------
+
+Babacoin is currently in a community-led restoration phase. The original
+v1.0.0 release (September 2022) is the only stable, production-running version
+on the network, and active development resumed in early 2026 to:
+
+  - Stabilize the codebase and release process
+  - Modernize build infrastructure and CI
+  - Add checkpoint and bootstrap support for fast new-node onboarding
+  - Address known security issues, including spork key rotation
+  - Document the chain's history and operational practices
+  - Build transparent governance for ongoing maintenance
+
+Active work happens on `dev/*` branches. The `main` branch tracks the
+latest stable release and should not be committed to directly. New
+contributors are welcome — there are no gatekeepers, only review.
+
+If you're new and want a starting point: improvements to documentation
+(`doc/` and the various `*.md` files) are always welcome and a low-risk
+way to learn the codebase.
+
+
 Contributor Workflow
 --------------------
 
