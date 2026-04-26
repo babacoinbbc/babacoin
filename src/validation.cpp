@@ -3707,26 +3707,14 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationSta
     // Check proof of work
     const Consensus::Params& consensusParams = params.GetConsensus();
     if(Params().NetworkIDString() == CBaseChainParams::MAIN && nHeight <= 68589){
-        // Architecture issues with DGW v1 and v2.
-        //
-        // HOTFIX: When nHeight <= DGWBlocksAvg (first 60 blocks), DarkGravityWave()
-        // has insufficient history and returns powLimit. That causes
-        // GetNextWorkRequired() to return bits representing ~0 difficulty,
-        // which falsely fails this sanity check even though the actual block
-        // difficulty is valid. The block-level PoW check (CheckBlockHeader ->
-        // CheckProofOfWork) already validates the block meets its own claimed
-        // difficulty, so we skip the comparative sanity check in the bootstrap
-        // zone where GetNextWorkRequired is structurally unable to produce a
-        // meaningful reference value.
-        if (nHeight > consensusParams.DGWBlocksAvg) {
-            unsigned int nBitsNext = GetNextWorkRequired(pindexPrev, &block, consensusParams);
-            double n1 = ConvertBitsToDouble(block.nBits);
-            double n2 = ConvertBitsToDouble(nBitsNext);
+        // architecture issues with DGW v1 and v2)
+        unsigned int nBitsNext = GetNextWorkRequired(pindexPrev, &block, consensusParams);
+        double n1 = ConvertBitsToDouble(block.nBits);
+        double n2 = ConvertBitsToDouble(nBitsNext);
 
-            if (abs(n1-n2) > n1*0.5)
-                return state.DoS(100, error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1-n2), n1, n2, nHeight),
-                                REJECT_INVALID, "bad-diffbits");
-        }
+        if (abs(n1-n2) > n1*0.5)
+            return state.DoS(100, error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1-n2), n1, n2, nHeight),
+                            REJECT_INVALID, "bad-diffbits");
     } else {
         if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
             return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, strprintf("incorrect proof of work at %d", nHeight));
