@@ -578,26 +578,9 @@ public:
 //        }
         std::vector<FounderRewardStructure> rewardStructures = {  {INT_MAX, 5} };// 5% founder/dev fee forever
         consensus.nFounderPayment = FounderPayment(rewardStructures, 250, "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF");
-        // Smartnode collateral map — must contain ALL historical values that
-        // were ever valid, because isValidCollateral() only checks if the
-        // amount exists in the map (it does not filter by height when
-        // validating historical ProRegTx).
-        //
-        // Historical: 1,800,000 BBC collateral was used during the v1.0.0 era
-        // (approx. block 0 → block 950000). Those old ProRegTx are embedded
-        // in the block history — if we remove 1,800,000 from this map, IBD
-        // fails with bad-protx-collateral on the first old smartnode block
-        // (observed at block 4461 on mainnet).
-        //
-        // Current: 10,000,000 BBC collateral is required for new smartnode
-        // registrations. isPayableCollateral() is used for reward payment
-        // logic and correctly checks the height — so nodes staked at the
-        // old 1.8M level continue receiving rewards only until their entry
-        // height (950000) and stop earning after that.
         consensus.nCollaterals = SmartnodeCollaterals(
-          { {950000,   1800000 * COIN},    // historical: v1.0.0 era collateral
-            {1000000, 10000000 * COIN},    // transition window
-            {INT_MAX, 10000000 * COIN}     // new requirement
+          { {1000000, 10000000 * COIN},
+            {INT_MAX, 10000000 * COIN}
           },
           { {5761, 0}, {INT_MAX, 20} }
         );
