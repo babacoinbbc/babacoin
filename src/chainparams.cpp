@@ -523,11 +523,13 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_V17].nFalloffCoeff = 5; // this corresponds to 10 periods
 
         // The best chain should have at least this much work.
-        //consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000c2a6d13d4138"); // 0
-        consensus.nMinimumChainWork = uint256S("0x0"); // 0
+        // Value derived from block 925000 chainwork on mainnet (Apr 2026).
+        // This prevents node from accepting an alternate chain with less work.
+        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000027e9d661d3c6");
 
         // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0x0"); // 0
+        // Set to checkpoint at block 925000 to skip signature validation for known-good history.
+        consensus.defaultAssumeValid = uint256S("0x1eed5b11760ec0d11efac61b2d0a7429622c2ddcf2b365dadf6e6e19901144f7"); // 925000
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -618,14 +620,30 @@ public:
         fBIP9CheckSmartnodesUpgraded = true;
 
         checkpointData = {
-          {  {0, uint256S("0x84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854")} }
+          { {0,      uint256S("0x84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854")},
+            {1000,   uint256S("0x4cc119a930ece39a22ea38e7fafe04cab24f9c0a7ebf4b655d4138c4498aa922")},
+            {5000,   uint256S("0x8da656dc9dc0282823ad2e1c68dd3950b0da826029780d8b32fabcba5f23a20d")},
+            {10000,  uint256S("0x3be12f4cdb52e11b8bfd0741c6d4c82a4ff8ecf627ba07319edcee6c7bff9497")},
+            {25000,  uint256S("0x5cd28f17402a584a5c35f82a924d8548cf589d168f7ab86bb13ecca5c355f869")},
+            {50000,  uint256S("0x9fcddc0337d4ca5365ed9ff876d815a8c12d3a660cf270dde7c966d25827ac2a")},
+            {100000, uint256S("0x147e5fc63270e3ff9178307c3843bbca44307d28634d5c80c9cc40243773d438")},
+            {200000, uint256S("0x00dd74ff5385d6ca8e52b0db25716db00beb9ad03ce2067a64fde33273345af9")},
+            {300000, uint256S("0xfd352a0810f6dca251baddaec7a4cf35e59bda640bfc87610f07c0d87d140dc0")},
+            {400000, uint256S("0x01f7a74539c55c88fb81cd177937b95f56e368c305923a6a0e253092519d29f0")},
+            {500000, uint256S("0x5ee5908f5e5976d983653883d692b362790d3aeb50a1a6c528f135498b0d3d34")},
+            {600000, uint256S("0xed3d64a04445c0c6bd3727792290e8683d56e0e16d20470f5c9509501386b29e")},
+            {700000, uint256S("0xce2c81a37cbe5874dc29de19be936f9079415ea2fe1a1f429aeb5a206a77a879")},
+            {800000, uint256S("0x3da5c7628c88e207069b86a27d9092cfc7c20a4cd02106880bf95827f0af6e54")},
+            {900000, uint256S("0xafab0239ef52a7948c3a3b80ea5410cbaa73def766605fd9b0ea7ccbf6c2b0a4")},
+            {925000, uint256S("0x1eed5b11760ec0d11efac61b2d0a7429622c2ddcf2b365dadf6e6e19901144f7")}
+          }
 	};
 
         chainTxData = ChainTxData{
-          1663169589,   // * UNIX timestamp of last known number of transactions (Block 0)
-              0,   // * total number of transactions between genesis and that timestamp
+          1777226752,   // * UNIX timestamp of last known number of transactions (Block 925000)
+              0,        // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
-              0    // * estimated number of transactions per second after that timestamp
+              0.01      // * estimated number of transactions per second after that timestamp
         };
     }
 };
