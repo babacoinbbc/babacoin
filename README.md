@@ -1,22 +1,19 @@
-# Babacoin Core — v.1.0.0
+# Babacoin Core — v1.0.0
 
 [![Build Status](https://github.com/babacoinbbc/babacoin/actions/workflows/build-release.yml/badge.svg)](https://github.com/babacoinbbc/babacoin/actions)
 [![GitHub Release](https://img.shields.io/github/v/release/babacoinbbc/babacoin)](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> ### 🚀 Latest release: v.1.0.0 (recommended for all users)
+> ### 🚀 Stable release: v1.0.0
 >
-> All previous v.1.0.0 binaries contained a critical bug that prevented
-> nodes from syncing past block 60. **Upgrade required.**
+> v1.0.0 is the current production release running across the network.
+> All nodes (mining, smartnodes, wallets) should run this version.
 >
-> **→ [Download v.1.0.0](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)**
+> **→ [Download v1.0.0](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)**
 >
-> Linux one-command install (Ubuntu 22/24 + ARM64, Raspberry Pi):
-> ```
-> curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/install.sh | bash
-> ```
->
-> Windows / macOS: download the binary from the release page.
+> The release page includes a `bootstrap.zip` snapshot for fast first-time
+> sync. Place it inside your `~/.babacoin/` directory before starting the
+> node.
 
 ---
 
@@ -34,7 +31,7 @@ Block Explorer: [https://explorer.babacoin.network](https://explorer.babacoin.ne
 
 ---
 
-## What's New in v.1.0.0
+## Build Targets
 
 ### Platform Support
 
