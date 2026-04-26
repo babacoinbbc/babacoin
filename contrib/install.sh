@@ -693,6 +693,64 @@ $SUDO_CMD systemctl enable babacoind >/dev/null 2>&1
 ok "systemd service installed and enabled"
 
 # ============================================================================
+# Optional: Bootstrap chain data for fast initial sync
+# ============================================================================
+#
+# Bootstrap.zip contains a snapshot of the chain (blocks/, chainstate/,
+# evodb/, llmq/) from a fully-synced node. Importing it lets the node skip
+# hours of initial block download.
+#
+# We download only if:
+#   - BBC_BOOTSTRAP=1 (default; user can opt out with BBC_BOOTSTRAP=0)
+#   - The data directory has no existing chain data (fresh install)
+#   - The bootstrap URL is reachable
+#
+# wallet.dat and babacoin.conf are NEVER touched.
+
+if [ "${BBC_BOOTSTRAP:-1}" = "1" ] && [ ! -d "$DATA_DIR/blocks" ]; then
+    step "8.5/10" "Downloading chain bootstrap (optional, speeds up first sync)"
+
+    BOOTSTRAP_URL="https://github.com/${REPO}/releases/latest/download/bootstrap.zip"
+    POWCACHE_URL="https://github.com/${REPO}/releases/latest/download/powcache.dat"
+    TMP_BOOTSTRAP="/tmp/bbc-bootstrap-$$.zip"
+
+    # Try to fetch bootstrap.zip. A 404 is OK — it just means no bootstrap is
+    # published for this release, and we fall through to a normal IBD.
+    HTTP_STATUS=$(curl -fsSL -o "$TMP_BOOTSTRAP" -w "%{http_code}" \
+                       "$BOOTSTRAP_URL" 2>/dev/null || echo "000")
+
+    if [ "$HTTP_STATUS" = "200" ] && [ -s "$TMP_BOOTSTRAP" ]; then
+        BOOTSTRAP_SIZE=$(du -h "$TMP_BOOTSTRAP" | cut -f1)
+        log "Bootstrap downloaded ($BOOTSTRAP_SIZE), extracting..."
+
+        if command -v unzip >/dev/null 2>&1; then
+            unzip -q -o "$TMP_BOOTSTRAP" -d "$DATA_DIR" \
+                && ok "Bootstrap extracted" \
+                || warn "Bootstrap extraction failed, will sync from scratch"
+        else
+            warn "unzip not installed, skipping bootstrap"
+        fi
+
+        rm -f "$TMP_BOOTSTRAP"
+
+        # Fix ownership in case extraction was done as root via sudo
+        if [ "$BBC_USER" != "$(id -un)" ] 2>/dev/null; then
+            $SUDO_CMD chown -R "$BBC_USER:$BBC_USER" "$DATA_DIR" 2>/dev/null || true
+        fi
+
+        # Optional: powcache.dat (small file, big speedup)
+        log "Fetching PoW cache (optional)..."
+        curl -fsSL "$POWCACHE_URL" -o "$DATA_DIR/powcache.dat" 2>/dev/null \
+            && ok "PoW cache installed" \
+            || log "  (no powcache.dat published — that's fine, node will rebuild it)"
+    else
+        log "  No bootstrap.zip published for this release (HTTP $HTTP_STATUS)"
+        log "  Node will perform a normal initial block download."
+        rm -f "$TMP_BOOTSTRAP"
+    fi
+fi
+
+# ============================================================================
 # Start service
 # ============================================================================
 
