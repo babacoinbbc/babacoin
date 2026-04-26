@@ -580,10 +580,25 @@ public:
 //        }
         std::vector<FounderRewardStructure> rewardStructures = {  {INT_MAX, 5} };// 5% founder/dev fee forever
         consensus.nFounderPayment = FounderPayment(rewardStructures, 250, "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF");
+        // Smartnode collateral configuration.
+        //
+        // Historical reality (verified by scanning all 568 active smartnodes
+        // on a fully-synced node): every single smartnode on the Babacoin
+        // network was registered with EXACTLY 1,800,000 BBC. There is only
+        // one collateral tier in the chain's history, spanning blocks
+        // 111,673 through 929,574+.
+        //
+        // The previous v2.0.x configuration listed 10,000,000 BBC as the
+        // sole valid collateral. This was historically incorrect and caused
+        // every ProRegTx in the chain to fail validation with
+        // bad-protx-collateral, blocking IBD at block 4461.
+        //
+        // Future collateral changes (planned to combat zombie nodes from
+        // defunct MNaaS providers) will be introduced in a separate release
+        // by adding a height-bounded entry above this one and shipping the
+        // change as a coordinated network upgrade.
         consensus.nCollaterals = SmartnodeCollaterals(
-          { {1000000, 10000000 * COIN},
-            {INT_MAX, 10000000 * COIN}
-          },
+          { {INT_MAX, 1800000 * COIN} },
           { {5761, 0}, {INT_MAX, 20} }
         );
         //FutureRewardShare defaultShare(0.8,0.2,0.0);
