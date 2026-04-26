@@ -171,15 +171,15 @@ ok "External IP: $EXTERNAL_IP"
 step "2/10" "Selecting binary for your system"
 
 # Binary naming convention in releases:
-#   babacoin-v2.0.2-linux-ubuntu{20,22,24}.04-{x86_64,arm64}.tar.gz
-#   babacoin-v2.0.2-raspberry-pi-arm64.tar.gz
+#   babacoin-linux-ubuntu{20,22,24}.04-{x86_64,arm64}.tar.gz
+#   babacoin-raspberry-pi-arm64.tar.gz
 #   (others: macos, windows - we don't use them in this Linux installer)
 
 BINARY_FILE=""
 EXPECTED_ARCH_MAGIC=""
 
 if [ "$IS_RASPI" = "1" ] && [ "$ARCH_NAME" = "arm64" ]; then
-    BINARY_FILE="babacoin-v2.0.2-raspberry-pi-arm64.tar.gz"
+    BINARY_FILE="babacoin-raspberry-pi-arm64.tar.gz"
     EXPECTED_ARCH_MAGIC="ARM aarch64"
     PLATFORM_LABEL="Raspberry Pi (ARM64)"
 elif [ "$OS_ID" = "ubuntu" ] || [ "$OS_ID" = "debian" ] || [ "$ID_LIKE" = "debian" ] 2>/dev/null; then
@@ -208,10 +208,10 @@ elif [ "$OS_ID" = "ubuntu" ] || [ "$OS_ID" = "debian" ] || [ "$ID_LIKE" = "debia
     esac
 
     if [ "$ARCH_NAME" = "x86_64" ]; then
-        BINARY_FILE="babacoin-v2.0.2-linux-ubuntu${UBU_VER}-x86_64.tar.gz"
+        BINARY_FILE="babacoin-linux-ubuntu${UBU_VER}-x86_64.tar.gz"
         EXPECTED_ARCH_MAGIC="x86-64"
     elif [ "$ARCH_NAME" = "arm64" ]; then
-        BINARY_FILE="babacoin-v2.0.2-linux-ubuntu${UBU_VER}-arm64.tar.gz"
+        BINARY_FILE="babacoin-linux-ubuntu${UBU_VER}-arm64.tar.gz"
         EXPECTED_ARCH_MAGIC="ARM aarch64"
     else
         die "No binary available for arch: $ARCH_NAME on Ubuntu/Debian"

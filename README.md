@@ -1,15 +1,15 @@
-# Babacoin Core — v2.0.0
+# Babacoin Core — v.1.0.0
 
 [![Build Status](https://github.com/babacoinbbc/babacoin/actions/workflows/build-release.yml/badge.svg)](https://github.com/babacoinbbc/babacoin/actions)
-[![GitHub Release](https://img.shields.io/github/v/release/babacoinbbc/babacoin)](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0)
+[![GitHub Release](https://img.shields.io/github/v/release/babacoinbbc/babacoin)](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> ### 🚀 Latest release: v2.0.2 (recommended for all users)
+> ### 🚀 Latest release: v.1.0.0 (recommended for all users)
 >
-> All previous v2.0.0 binaries contained a critical bug that prevented
+> All previous v.1.0.0 binaries contained a critical bug that prevented
 > nodes from syncing past block 60. **Upgrade required.**
 >
-> **→ [Download v2.0.2](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.2)**
+> **→ [Download v.1.0.0](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)**
 >
 > Linux one-command install (Ubuntu 22/24 + ARM64, Raspberry Pi):
 > ```
@@ -34,7 +34,7 @@ Block Explorer: [https://explorer.babacoin.network](https://explorer.babacoin.ne
 
 ---
 
-## What's New in v2.0.0
+## What's New in v.1.0.0
 
 ### Platform Support
 
@@ -68,16 +68,16 @@ Full multi-platform build support with automated GitHub Actions CI/CD:
 
 ## Download
 
-Pre-built binaries are available on the [Releases page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0):
+Pre-built binaries are available on the [Releases page](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0):
 
 | File | Platform |
 |---|---|
-| `babacoin-v2.0.0-linux-ubuntu20.04-x86_64.tar.gz` | Ubuntu 20.04 |
-| `babacoin-v2.0.0-linux-ubuntu22.04-x86_64.tar.gz` | Ubuntu 22.04 |
-| `babacoin-v2.0.0-macos-x86_64.tar.gz` | macOS Intel |
-| `babacoin-v2.0.0-macos-arm64.tar.gz` | macOS Apple Silicon |
-| `babacoin-v2.0.0-raspberry-pi-arm64.tar.gz` | Raspberry Pi 4 / 5 |
-| `babacoin-v2.0.0-windows-x86_64.zip` | Windows x64 |
+| `babacoin-v.1.0.0-linux-ubuntu20.04-x86_64.tar.gz` | Ubuntu 20.04 |
+| `babacoin-v.1.0.0-linux-ubuntu22.04-x86_64.tar.gz` | Ubuntu 22.04 |
+| `babacoin-v.1.0.0-macos-x86_64.tar.gz` | macOS Intel |
+| `babacoin-v.1.0.0-macos-arm64.tar.gz` | macOS Apple Silicon |
+| `babacoin-v.1.0.0-raspberry-pi-arm64.tar.gz` | Raspberry Pi 4 / 5 |
+| `babacoin-v.1.0.0-windows-x86_64.zip` | Windows x64 |
 
 ---
 
