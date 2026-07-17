@@ -39,9 +39,10 @@ Full multi-platform build support with automated GitHub Actions CI/CD:
 
 | Platform | Architecture | Status |
 |---|---|---|
-| Ubuntu 20.04 LTS | x86_64 | Supported |
-| Ubuntu 22.04 LTS | x86_64 | Supported |
-| Ubuntu 24.04 LTS | x86_64 | Supported |
+| Ubuntu 20.04 LTS | x86_64, ARM64 | Supported |
+| Ubuntu 22.04 LTS | x86_64, ARM64 | Supported |
+| Ubuntu 24.04 LTS | x86_64, ARM64 | Supported |
+| Ubuntu 26.04 LTS | x86_64 | Preview — GitHub's 26.04 runner is still in beta |
 | macOS Intel | x86_64 | Supported |
 | macOS Apple Silicon | arm64 | Supported |
 | Raspberry Pi 4 / 5 | ARM64 | Supported |
@@ -54,12 +55,36 @@ Full multi-platform build support with automated GitHub Actions CI/CD:
 - **BerkeleyDB 5.3** support — Ubuntu 20.04+ ships `libdb5.3` instead of `libdb4.8`
 - **GCC 12+** compatibility — resolved `u_int8_t` type conflict in BDB atomic headers
 - **CI/CD** — Dockerfile.builder updated to Ubuntu 22.04 LTS
-- **GitHub Actions** — automated build and release pipeline for all six platforms
+- **GitHub Actions** — automated build and release pipeline for all supported platforms
 
 ### Network Changes
 
-- Founder wallet updated to: `BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF`
-- Smartnode collateral raised to **10,000,000 BBC**, activating at **block 925,000**
+These are consensus and network rules. Every change below is height-gated except the
+spork key, which takes effect the moment a node upgrades.
+
+| Change | New value | Activates at |
+|---|---|---|
+| Smartnode collateral | `2,000,000 BBC` (was 1,800,000) | block **1,250,000** |
+| Founder / dev wallet | `B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT` | block **1,250,000** |
+| Spork key | `BH9codHixVqU6ShdJXgaEQ3xZjXKEs1P2P` | on upgrade (no height gate) |
+
+The founder and spork keys were rotated because the previous wallet was compromised.
+The historical founder address (`BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF`) and every past
+collateral tier remain in the consensus tables — removing them would invalidate blocks
+that already paid them and make the existing chain unsyncable.
+
+#### What operators must do
+
+- **Smartnode operators** — top up collateral from 1,800,000 to 2,000,000 BBC before
+  block 1,250,000. Nodes still at 1,800,000 stop earning at that height. You can raise
+  collateral early; 2,000,000 BBC is accepted before the activation height too.
+- **Miners** — upgrade before block 1,250,000. From that height the coinbase must pay
+  the new founder address; blocks paying the old one will be rejected.
+- **Spork key holder** — record `spork show` output *before* upgrading, then re-sign and
+  broadcast all sporks with the new key *immediately after*. Sporks signed by the old key
+  are dropped on upgrade and every spork reverts to its default of OFF, including
+  `SPORK_19_CHAINLOCKS_ENABLED`. The network has no ChainLocks protection until they are
+  re-broadcast.
 
 ---
 
@@ -229,21 +254,46 @@ Smartnodes secure the network, enable InstantSend, and provide CoinJoin mixing. 
 
 | Block Range | Required Collateral |
 |---|---|
-| 1 — 88,719 | 600,000 BBC |
-| 88,720 — 132,719 | 800,000 BBC |
-| 132,720 — 176,719 | 1,000,000 BBC |
-| 176,720 — 220,719 | 1,250,000 BBC |
-| 220,720 — 264,719 | 1,500,000 BBC |
-| 264,720 — 924,999 | 1,800,000 BBC |
-| **925,000+** | **10,000,000 BBC** |
+| 1 — 88,720 | 600,000 BBC |
+| 88,721 — 132,720 | 800,000 BBC |
+| 132,721 — 176,720 | 1,000,000 BBC |
+| 176,721 — 220,720 | 1,250,000 BBC |
+| 220,721 — 264,720 | 1,500,000 BBC |
+| 264,721 — 1,249,999 | 1,800,000 BBC |
+| **1,250,000+** | **2,000,000 BBC** |
+
+Existing 1,800,000 BBC smartnodes keep earning until block 1,249,999. Operators must
+top up to 2,000,000 BBC before that height to continue receiving rewards; collateral
+can be raised early, as 2,000,000 BBC is accepted before the activation height too.
 
 ### Reward Distribution
 
-- **80%** Smartnode operators
-- **20%** Miners
-- **5%** Founder / development fund (from block 250 onward)
+Block reward — split from the 5,000 BBC subsidy plus regular fees:
 
-Founder address: `BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF`
+| Share | Recipient | Source |
+|---|---|---|
+| **20%** | Smartnode operators | `nCollaterals` reward percentage, from block 5,761 |
+| **5%** | Founder / development fund | `nFounderPayment`, from block 250 |
+| **75%** | Miner | remainder of the coinbase |
+
+Special transaction fees are split separately and do **not** follow the percentages
+above (`nFutureRewardShare`):
+
+| Share | Recipient |
+|---|---|
+| **80%** | Smartnode operators |
+| **20%** | Miner |
+| **0%** | Founder |
+
+Smartnode payments only start once the network has at least 10 smartnodes; below that
+the entire block reward goes to the miner.
+
+Founder address: `B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT` (from block 1,250,000)
+
+| Block Range | Founder Address |
+|---|---|
+| 250 — 1,249,999 | `BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF` |
+| **1,250,000+** | **`B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT`** |
 
 ---
 
@@ -301,7 +351,7 @@ Full roadmap: [https://babacoin.network](https://babacoin.network)
 
 ## Automated CI/CD
 
-Every push to a version tag (`v*`) triggers the GitHub Actions pipeline defined in `.github/workflows/build-release.yml`. The workflow compiles binaries for all six platforms in parallel and uploads them automatically to the GitHub Releases page.
+Every push to a version tag (`v*`) triggers the GitHub Actions pipeline defined in `.github/workflows/build-release.yml`. The workflow compiles binaries for every supported platform in parallel and uploads them automatically to the GitHub Releases page. The Ubuntu 26.04 job is marked `continue-on-error` because GitHub's 26.04 runner is still in preview; if it fails, the rest of the release still publishes.
 
 Manual builds can be triggered from the Actions tab at any time using the `workflow_dispatch` option.
 
