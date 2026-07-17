@@ -471,6 +471,15 @@ static Consensus::LLMQParams llmq100_67 = {
  */
 
 
+// Block at which the smartnode collateral rises from 1,800,000 to 2,000,000 BBC.
+// Must be far enough ahead of the current tip for operators to upgrade and top up
+// their collateral; at 2 minute blocks that is 720 blocks per day.
+static const int nCollateral2MHeight = 1250000;
+
+// Block at which the founder payment moves to the new dev wallet. The old address
+// stays in the schedule so blocks that already paid it still validate.
+static const int nFounderAddressChangeHeight = 1250000;
+
 class CMainParams : public CChainParams {
 public:
     CMainParams() {
@@ -577,10 +586,22 @@ public:
 //        	exit(0);
 //        }
         std::vector<FounderRewardStructure> rewardStructures = {  {INT_MAX, 5} };// 5% founder/dev fee forever
-        consensus.nFounderPayment = FounderPayment(rewardStructures, 250, "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF");
+        consensus.nFounderPayment = FounderPayment(rewardStructures, 250,
+          std::vector<FounderAddressStructure>{
+            {nFounderAddressChangeHeight - 1, "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF"},
+            {INT_MAX, "B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT"}
+          });
+        // Historical tiers must stay listed: isValidCollateral() matches on amount
+        // alone, so dropping an amount invalidates every ProRegTx that ever used it
+        // and makes the existing chain unsyncable.
         consensus.nCollaterals = SmartnodeCollaterals(
-          { {1000000, 10000000 * COIN},
-            {INT_MAX, 10000000 * COIN}
+          { {88720,   600000 * COIN},
+            {132720,  800000 * COIN},
+            {176720, 1000000 * COIN},
+            {220720, 1250000 * COIN},
+            {264720, 1500000 * COIN},
+            {nCollateral2MHeight - 1, 1800000 * COIN},
+            {INT_MAX, 2000000 * COIN}
           },
           { {5761, 0}, {INT_MAX, 20} }
         );
@@ -613,7 +634,8 @@ public:
         nPoolNewMaxParticipants = 20;
         nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
 
-        vSporkAddresses = {"B768kVqEDr3hZJNbrMNsFgfmGh3NdcBfUX"};
+        // Replaces B768kVqEDr3hZJNbrMNsFgfmGh3NdcBfUX, whose key was compromised.
+        vSporkAddresses = {"BH9codHixVqU6ShdJXgaEQ3xZjXKEs1P2P"};
         nMinSporkKeys = 1;
         fBIP9CheckSmartnodesUpgraded = true;
 

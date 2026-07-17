@@ -30,6 +30,16 @@ CAmount FounderPayment::getFounderPaymentAmount(int blockHeight, CAmount blockRe
 	 return 0;
 }
 
+string FounderPayment::getFounderAddress(int blockHeight) {
+	for(size_t i = 0; i < founderAddresses.size(); i++) {
+		FounderAddressStructure addressStructure = founderAddresses[i];
+		if(addressStructure.blockHeight == INT_MAX || blockHeight <= addressStructure.blockHeight) {
+			return addressStructure.address;
+		}
+	}
+	return "";
+}
+
 void FounderPayment::FillFounderPayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutFounderRet) {
     // make sure it's not filled yet
     CAmount founderPayment = getFounderPaymentAmount(nBlockHeight, blockReward);
@@ -40,6 +50,7 @@ void FounderPayment::FillFounderPayment(CMutableTransaction& txNew, int nBlockHe
 //	}
     txoutFounderRet = CTxOut();
 	  // fill payee with the foundFounderRewardStrcutureFounderRewardStrcutureer address
+	  const string founderAddress = getFounderAddress(nBlockHeight);
 	  CTxDestination founderAddr = DecodeDestination(founderAddress);
 	  if(!IsValidDestination(founderAddr))
 	    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Invalid Babacoin Founder Address: %s", founderAddress.c_str()));
@@ -55,7 +66,7 @@ void FounderPayment::FillFounderPayment(CMutableTransaction& txNew, int nBlockHe
 
 bool FounderPayment::IsBlockPayeeValid(const CTransaction& txNew, const int height, const CAmount blockReward) {
 	// fill payee with the founder address
-	CScript payee = GetScriptForDestination(DecodeDestination(founderAddress));
+	CScript payee = GetScriptForDestination(DecodeDestination(getFounderAddress(height)));
 	const CAmount founderReward = getFounderPaymentAmount(height, blockReward);
 	BOOST_FOREACH(const CTxOut& out, txNew.vout) {
 		if(out.scriptPubKey == payee && out.nValue >= founderReward) {
