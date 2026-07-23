@@ -586,9 +586,13 @@ public:
 //        	exit(0);
 //        }
         std::vector<FounderRewardStructure> rewardStructures = {  {INT_MAX, 5} };// 5% founder/dev fee forever
+        // The live chain pays the founder to BLbWwAB... (v1.0.0 DEFAULT_FOUNDER_ADDRESS,
+        // verified on-chain: ~247M BBC received across ~987k blocks). This address MUST
+        // stay for the whole pre-fork range or the node rejects every enforced block and
+        // cannot sync. B6uz2zq... is the rotated dev wallet, effective at the fork height.
         consensus.nFounderPayment = FounderPayment(rewardStructures, 250,
           std::vector<FounderAddressStructure>{
-            {nFounderAddressChangeHeight - 1, "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF"},
+            {nFounderAddressChangeHeight - 1, "BLbWwABzjJGsSeibe6oJvTK5aEq8Sx7rU9"},
             {INT_MAX, "B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT"}
           });
         // Historical tiers must stay listed: isValidCollateral() matches on amount
