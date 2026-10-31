@@ -266,6 +266,32 @@ CDeterministicMNCPtr CDeterministicMNList::GetMNPayee() const
     return best;
 }
 
+CDeterministicMNCPtr CDeterministicMNList::GetMNPayeeForBlock(int blockHeight) const
+{
+    const auto& consensus = Params().GetConsensus();
+    if (consensus.nSmartnodeCollateralUpgradeHeight <= 0 ||
+        blockHeight < consensus.nSmartnodeCollateralUpgradeHeight) {
+        // Preserve historical payment selection exactly before the V2 fork.
+        return GetMNPayee();
+    }
+    if (mnMap.size() <= 10 && Params().NetworkIDString() == CBaseChainParams::MAIN) {
+        return nullptr;
+    }
+    CDeterministicMNCPtr best;
+    // The caller supplies the candidate block height. The active UTXO view is
+    // still its parent: using the active tip's height here would pay the expired
+    // denomination for one additional block at activation.
+    ForEachMN(false, [&](const CDeterministicMNCPtr& dmn) {
+        Coin coin;
+        if (IsMNPoSeBanned(dmn) || !GetUTXOCoin(dmn->collateralOutpoint, coin) ||
+            !consensus.nCollaterals.isPayableCollateral(blockHeight, coin.out.nValue)) {
+            return;
+        }
+        if (!best || CompareByLastPaid(dmn, best)) best = dmn;
+    });
+    return best;
+}
+
 std::vector<CDeterministicMNCPtr> CDeterministicMNList::GetProjectedMNPayees(int nCount) const
 {
 	int validMnCount =  GetValidMNsCount();
@@ -737,7 +763,7 @@ bool CDeterministicMNManager::BuildNewListFromBlock(const CBlock& block, const C
     newList.SetBlockHash(uint256()); // we can't know the final block hash, so better not return a (invalid) block hash
     newList.SetHeight(nHeight);
 
-    auto payee = oldList.GetMNPayee();
+    auto payee = oldList.GetMNPayeeForBlock(nHeight);
     // we iterate the oldList here and update the newList
     // this is only valid as long these have not diverged at this point, which is the case as long as we don't add
     // code above this loop that modifies newList

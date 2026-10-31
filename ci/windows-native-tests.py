@@ -54,7 +54,7 @@ assert subprocess.check_output([str(build / "src/bdb-version.exe")], text=True).
 report = {"source_commit": (build / "SOURCE_COMMIT").read_text(encoding="utf-8-sig").strip(),
           "host_runner_architecture": os.environ.get("RUNNER_ARCH", platform.machine()),
           "executable_architecture": "x86_64",
-          "core_cases": 343, "qt_suites": 6, "transaction_utility_cases": 49,
+          "core_cases": 344, "qt_suites": 6, "transaction_utility_cases": 49,
           "rpcauth_cases": 3, "secp256k1_suites": 2, "univalue_suites": 3, "result": "PASS", "binaries_sha256": {}}
 for binary in sorted((build / "src").rglob("*.exe")):
     report["binaries_sha256"][binary.relative_to(build / "src").as_posix()] = hashlib.sha256(binary.read_bytes()).hexdigest()

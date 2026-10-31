@@ -472,8 +472,9 @@ static Consensus::LLMQParams llmq100_67 = {
 
 
 // Block at which the smartnode collateral rises from 1,800,000 to 2,000,000 BBC.
-// Must be far enough ahead of the current tip for operators to upgrade and top up
-// their collateral; at 2 minute blocks that is 720 blocks per day.
+// The 2M denomination can be registered before this height; only the 1.8M
+// payment eligibility expires here. V1 does not understand 2M registrations,
+// so validating services must upgrade before the first such registration.
 static const int nCollateral2MHeight = 1250000;
 
 // Block at which the founder payment moves to the new dev wallet. The old address
@@ -594,6 +595,7 @@ public:
         // Historical tiers must stay listed: isValidCollateral() matches on amount
         // alone, so dropping an amount invalidates every ProRegTx that ever used it
         // and makes the existing chain unsyncable.
+        consensus.nSmartnodeCollateralUpgradeHeight = nCollateral2MHeight;
         consensus.nCollaterals = SmartnodeCollaterals(
           { {88720,   600000 * COIN},
             {132720,  800000 * COIN},

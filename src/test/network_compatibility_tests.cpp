@@ -36,6 +36,7 @@ BOOST_AUTO_TEST_CASE(existing_mainnet_payment_boundaries)
     const auto params = CreateChainParams(CBaseChainParams::MAIN);
     auto founder = params->GetConsensus().nFounderPayment;
     const auto& collateral = params->GetConsensus().nCollaterals;
+    BOOST_CHECK_EQUAL(params->GetConsensus().nSmartnodeCollateralUpgradeHeight, 1250000);
     BOOST_CHECK_EQUAL(founder.getFounderAddress(1249999), "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF");
     BOOST_CHECK_EQUAL(founder.getFounderAddress(1250000), "B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT");
     BOOST_CHECK_EQUAL(collateral.getCollateral(1249999), 1800000 * COIN);

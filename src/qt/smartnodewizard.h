@@ -53,6 +53,7 @@ private:
     void showError(const QString& message);
     QPointer<WalletModel> m_wallet;
     FundCollateral m_fundCollateral;
+    QComboBox* m_collateralAmount;
     QComboBox* m_collateral;
     QComboBox* m_feeSource;
     QLabel* m_readiness;

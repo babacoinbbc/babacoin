@@ -273,6 +273,15 @@ void WalletTests::smartnodeRegistrationWorkflow()
     // This fixture creates only a private regtest chain; no network threads start.
     TestChainSetup chain(500);
     QVERIFY(Params().NetworkIDString() == CBaseChainParams::REGTEST);
+    auto& consensus = const_cast<Consensus::Params&>(Params().GetConsensus());
+    struct RestoreTiers {
+        Consensus::Params& params;
+        SmartnodeCollaterals original;
+        ~RestoreTiers() { params.nCollaterals = original; }
+    } restoreTiers{consensus, consensus.nCollaterals};
+    // Both tiers are payable now. Exercise the larger tier before the older
+    // one expires, matching mainnet's early 2M registration workflow.
+    consensus.nCollaterals = SmartnodeCollaterals({{1000, 10 * COIN}, {INT_MAX, 20 * COIN}}, {{INT_MAX, 20}});
     RegisterWalletRPCCommands(tableRPC);
     auto wallet = std::make_shared<CWallet>(WalletLocation(), WalletDatabase::CreateMock());
     AddWallet(wallet);
@@ -310,7 +319,7 @@ void WalletTests::smartnodeRegistrationWorkflow()
     const auto ownerAddress = newAddress();
     const auto payoutAddress = newAddress();
     UniValue recipients(UniValue::VOBJ);
-    recipients.pushKV(collateralAddress, 10);
+    recipients.pushKV(collateralAddress, 20);
     recipients.pushKV(feeAddress, 5);
     UniValue send(UniValue::VARR); send.push_back(""); send.push_back(recipients);
     const uint256 fundingHash = uint256S(call("sendmany", send).get_str());
@@ -320,7 +329,7 @@ void WalletTests::smartnodeRegistrationWorkflow()
     SyncWithValidationInterfaceQueue();
     COutPoint collateral;
     for (size_t i = 0; i < funding->vout.size(); ++i) {
-        if (funding->vout[i].nValue == 10 * COIN) collateral = COutPoint(fundingHash, i);
+        if (funding->vout[i].nValue == 20 * COIN) collateral = COutPoint(fundingHash, i);
     }
     QVERIFY(!collateral.IsNull());
     QVERIFY(!model.wallet().isLockedCoin(collateral));
@@ -332,6 +341,13 @@ void WalletTests::smartnodeRegistrationWorkflow()
     for (bool submit : {false, true}) {
         QVERIFY(!model.wallet().isLockedCoin(collateral)); // Cancelling the previous preparation restored its new lock.
         SmartnodeWizard wizard(&model, {});
+        auto* amount = wizard.findChild<QComboBox*>("smartnodeCollateralAmount");
+        QVERIFY(amount);
+        QCOMPARE(amount->count(), 2);
+        QCOMPARE(amount->currentData().toLongLong(), qlonglong(10 * COIN));
+        const int larger = amount->findData(QVariant::fromValue<qlonglong>(20 * COIN));
+        QVERIFY(larger >= 0);
+        amount->setCurrentIndex(larger);
         QString message;
         bool allowBroadcast = false;
         QTimer dialogs(&wizard);
@@ -384,7 +400,7 @@ void WalletTests::smartnodeRegistrationWorkflow()
     UniValue query(UniValue::VARR); query.push_back(collateral.hash.ToString()); query.push_back(int64_t(collateral.n));
     const auto stillUnspent = call("gettxout", query);
     QVERIFY(!stillUnspent.isNull());
-    QCOMPARE(AmountFromValue(stillUnspent["value"]), 10 * COIN);
+    QCOMPARE(AmountFromValue(stillUnspent["value"]), 20 * COIN);
     WebWalletPage web;
     auto* openWeb = web.findChild<QPushButton*>("webWalletOpenButton");
     QVERIFY(openWeb && !openWeb->isEnabled()); // Test coins cannot launch the mainnet Web Wallet.

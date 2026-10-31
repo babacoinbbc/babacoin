@@ -58,6 +58,7 @@ jobs:
         cp "doc/release/$RELEASE_TAG.md" dist/RELEASE-NOTES.md
         cp doc/v2-migration.md dist/MIGRATION.md
         cp doc/platform-support.md dist/PLATFORM-SUPPORT.md
+        cp doc/release/mandatory-network-upgrade.md dist/NETWORK-UPGRADE.md
     - uses: actions/upload-artifact@v4
       with:
         name: babacoin-verified-release

@@ -1,6 +1,6 @@
 {
   "baseline_commit": "7cdd64b4435d5fef4f63accfaa1706f2425a3324",
-  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately. Explicit V2 wallet exception: fail closed on incomplete startup rescan before advancing the persisted checkpoint.",
+  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately. Explicit V2 wallet exception: fail closed on incomplete startup rescan before advancing the persisted checkpoint. Explicit owner-selected V2 consensus exception: candidate-height payment selection at 1,250,000, with immediate early 2M registration retained. Original hashes are preserved in the five affected entries. This is not a claim of V1 consensus compatibility.",
   "files": [
     {
       "path": "src/amount.h",
@@ -69,7 +69,9 @@
     {
       "path": "src/chainparams.cpp",
       "scope": "excluding-regtest",
-      "sha256": "7ac121aa8dacfeaa0ed3a42f45a550c807c0a9a8164e9b33ff86c55cf0dd3581"
+      "sha256": "91276d694485519de7dcf932bf416b10f2bd4b13397bc1f1a56c44b52f084c0d",
+      "original_sha256": "7ac121aa8dacfeaa0ed3a42f45a550c807c0a9a8164e9b33ff86c55cf0dd3581",
+      "approved_change": "Keep 1,250,000 expiry, permit immediate 2M registration, and enable candidate-height payment selection at expiry. No start-height restriction is introduced. Owner-selected network policy; requires the documented mandatory validating-node upgrade and independent PR review."
     },
     {
       "path": "src/chainparams.h",
@@ -109,7 +111,9 @@
     {
       "path": "src/consensus/params.h",
       "scope": "full",
-      "sha256": "e2670c4eb4239b4c986f7b4bef9277d9fd6fbed831970bb73563d2521b992b8d"
+      "sha256": "38a0463609996eee48f073920f5d0ab17b6a4cf92b65b968f876f4a1f7a23053",
+      "original_sha256": "e2670c4eb4239b4c986f7b4bef9277d9fd6fbed831970bb73563d2521b992b8d",
+      "approved_change": "Add an in-memory payment-height-rule boundary; disabled by default on other networks. No serialization change. Owner-selected network policy; requires the documented mandatory validating-node upgrade and independent PR review."
     },
     {
       "path": "src/consensus/tx_verify.cpp",
@@ -484,12 +488,16 @@
     {
       "path": "src/evo/deterministicmns.cpp",
       "scope": "full",
-      "sha256": "49ec309d114247a6d3c031af253bbd6ab75f6b17a0c6f5b75e8f36769061e138"
+      "sha256": "51c69ba897d965cd881a95a8892af103cbdb01eee4109c597cd791b88584e309",
+      "original_sha256": "49ec309d114247a6d3c031af253bbd6ab75f6b17a0c6f5b75e8f36769061e138",
+      "approved_change": "Select payable collateral at the candidate height from expiry onward; preserve earlier selection and use the same payee for deterministic-list updates. Owner-selected network policy; requires the documented mandatory validating-node upgrade and independent PR review."
     },
     {
       "path": "src/evo/deterministicmns.h",
       "scope": "full",
-      "sha256": "75fc653f7e1dade8fd132b559d9062a58ac78c83724e77689b7156c0a1e9f9a1"
+      "sha256": "9d875c7321596664fc9f3e9bac40032fc20a399d6fd49945321bcdf1247f3aab",
+      "original_sha256": "75fc653f7e1dade8fd132b559d9062a58ac78c83724e77689b7156c0a1e9f9a1",
+      "approved_change": "Declare candidate-height payment selection; no deterministic-list serialization change. Owner-selected network policy; requires the documented mandatory validating-node upgrade and independent PR review."
     },
     {
       "path": "src/evo/evodb.cpp",
@@ -1263,7 +1271,9 @@
     {
       "path": "src/smartnode/smartnode-payments.cpp",
       "scope": "full",
-      "sha256": "fcba9e0d8563c706fbe7f6c5047a2eda85ef329779503246a8ab85924d3d3225"
+      "sha256": "d000b82c9b137f23485057ccb9f2efceddb1356f336d6d5ccaa73bc38cec41d2",
+      "original_sha256": "fcba9e0d8563c706fbe7f6c5047a2eda85ef329779503246a8ab85924d3d3225",
+      "approved_change": "Use the candidate-height payee in block payment creation and validation so the old tier receives no payment at expiry. Owner-selected network policy; requires the documented mandatory validating-node upgrade and independent PR review."
     },
     {
       "path": "src/smartnode/smartnode-payments.h",

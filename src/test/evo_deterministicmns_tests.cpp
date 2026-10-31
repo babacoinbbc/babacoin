@@ -16,6 +16,7 @@
 #include <keystore.h>
 #include <spork.h>
 #include <txmempool.h>
+#include <smartnode/smartnode-payments.h>
 
 #include <evo/specialtx.h>
 #include <evo/providertx.h>
@@ -100,12 +101,12 @@ static void SignTransaction(CMutableTransaction& tx, const CKey& coinbaseKey)
     }
 }
 
-static CMutableTransaction CreateProRegTx(SimpleUTXOMap& utxos, int port, const CScript& scriptPayout, const CKey& coinbaseKey, CKey& ownerKeyRet, CBLSSecretKey& operatorKeyRet)
+static CMutableTransaction CreateProRegTx(SimpleUTXOMap& utxos, int port, const CScript& scriptPayout, const CKey& coinbaseKey, CKey& ownerKeyRet, CBLSSecretKey& operatorKeyRet, CAmount collateralOverride = 0)
 {
     ownerKeyRet.MakeNewKey(true);
     operatorKeyRet.MakeNewKey();
 
-    CAmount collateralAmount = Params().GetConsensus().nCollaterals.getCollateral(chainActive.Height() < 0 ? 1 : chainActive.Height());
+    CAmount collateralAmount = collateralOverride ? collateralOverride : Params().GetConsensus().nCollaterals.getCollateral(chainActive.Height() < 0 ? 1 : chainActive.Height());
     
     CProRegTx proTx;
     proTx.collateralOutpoint.n = 0;
@@ -247,6 +248,97 @@ static bool CheckTransactionSignature(const CMutableTransaction& tx)
 }
 
 BOOST_AUTO_TEST_SUITE(evo_dip3_activation_tests)
+
+BOOST_FIXTURE_TEST_CASE(collateral_upgrade_boundary, TestChainDIP3Setup)
+{
+    auto& consensus = const_cast<Consensus::Params&>(Params().GetConsensus());
+    struct RestoreCollateralRules {
+        Consensus::Params& params;
+        SmartnodeCollaterals collateral;
+        int height;
+        ~RestoreCollateralRules() {
+            params.nCollaterals = collateral;
+            params.nSmartnodeCollateralUpgradeHeight = height;
+        }
+    } restore{consensus, consensus.nCollaterals, consensus.nSmartnodeCollateralUpgradeHeight};
+    const int expiry = chainActive.Height() + 4;
+    // Reduced test amounts; the new tier is deliberately valid immediately.
+    consensus.nCollaterals = SmartnodeCollaterals(
+        {{expiry - 1, 10 * COIN}, {INT_MAX, 20 * COIN}}, {{INT_MAX, 20}});
+    consensus.nSmartnodeCollateralUpgradeHeight = expiry;
+    auto utxos = BuildSimpleUtxoMap(coinbaseTxns, coinbaseKey);
+    CKey collateralKey, payoutKey, oldOwner, newOwner, externalOwner;
+    CBLSSecretKey oldOperator, newOperator, externalOperator;
+    collateralKey.MakeNewKey(true);
+    payoutKey.MakeNewKey(true);
+    const auto payout = GetScriptForDestination(payoutKey.GetPubKey().GetID());
+    CMutableTransaction funding;
+    FundTransaction(funding, utxos, GetScriptForDestination(collateralKey.GetPubKey().GetID()), 20 * COIN, coinbaseKey);
+    SignTransaction(funding, coinbaseKey);
+    CreateAndProcessBlock({funding}, coinbaseKey);
+    auto oldTx = CreateProRegTx(utxos, 1001, payout, coinbaseKey, oldOwner, oldOperator, 10 * COIN);
+    CreateAndProcessBlock({oldTx}, coinbaseKey);
+    BOOST_REQUIRE_EQUAL(chainActive.Height(), expiry - 2);
+    auto newTx = CreateProRegTx(utxos, 1002, GenerateRandomAddress(), coinbaseKey, newOwner, newOperator, 20 * COIN);
+    auto externalTx = CreateProRegTx(utxos, 1003, GenerateRandomAddress(), coinbaseKey, externalOwner, externalOperator, 20 * COIN);
+    CProRegTx payload;
+    BOOST_REQUIRE(GetTxPayload(externalTx, payload));
+    payload.collateralOutpoint = COutPoint(funding.GetHash(), 0);
+    BOOST_REQUIRE(CMessageSigner::SignMessage(payload.MakeSignString(), payload.vchSig, collateralKey));
+    SetTxPayload(externalTx, payload);
+    SignTransaction(externalTx, coinbaseKey);
+    // Both internal and external new-tier registration are valid before expiry.
+    for (const auto& tx : {newTx, externalTx}) {
+        CValidationState state;
+        BOOST_CHECK(CheckProRegTx(tx, chainActive.Tip(), state, *pcoinsTip));
+    }
+    auto list = deterministicMNManager->GetListAtChainTip();
+    BOOST_REQUIRE(list.GetMNPayeeForBlock(expiry - 1));
+    BOOST_CHECK(list.GetMNPayeeForBlock(expiry - 1)->proTxHash == oldTx.GetHash());
+    // Even with the active tip before expiry, the expired tier cannot be selected
+    // for the candidate expiry block. This checks the original one-block lag.
+    BOOST_CHECK(!list.GetMNPayeeForBlock(expiry));
+    auto beforeExpiry = CreateAndProcessBlock({newTx, externalTx}, coinbaseKey);
+    BOOST_REQUIRE_EQUAL(chainActive.Height(), expiry - 1);
+    list = deterministicMNManager->GetListAtChainTip();
+    BOOST_REQUIRE(list.HasMN(newTx.GetHash()));
+    BOOST_REQUIRE(list.HasMN(externalTx.GetHash()));
+    BOOST_CHECK(list.IsMNValid(oldTx.GetHash()));
+    const auto nextPayee = list.GetMNPayeeForBlock(expiry);
+    BOOST_REQUIRE(nextPayee);
+    BOOST_CHECK(nextPayee->proTxHash != oldTx.GetHash());
+    std::vector<CTxOut> payments;
+    BOOST_REQUIRE(CSmartnodePayments::GetBlockTxOuts(expiry, 4 * COIN, payments, 0));
+    BOOST_REQUIRE_EQUAL(payments.size(), 1);
+    BOOST_CHECK(payments[0].scriptPubKey == nextPayee->pdmnState->scriptPayout);
+    BOOST_CHECK(payments[0].scriptPubKey != payout);
+    CreateAndProcessBlock({}, coinbaseKey);
+    BOOST_REQUIRE_EQUAL(chainActive.Height(), expiry);
+    list = deterministicMNManager->GetListAtChainTip();
+    BOOST_REQUIRE(list.GetMN(nextPayee->proTxHash));
+    BOOST_CHECK_EQUAL(list.GetMN(nextPayee->proTxHash)->pdmnState->nLastPaidHeight, expiry);
+    BOOST_CHECK(!list.IsMNValid(oldTx.GetHash()));
+    BOOST_REQUIRE(list.GetMNPayeeForBlock(expiry + 1));
+    BOOST_CHECK(list.GetMNPayeeForBlock(expiry + 1)->proTxHash != oldTx.GetHash());
+    // Rewind across expiry: both pre-registered new-tier nodes survive, and the
+    // old tier becomes eligible again. No collateral is automatically spent.
+    {
+        LOCK(cs_main);
+        CValidationState state;
+        BOOST_REQUIRE(InvalidateBlock(state, Params(), chainActive.Tip()));
+    }
+    BOOST_REQUIRE_EQUAL(chainActive.Height(), expiry - 1);
+    BOOST_CHECK(chainActive.Tip()->GetBlockHash() == beforeExpiry.GetHash());
+    list = deterministicMNManager->GetListAtChainTip();
+    BOOST_CHECK(list.HasMN(newTx.GetHash()));
+    BOOST_CHECK(list.HasMN(externalTx.GetHash()));
+    BOOST_CHECK(list.IsMNValid(oldTx.GetHash()));
+    Coin coin;
+    const auto oldNode = list.GetMN(oldTx.GetHash());
+    BOOST_REQUIRE(oldNode);
+    BOOST_REQUIRE(GetUTXOCoin(oldNode->collateralOutpoint, coin));
+    BOOST_CHECK_EQUAL(coin.out.nValue, 10 * COIN);
+}
 
 BOOST_FIXTURE_TEST_CASE(dip3_registration_enabled, TestChainDIP3BeforeActivationSetup)
 {

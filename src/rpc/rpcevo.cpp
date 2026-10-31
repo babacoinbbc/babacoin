@@ -552,7 +552,7 @@ bool isValidCollateral(CAmount collateralAmount) {
 	if (!collaterals.isValidCollateral(collateralAmount)) {
 		throw JSONRPCError(RPC_INVALID_COLLATERAL_AMOUNT, strprintf("invalid collateral amount: amount=%d\n", collateralAmount/COIN));
 	}
-	int nHeight = chainActive.Height();
+	int nHeight = chainActive.Height() + 1;
 	if(!collaterals.isPayableCollateral(nHeight, collateralAmount)) {
 		throw JSONRPCError(RPC_INVALID_COLLATERAL_AMOUNT, strprintf("collateral amount is not a payable amount: amount=%d", collateralAmount/COIN));
 	}

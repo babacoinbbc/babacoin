@@ -1,5 +1,17 @@
 # Smartnode setup wizard
 
+Before mainnet block 1,250,000, the collateral amount selector offers both
+1,800,000 and 2,000,000 BBC. The latter can be funded and registered early, with
+no opening-height restriction. Only 2,000,000 BBC remains reward-eligible from
+block 1,250,000. The wizard checks the selected amount against both the current
+and next block, so it will not prepare a registration that is already expiring.
+No existing collateral or registration is converted automatically.
+
+Early 2,000,000 BBC registration requires network-wide validating-node adoption:
+V1 can reject the first block containing such a registration. Read the
+[mandatory upgrade notice](release/mandatory-network-upgrade.md); do not assume
+old wallets remain compatible until the later reward cutoff.
+
 Open **Tools → Smartnode setup wizard**, or the setup button on the Smartnodes
 page. This is a self-operated registration flow with **0% operator reward**.
 Existing-node updates, external signers, delegated operators and automatic VPS

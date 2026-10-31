@@ -32,12 +32,14 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QTemporaryFile>
 #include <QTextStream>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <set>
 #include <algorithm>
+#include <climits>
 
 namespace {
 class CollateralPage final : public QWizardPage {
@@ -93,6 +95,11 @@ SmartnodeWizard::SmartnodeWizard(WalletModel* wallet, FundCollateral fundCollate
     m_readiness->setWordWrap(true);
     m_readiness->setTextInteractionFlags(Qt::TextSelectableByMouse);
     collateralLayout->addWidget(m_readiness);
+    m_collateralAmount = new QComboBox;
+    m_collateralAmount->setObjectName("smartnodeCollateralAmount");
+    m_collateralAmount->setAccessibleName(tr("Collateral amount"));
+    collateralLayout->addWidget(m_collateralAmount);
+    connect(m_collateralAmount, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { refreshCollateral(); });
     m_collateral = new QComboBox;
     m_collateral->setObjectName("smartnodeCollateral");
     m_collateral->setMinimumContentsLength(25);
@@ -101,14 +108,15 @@ SmartnodeWizard::SmartnodeWizard(WalletModel* wallet, FundCollateral fundCollate
     collateralLayout->addWidget(refresh);
     connect(refresh, &QPushButton::clicked, this, [this] { refreshCollateral(); });
     auto* fund = new QPushButton(tr("Prepare a collateral transfer in Send"));
+    fund->setObjectName("smartnodePrepareCollateral");
     collateralLayout->addWidget(fund);
     connect(fund, &QPushButton::clicked, this, [this] {
         if (!m_wallet || m_required <= 0 || !m_fundCollateral) return;
         try {
             const int height = m_wallet->node().getNumBlocks();
             const auto& schedule = Params().GetConsensus().nCollaterals;
-            if (m_wallet->node().isInitialBlockDownload() || schedule.getCollateral(height) != m_required ||
-                schedule.getCollateral(height + 1) != m_required)
+            if (m_wallet->node().isInitialBlockDownload() || !schedule.isPayableCollateral(height, m_required) ||
+                !schedule.isPayableCollateral(height + 1, m_required))
                 throw std::runtime_error("Wait for synchronization and refresh the current collateral requirement before funding.");
             auto unlock = m_wallet->requestUnlock();
             if (!unlock.isValid()) return;
@@ -226,9 +234,30 @@ void SmartnodeWizard::refreshCollateral()
     if (!m_wallet) { m_readiness->setText(tr("No wallet is loaded.")); return; }
     const int height = m_wallet->node().getNumBlocks();
     const auto& consensus = Params().GetConsensus();
-    m_required = consensus.nCollaterals.getCollateral(std::max(0, height));
-    m_readiness->setText(tr("Network: %1\nCurrent height: %2\nRequired collateral: %3\nMinimum confirmations: %4\nA registration fee is separate from the collateral.")
+    {
+        const QSignalBlocker blocker(m_collateralAmount);
+        const CAmount selected = m_collateralAmount->currentData().toLongLong();
+        const auto& schedule = consensus.nCollaterals;
+        const CAmount current = schedule.getCollateral(std::max(0, height));
+        const CAmount finalTier = schedule.getCollateral(INT_MAX);
+        m_collateralAmount->clear();
+        m_collateralAmount->addItem(BBC(current), QVariant::fromValue<qlonglong>(current));
+        if (finalTier != current && schedule.isPayableCollateral(height, finalTier) &&
+            schedule.isPayableCollateral(height + 1, finalTier)) {
+            m_collateralAmount->addItem(tr("%1 — register ahead of the collateral transition").arg(BBC(finalTier)),
+                                        QVariant::fromValue<qlonglong>(finalTier));
+        }
+        const int previous = m_collateralAmount->findData(QVariant::fromValue<qlonglong>(selected));
+        if (previous >= 0) m_collateralAmount->setCurrentIndex(previous);
+        m_required = m_collateralAmount->currentData().toLongLong();
+    }
+    m_readiness->setText(tr("Network: %1\nCurrent height: %2\nSelected collateral: %3\nMinimum confirmations: %4\nA registration fee is separate from the collateral.")
         .arg(QString::fromStdString(m_wallet->node().getNetwork())).arg(height).arg(BBC(m_required)).arg(consensus.nSmartnodeMinimumConfirmations));
+    if (Params().NetworkIDString() == CBaseChainParams::MAIN &&
+        m_required != consensus.nCollaterals.getCollateral(std::max(0, height))) {
+        m_readiness->setText(m_readiness->text() + "\n" +
+            tr("Early final-tier registration requires upgraded network validators. Older nodes may reject its block."));
+    }
     std::vector<COutPoint> registered;
     m_wallet->wallet().listProTxCoins(registered);
     const std::set<COutPoint> used(registered.begin(), registered.end());
@@ -264,8 +293,9 @@ bool SmartnodeWizard::checkReadiness()
         throw std::runtime_error("Wait for synchronization and database processing to finish.");
     const int height = node.getNumBlocks();
     const auto& consensus = Params().GetConsensus();
-    const CAmount required = consensus.nCollaterals.getCollateral(height);
-    if (required != m_required || consensus.nCollaterals.getCollateral(height + 1) != required)
+    const CAmount required = m_required;
+    if (required <= 0 || !consensus.nCollaterals.isPayableCollateral(height, required) ||
+        !consensus.nCollaterals.isPayableCollateral(height + 1, required))
         throw std::runtime_error("The collateral schedule is changing. Refresh after the next block and review again.");
     if (m_selected.amount != required) throw std::runtime_error("The selected collateral amount is no longer current.");
     const auto outputs = m_wallet->wallet().getCoins({m_selected.outpoint});

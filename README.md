@@ -15,6 +15,12 @@ larger, test-gated platform matrix. Download the matching package from the
 Read its release status, checksums, source manifest and migration notes first.
 Release assets are assembled only after every required platform job passes.
 
+**Mandatory network upgrade:** all validating wallets and services must upgrade
+promptly on release, not wait for block 1,250,000. V2 allows early 2,000,000 BBC
+Smartnode registration without an opening block; V1 can reject its first block.
+The 1,800,000 BBC tier stops qualifying for rewards at block 1,250,000.
+Read the [exchange, pool and wallet upgrade notice](doc/release/mandatory-network-upgrade.md).
+
 This is a **release candidate**, not a claim that all historical node versions
 agree or that software is free of defects. V1 and the earlier V2 test release
 remain preserved. Publishing a candidate does not remotely upgrade nodes or
@@ -96,8 +102,10 @@ before doing that. Never put your real `wallet.dat` into a disposable test folde
 
 ## Existing network, explicit rules
 
-V2 retains the audited `main` network identity and schedules; this release adds
-no new collateral activation, reward schedule or genesis block.
+V2 retains the audited `main` network identity and the selected collateral
+expiry height. It fixes payment selection at that boundary and supports early
+registration of the final tier. These rules require a coordinated upgrade from
+V1; retaining the same genesis does not make that upgrade optional.
 
 | Parameter | Existing mainnet value |
 |---|---|
@@ -114,14 +122,16 @@ The existing `main` source already differs from published V1. In particular:
 
 | Existing rule | Schedule / behavior |
 |---|---|
-| Smartnode collateral | 1,800,000 BBC through block 1,249,999; 2,000,000 BBC from block 1,250,000 |
+| Smartnode collateral | 2,000,000 BBC may be registered immediately; 1,800,000 BBC remains reward-eligible through 1,249,999 and expires at 1,250,000 |
 | Founder destination schedule | Existing address change at block 1,250,000; enforcement must be read with the actual validation rules |
 | Spork key rotation | Takes effect on upgrade, not through a new height gate |
 
 All historical collateral tiers remain recorded so historical registrations can
 still be decoded and validated. Registration validity and current payment
 eligibility are different checks. V1 has no 2,000,000-BBC final tier. Do not infer
-network-wide agreement from matching ports or a successful P2P handshake.
+network-wide agreement from matching ports or a successful P2P handshake. The
+upgrade deadline must precede the first 2,000,000 BBC registration, not merely
+the old tier's later expiry. The wizard offers either payable tier before expiry.
 
 **No automatic collateral top-up or coin movement is performed.** An existing
 collateral UTXO cannot be enlarged by sending additional coins to its address.

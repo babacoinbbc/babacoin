@@ -4,12 +4,20 @@
 
 V2.0.0-rc.1 is a release candidate. It retains the audited main-branch network
 identity and schedules, including changes that already existed relative to V1.
-It does not trigger a remote upgrade, move coins or introduce a new activation.
+It does not trigger a remote installation or move coins. This is a mandatory
+network upgrade for V1 validators: 2,000,000 BBC registrations are allowed
+immediately, without an opening-height restriction, and V1 can reject the first
+block containing one. Do not wait until block 1,250,000 to upgrade. See the
+[operator announcement](release/mandatory-network-upgrade.md).
 Check operator/miner adoption and the current chain/spork state before a
 production migration. Arbitrary historical-version agreement is not guaranteed.
 
-The existing collateral schedule changes from 1,800,000 to 2,000,000 BBC at
-height 1,250,000. The existing founder destination schedule also changes there;
+Both 1,800,000 and 2,000,000 BBC collateral can qualify before height 1,250,000.
+The old tier loses reward eligibility starting with that block; the final tier
+has no opening block and can be registered in advance. Payment selection uses
+the candidate block height at expiry, preventing a one-block extension of the
+old tier. Historical registration amounts remain recognized for replay.
+The existing founder destination schedule also changes there;
 actual enforcement must be read with the founder-validation code. The spork key
 rotation is effective on upgrade. Quorum/ChainLocks availability depends on the
 network and valid signed sporks, not only on installing this binary. Do not

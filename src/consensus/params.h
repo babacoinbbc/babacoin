@@ -207,6 +207,8 @@ struct Params {
     FounderPayment nFounderPayment;
     FutureRewardShare nFutureRewardShare;
     SmartnodeCollaterals nCollaterals;
+    // Zero disables the V2 payment-height rule on other networks.
+    int nSmartnodeCollateralUpgradeHeight{0};
     int smartnodePaymentFixedBlock;
     int nFutureForkBlock;
 

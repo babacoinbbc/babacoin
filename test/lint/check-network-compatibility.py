@@ -4,7 +4,8 @@
 This is a source-integrity tripwire, not proof of consensus equivalence or
 security. The network baseline is main@7cdd64b, NOT the older v.1.0.0 release.
 The BLS wrapper, disk decoder, DKG peer attribution, CLI stdout and startup
-rescan checkpoint handling have recorded fixes.
+rescan checkpoint handling have recorded fixes. Five explicit V2 payment-boundary
+exceptions implement the owner's mandatory-upgrade policy, not V1 equivalence.
 A vendor test expectation for OpenSSL 3 is separately recorded. Never
 regenerate it as a routine fix for a failing check: review network impact.
 """
@@ -39,7 +40,7 @@ def main():
     if failures:
         print("\n".join(failures), file=sys.stderr)
         return 1
-    print("PASS: %d network/crypto/wallet source files match the recorded baseline (%s; audited BLS, disk, DKG, CLI-output, vendor-test and startup-rescan fixes recorded separately)" %
+    print("PASS: %d network/crypto/wallet source files match the recorded baseline (%s; BLS, disk, DKG, CLI-output, vendor-test, startup-rescan and V2 payment-boundary exceptions recorded explicitly)" %
           (len(manifest["files"]), manifest["baseline_commit"]))
     return 0
 
