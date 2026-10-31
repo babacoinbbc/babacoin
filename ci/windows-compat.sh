@@ -9,7 +9,7 @@ printf '%s\n' "$GITHUB_SHA" > "$output/SOURCE_COMMIT"
 pacman -Q > "$output/packages.txt"
 gcc --version > "$output/build-environment.txt"
 export JOBS=2
-export CMAKE_GENERATOR=Ninja
+export CMAKE_GENERATOR="MSYS Makefiles"
 export CMAKE_PREFIX_PATH=$MINGW_PREFIX
 deps=$PWD/local-deps
 bash contrib/build-db4.sh "$deps"
