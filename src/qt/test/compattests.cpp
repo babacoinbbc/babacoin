@@ -9,6 +9,10 @@
 #include <compat/byteswap.h>
 #include <qt/guiutil.h>
 #include <QLabel>
+#include <QApplication>
+#include <QFile>
+#include <QSettings>
+#include <QTemporaryDir>
 
 void CompatTests::bswapTests()
 {
@@ -33,4 +37,53 @@ void CompatTests::pixelSizedFont()
     label.setFont(font);
     GUIUtil::updateFonts();
     QVERIFY(label.font().pointSizeF() > 0);
+}
+
+void CompatTests::stylesheetLineEndings()
+{
+    // Exercise the actual loader: Windows checkouts and custom CSS may use CRLF.
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QSettings settings;
+    struct RestoreStyle {
+        QVariant theme;
+        bool hadTheme;
+        ~RestoreStyle()
+        {
+            QSettings settings;
+            if (hadTheme) settings.setValue("theme", theme);
+            else settings.remove("theme");
+            GUIUtil::setStyleSheetDirectory(":css");
+            GUIUtil::loadStyleSheet(true);
+        }
+    } restore{settings.value("theme"), settings.contains("theme")};
+    settings.setValue("theme", "Light");
+    GUIUtil::setStyleSheetDirectory(directory.path());
+    const QByteArray general =
+        "QLabel#base { padding: 1px; }\n"
+        "<os=\"windows,macosx,other\">\n"
+        "QLabel#included { color: #123456; }\n"
+        "</os>\n"
+        "<os=\"not-a-real-platform\">\n"
+        "QLabel#excluded { color: #abcdef; }\n"
+        "</os>\n";
+    auto writeStyles = [&](bool crlf) {
+        for (const auto& name : {"general.css", "light.css"}) {
+            QFile file(directory.filePath(name));
+            if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
+            QByteArray content = QString(name) == "general.css" ? general : QByteArray("QLabel#theme { padding: 2px; }\n");
+            if (crlf) content.replace("\n", "\r\n");
+            if (file.write(content) != content.size()) return false;
+        }
+        return true;
+    };
+    QVERIFY(writeStyles(false));
+    GUIUtil::loadStyleSheet(true);
+    const QString lf = qApp->styleSheet();
+    QVERIFY(lf.contains("QLabel#included"));
+    QVERIFY2(!lf.contains("QLabel#excluded"), qPrintable(lf));
+    QVERIFY(!lf.contains("<os="));
+    QVERIFY(writeStyles(true));
+    GUIUtil::loadStyleSheet(true);
+    QCOMPARE(qApp->styleSheet(), lf);
 }

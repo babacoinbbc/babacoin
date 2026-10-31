@@ -1,0 +1,26 @@
+{
+  "scope": "Synthetic stylesheet inputs and an isolated Windows regtest GUI; no production wallet data",
+  "regression": "CompatTests::stylesheetLineEndings",
+  "before": {
+    "qt_exit_code": 1,
+    "failure": "A later unsupported platform section remained in the loaded stylesheet after an earlier section was processed",
+    "packaged_gui_observation": "Windows resource CSS was malformed; the same executable rendered correctly with LF-normalized external copies of the same CSS"
+  },
+  "fix": [
+    "Normalize CRLF before line-anchored platform matching",
+    "Build filtered output without modifying the input or globally replacing later closing tags",
+    "Require LF checkout for tracked CSS assets"
+  ],
+  "after_local": {
+    "qt_exit_code": 0,
+    "completed_qt_groups": 6,
+    "checks": [
+      "Included platform section retained",
+      "Unsupported platform section removed",
+      "Platform wrapper tags removed",
+      "LF and CRLF inputs produce identical application stylesheets"
+    ],
+    "environment": "Isolated cached UCRT64 Windows build, Qt 5.15.19, GCC 16.1.0",
+    "limit": "Full exact-commit release validation is performed separately by the release workflow"
+  }
+}

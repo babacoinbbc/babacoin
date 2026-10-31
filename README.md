@@ -25,6 +25,8 @@ separate operator coordination and review.
 
 - **Day and night themes:** persistent appearance, keyboard switching and a
   redesigned navigation panel, balance summary and recent-activity view.
+  Theme loading normalizes Windows line endings and safely filters multiple
+  platform-specific CSS sections, with a regression test for both behaviors.
 - **Clear financial information:** the existing balance calculations, pending,
   immature and watch-only fields remain intact. Activity bars describe only the
   displayed recent transactions; they are not price or investment-return charts.

@@ -15,6 +15,7 @@ class CompatTests : public QObject
 private Q_SLOTS:
     void bswapTests();
     void pixelSizedFont();
+    void stylesheetLineEndings();
 };
 
 #endif // BITCOIN_QT_TEST_COMPATTESTS_H

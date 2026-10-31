@@ -1078,6 +1078,9 @@ void loadStyleSheet(bool fForceUpdate)
                 }
 
                 QString strStyle = QLatin1String(qFile.readAll());
+                // Resources from Windows checkouts and custom CSS may use CRLF.
+                // Normalize before matching line-anchored platform sections.
+                strStyle.replace("\r\n", "\n");
                 // Process all <os=...></os> groups in the stylesheet first
                 QRegularExpressionMatch osStyleMatch;
                 QRegularExpression osStyleExp(
@@ -1088,6 +1091,8 @@ void loadStyleSheet(bool fForceUpdate)
                         "$");
                 osStyleExp.setPatternOptions(QRegularExpression::MultilineOption);
                 QRegularExpressionMatchIterator it = osStyleExp.globalMatch(strStyle);
+                QString filteredStyle;
+                int nextOffset = 0;
 
                 // For all <os=...></os> sections
                 while (it.hasNext() && (osStyleMatch = it.next()).isValid()) {
@@ -1098,19 +1103,16 @@ void loadStyleSheet(bool fForceUpdate)
                         throw std::runtime_error(strprintf("%s: Invalid <os=...></os> section in file %s", __func__, file.toStdString()));
                     }
 
-                    for (int i = 0; i < listMatches.size(); i += 4) {
-                        if (!listMatches[i + 1].contains(QString::fromStdString(platformName))) {
-                            // If os is not supported for this styles
-                            // just remove the full match
-                            strStyle.replace(listMatches[i], "");
-                        } else {
-                            // If its supported remove the <os=...></os> tags
-                            strStyle.replace(listMatches[i + 1], "");
-                            strStyle.replace(listMatches[i + 3], "");
-                        }
+                    // Keep the matched input unchanged while iterating. Global
+                    // tag replacement also removed later sections' closing tags.
+                    filteredStyle += strStyle.mid(nextOffset, osStyleMatch.capturedStart() - nextOffset);
+                    if (listMatches[1].contains(QString::fromStdString(platformName))) {
+                        filteredStyle += listMatches[2];
                     }
+                    nextOffset = osStyleMatch.capturedEnd();
                 }
-                stylesheet->append(strStyle);
+                filteredStyle += strStyle.mid(nextOffset);
+                stylesheet->append(filteredStyle);
             }
             return true;
         };
