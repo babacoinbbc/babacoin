@@ -22,6 +22,13 @@
 #include <QPainter>
 #include <QSettings>
 #include <QTimer>
+#include <QScrollArea>
+#include <QCoreApplication>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <cmath>
+#include <algorithm>
 
 #define ITEM_HEIGHT 54
 #define NUM_ITEMS_DISABLED 5
@@ -29,6 +36,44 @@
 #define NUM_ITEMS_ENABLED_ADVANCED 8
 
 Q_DECLARE_METATYPE(interfaces::WalletBalances)
+
+// Bounded presentation of the entries already displayed in the recent list.
+// It never scans wallet history or computes balances, prices or investment returns.
+class WalletActivityGraph : public QWidget
+{
+public:
+    explicit WalletActivityGraph(QWidget* parent = nullptr) : QWidget(parent) { setMinimumHeight(100); }
+    void setValues(const QVector<qint64>& entries) { values = entries; update(); }
+protected:
+    void paintEvent(QPaintEvent*) override
+    {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        const QRectF plot = QRectF(rect()).adjusted(12, 12, -12, -18);
+        const qreal middle = plot.center().y();
+        QColor muted = GUIUtil::getThemedQColor(GUIUtil::ThemedColor::BAREADDRESS);
+        painter.setPen(QPen(muted, 1));
+        if (values.isEmpty()) {
+            painter.drawText(plot, Qt::AlignCenter, QCoreApplication::translate("OverviewPage", "No recent activity"));
+            return;
+        }
+        painter.drawLine(QPointF(plot.left(), middle), QPointF(plot.right(), middle));
+        long double maximum = 1;
+        for (qint64 value : values) maximum = std::max(maximum, std::fabs(static_cast<long double>(value)));
+        const qreal slot = plot.width() / values.size();
+        for (int i = 0; i < values.size(); ++i) {
+            const qreal height = static_cast<qreal>(std::fabs(static_cast<long double>(values[i])) / maximum) * (plot.height() / 2 - 6);
+            const QColor color = GUIUtil::getThemedQColor(values[i] >= 0 ? GUIUtil::ThemedColor::GREEN : GUIUtil::ThemedColor::RED);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(color);
+            const qreal width = std::min(qreal(28), slot * 0.55);
+            const qreal x = plot.left() + slot * i + (slot - width) / 2;
+            painter.drawRoundedRect(QRectF(x, values[i] >= 0 ? middle - height : middle, width, height), 3, 3);
+        }
+    }
+private:
+    QVector<qint64> values;
+};
 
 class TxViewDelegate : public QAbstractItemDelegate
 {
@@ -116,14 +161,91 @@ OverviewPage::OverviewPage(QWidget* parent) :
     clientModel(0),
     walletModel(0),
     cachedNumISLocks(-1),
-    txdelegate(new TxViewDelegate(this))
+    txdelegate(new TxViewDelegate(this)),
+    activityGraph(nullptr),
+    emptyTransactions(nullptr),
+    heroBalance(nullptr)
 {
     ui->setupUi(this);
+    setMinimumWidth(640);
+    ui->topLayout->setContentsMargins(22, 8, 22, 22);
+    ui->topLayout->setSpacing(20);
+    ui->horizontalLayout->setSpacing(18);
+    ui->label_5->setText(tr("Balance details"));
+    ui->label_4->setText(tr("Recent transactions"));
+
+    QFrame* hero = new QFrame(this);
+    hero->setObjectName("balanceHero");
+    QHBoxLayout* heroLayout = new QHBoxLayout(hero);
+    heroLayout->setContentsMargins(26, 22, 26, 22);
+    QVBoxLayout* totalLayout = new QVBoxLayout;
+    totalLayout->setSpacing(8);
+    QLabel* totalCaption = new QLabel(tr("Total balance"), hero);
+    totalCaption->setObjectName("heroCaption");
+    totalLayout->addWidget(totalCaption);
+    heroBalance = new QLabel(ui->labelTotal->text(), hero);
+    heroBalance->setObjectName("heroTotal");
+    heroBalance->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    totalLayout->addWidget(heroBalance);
+    QLabel* balanceHint = new QLabel(tr("See spendable and pending amounts below."), hero);
+    balanceHint->setObjectName("balanceHint");
+    balanceHint->setWordWrap(true);
+    totalLayout->addWidget(balanceHint);
+    heroLayout->addLayout(totalLayout, 1);
+    QLabel* coin = new QLabel(hero);
+    coin->setPixmap(QPixmap(":/icons/babacoin").scaled(86, 86, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    heroLayout->addWidget(coin);
+    ui->topLayout->insertWidget(1, hero);
+
+    QFrame* activity = new QFrame(this);
+    activity->setObjectName("activityCard");
+    QVBoxLayout* activityLayout = new QVBoxLayout(activity);
+    activityLayout->setContentsMargins(18, 16, 18, 14);
+    QLabel* activityTitle = new QLabel(tr("Recent movements"), activity);
+    activityTitle->setObjectName("activityTitle");
+    activityLayout->addWidget(activityTitle);
+    QLabel* activityHint = new QLabel(tr("Relative sizes of the entries shown here"), activity);
+    activityHint->setObjectName("activityHint");
+    activityHint->setWordWrap(true);
+    activityLayout->addWidget(activityHint);
+    activityGraph = new WalletActivityGraph(activity);
+    activityGraph->setToolTip(tr("Credits appear above the line; debits below. Exact amounts are shown in recent transactions."));
+    activityLayout->addWidget(activityGraph);
+    ui->verticalLayout_2->addWidget(activity);
+    ui->verticalLayout_2->setSpacing(18);
+
+    emptyTransactions = new QLabel(tr("No recent transactions") + "\n\n" + tr("Your wallet activity will appear here."), this);
+    emptyTransactions->setObjectName("emptyTransactions");
+    emptyTransactions->setAlignment(Qt::AlignCenter);
+    emptyTransactions->setWordWrap(true);
+    ui->verticalLayout->addWidget(emptyTransactions, 1);
+    ui->listTransactions->hide();
+
+    GUIUtil::setFont({heroBalance}, GUIUtil::FontWeight::Bold, 24);
+    GUIUtil::setFont({totalCaption}, GUIUtil::FontWeight::Normal, 10);
+    GUIUtil::setFont({balanceHint}, GUIUtil::FontWeight::Normal, 9);
+    GUIUtil::setFont({activityTitle}, GUIUtil::FontWeight::Bold, 12);
+    GUIUtil::setFont({activityHint}, GUIUtil::FontWeight::Normal, 8);
+    GUIUtil::setFont({emptyTransactions}, GUIUtil::FontWeight::Normal, 11);
+
+    // Scroll the content instead of clipping balances on smaller screens or
+    // when the user's font scale is large. Existing wallet widgets are reused.
+    QWidget* body = new QWidget;
+    body->setObjectName("walletDashboardBody");
+    body->setLayout(ui->topLayout);
+    QScrollArea* scroll = new QScrollArea(this);
+    scroll->setObjectName("walletDashboardScroll");
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidgetResizable(true);
+    scroll->setWidget(body);
+    QVBoxLayout* root = new QVBoxLayout(this);
+    root->setContentsMargins(0, 0, 0, 0);
+    root->addWidget(scroll);
 
     GUIUtil::setFont({ui->label_4,
                       ui->label_5,
                       ui->labelCoinJoinHeader
-                     }, GUIUtil::FontWeight::Bold, 16);
+                     }, GUIUtil::FontWeight::Bold, 12);
 
     GUIUtil::setFont({ui->labelTotalText,
                       ui->labelWatchTotal,
@@ -192,6 +314,7 @@ void OverviewPage::setBalance(const interfaces::WalletBalances& balances)
     ui->labelImmature->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.immature_balance, false, BitcoinUnits::separatorAlways));
     ui->labelAnonymized->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.anonymized_balance, false, BitcoinUnits::separatorAlways));
     ui->labelTotal->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.balance + balances.unconfirmed_balance + balances.immature_balance, false, BitcoinUnits::separatorAlways));
+    heroBalance->setText(ui->labelTotal->text());
     ui->labelWatchAvailable->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.watch_only_balance, false, BitcoinUnits::separatorAlways));
     ui->labelWatchPending->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.unconfirmed_watch_only_balance, false, BitcoinUnits::separatorAlways));
     ui->labelWatchImmature->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.immature_watch_only_balance, false, BitcoinUnits::separatorAlways));
@@ -669,14 +792,30 @@ void OverviewPage::SetupTransactionList(int nNumItems)
         filter->setShowInactive(false);
         filter->sort(TransactionTableModel::Date, Qt::DescendingOrder);
         ui->listTransactions->setModel(filter.get());
+        connect(filter.get(), &QAbstractItemModel::rowsInserted, this, &OverviewPage::updateRecentActivity);
+        connect(filter.get(), &QAbstractItemModel::rowsRemoved, this, &OverviewPage::updateRecentActivity);
+        connect(filter.get(), &QAbstractItemModel::modelReset, this, &OverviewPage::updateRecentActivity);
+        connect(filter.get(), &QAbstractItemModel::dataChanged, this, &OverviewPage::updateRecentActivity);
+        connect(filter.get(), &QAbstractItemModel::layoutChanged, this, &OverviewPage::updateRecentActivity);
     }
-
-    if (filter->rowCount() == nNumItems) {
-        return;
-    }
+    updateRecentActivity();
 
     filter->setLimit(nNumItems);
     ui->listTransactions->setMinimumHeight(nNumItems * ITEM_HEIGHT);
+    updateRecentActivity();
+}
+
+void OverviewPage::updateRecentActivity()
+{
+    QVector<qint64> values;
+    // The proxy is bounded; never walk an entire wallet just to draw a chart.
+    const int count = filter ? std::min(filter->rowCount(), NUM_ITEMS_ENABLED_ADVANCED) : 0;
+    for (int row = count - 1; row >= 0; --row) {
+        values.push_back(filter->index(row, 0).data(TransactionTableModel::AmountRole).toLongLong());
+    }
+    activityGraph->setValues(values);
+    emptyTransactions->setVisible(count == 0);
+    ui->listTransactions->setVisible(count != 0);
 }
 
 void OverviewPage::DisableCoinJoinCompletely()

@@ -1968,3 +1968,52 @@ QDialog#HelpMessageDialog QScrollBar:horizontal {
 }
 
 </os>
+
+/* Babacoin wallet dashboard: layout shared by day and night themes. */
+WalletFrame { padding: 0; }
+QWidget#walletPage, QWidget#walletDashboardBody, QScrollArea#walletDashboardScroll { border: none; }
+QToolBar#walletSidebar {
+    min-width: 192px; max-width: 340px; min-height: 0px; max-height: 16777215px;
+    background: #102028; border: none; padding: 0; spacing: 1px;
+}
+QToolBar#walletSidebar QToolButton {
+    min-width: 140px; max-width: 296px; min-height: 1.4em; max-height: 16777215px;
+    padding: 12px; margin: 3px 10px; border: none; border-radius: 10px;
+    background: transparent; color: #b8cad1; text-align: left;
+}
+QToolBar#walletSidebar QToolButton:hover { background: #21343e; color: #f0f5f5; }
+QToolBar#walletSidebar QToolButton:checked { background: #e4be60; color: #14232a; }
+QToolBar#walletSidebar QToolButton:disabled { color: #667b85; }
+QToolBar#walletSidebar QToolButton:focus { border: 1px solid #e4be60; }
+QToolBar#walletSidebar QLabel#walletBrandName { color: #f2f6f6; }
+QToolBar#walletSidebar QLabel#walletBrandCaption { color: #d9b45f; margin-top: 5px; }
+QToolBar#walletSidebar QLabel#sidebarFooter { color: #819aa5; padding: 16px 22px; }
+QWidget#walletHeader { border-bottom: 1px solid transparent; }
+QLabel#walletPageTitle { padding: 0; }
+QLabel#walletPageSubtitle { padding: 0; }
+QToolButton#walletQuickReceive, QToolButton#walletQuickSend {
+    min-width: 74px; min-height: 22px; padding: 9px 15px; border-radius: 9px; }
+QToolButton#walletQuickSend { background: #e4be60; color: #14232a; border: 1px solid #e4be60; }
+QToolButton#walletQuickSend:hover { background: #efce80; }
+QToolButton#walletQuickReceive:focus, QToolButton#walletQuickSend:focus { border: 2px solid #b99137; }
+QWidget#OverviewPage QFrame#balanceHero {
+    border: 1px solid #324d56; border-radius: 16px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #12232c, stop:1 #25464a);
+}
+QFrame#balanceHero QLabel#heroCaption { color: #b8ccd3; }
+QFrame#balanceHero QLabel#heroTotal { color: #fafcfb; min-height: 44px; }
+QFrame#balanceHero QLabel#balanceHint { color: #b7c9cf; }
+QWidget#OverviewPage QFrame#frame, QWidget#OverviewPage QFrame#frame_2,
+QWidget#OverviewPage QFrame#activityCard, QWidget#OverviewPage QFrame#frameCoinJoin {
+    border: 1px solid transparent; border-radius: 13px; padding: 14px;
+}
+QWidget#OverviewPage QFrame#frame { min-width: 285px; }
+QWidget#OverviewPage QFrame#frame_2 { min-width: 345px; }
+QWidget#OverviewPage QLabel#label_4, QWidget#OverviewPage QLabel#label_5,
+QLabel#activityTitle { padding-bottom: 8px; }
+QLabel#activityHint { }
+QLabel#emptyTransactions { min-height: 260px; padding: 24px; }
+QWidget#OverviewPage QListView { border: none; background: transparent; padding: 0; }
+QWidget#OverviewPage QListView::item { border-bottom: 1px solid transparent; }
+
+QLabel#walletNetworkBadge { color: #94722b; border: 1px solid #b99540; border-radius: 7px; padding: 6px 10px; margin-right: 6px; }

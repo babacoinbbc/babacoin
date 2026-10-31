@@ -34,6 +34,7 @@ using namespace boost::placeholders;
 #endif
 
 #include <chainparams.h>
+#include <clientversion.h>
 #include <init.h>
 #include <interfaces/handler.h>
 #include <interfaces/node.h>
@@ -65,6 +66,8 @@ using namespace boost::placeholders;
 #include <QToolButton>
 #include <QUrlQuery>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPainter>
 
 const std::string BitcoinGUI::DEFAULT_UIPLATFORM =
 #if defined(Q_OS_MAC)
@@ -133,8 +136,10 @@ BitcoinGUI::BitcoinGUI(interfaces::Node& node, const NetworkStyle* networkStyle,
 
     QSettings settings;
     if (!restoreGeometry(settings.value("MainWindowGeometry").toByteArray())) {
-        // Restore failed (perhaps missing setting), center the window
-        move(QApplication::desktop()->availableGeometry().center() - frameGeometry().center());
+        // Keep a useful first-run dashboard size while respecting small screens.
+        const QRect available = QApplication::desktop()->availableGeometry();
+        resize(std::min(1280, available.width() - 64), std::min(840, available.height() - 64));
+        move(available.center() - frameGeometry().center());
     }
 
     QString windowTitle = tr(PACKAGE_NAME) + " - ";
@@ -598,10 +603,31 @@ void BitcoinGUI::createToolBars()
     {
         QToolBar *toolbar = new QToolBar(tr("Tabs toolbar"));
         appToolBar = toolbar;
+        toolbar->setObjectName("walletSidebar");
+        toolbar->setOrientation(Qt::Vertical);
+        toolbar->setMinimumWidth(192);
+        toolbar->setMaximumWidth(340);
         toolbar->setContextMenuPolicy(Qt::PreventContextMenu);
-        toolbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        toolbar->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        toolbar->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+        toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
         toolbar->setMovable(false); // remove unused icon in upper left corner
+
+        QWidget* brand = new QWidget(toolbar);
+        brand->setObjectName("walletBrand");
+        QVBoxLayout* brandLayout = new QVBoxLayout(brand);
+        brandLayout->setContentsMargins(18, 20, 18, 22);
+        QLabel* brandIcon = new QLabel(brand);
+        brandIcon->setPixmap(windowIcon().pixmap(58, 58));
+        brandLayout->addWidget(brandIcon);
+        QLabel* brandName = new QLabel(tr("Babacoin"), brand);
+        brandName->setObjectName("walletBrandName");
+        brandLayout->addWidget(brandName);
+        QLabel* brandCaption = new QLabel(tr("BBC WALLET"), brand);
+        brandCaption->setObjectName("walletBrandCaption");
+        brandLayout->addWidget(brandCaption);
+        GUIUtil::setFont({brandName}, GUIUtil::FontWeight::Bold, 18);
+        GUIUtil::setFont({brandCaption}, GUIUtil::FontWeight::Normal, 8);
+        appToolBarLogoAction = toolbar->addWidget(brand);
 
         tabGroup = new QButtonGroup(this);
 
@@ -649,21 +675,49 @@ void BitcoinGUI::createToolBars()
         connect(tabGroup, SIGNAL(buttonToggled(QAbstractButton *, bool)), this, SLOT(highlightTabButton(QAbstractButton *, bool)));
 
         for (auto button : tabGroup->buttons()) {
-            GUIUtil::setFont({button}, GUIUtil::FontWeight::Normal, 16);
-            button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+            GUIUtil::setFont({button}, GUIUtil::FontWeight::Normal, 13);
+            button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             button->setToolTip(button->statusTip());
             button->setCheckable(true);
             toolbar->addWidget(button);
         }
 
+        auto setNavigationIcon = [](QToolButton* button, const QString& name) {
+            // Widgets added with addWidget() do not inherit QToolBar's action style.
+            button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+            QPixmap source(":/icons/" + name);
+            source = source.scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            QIcon icon;
+            for (int state = 0; state < 2; ++state) {
+                QPixmap image(20, 20);
+                image.fill(Qt::transparent);
+                QPainter painter(&image);
+                painter.drawPixmap(0, 0, source);
+                painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+                painter.fillRect(image.rect(), state ? QColor("#14232a") : QColor("#b3c4ca"));
+                painter.end();
+                icon.addPixmap(image, QIcon::Normal, state ? QIcon::On : QIcon::Off);
+            }
+            button->setIcon(icon);
+            button->setIconSize(QSize(20, 20));
+        };
+        setNavigationIcon(overviewButton, "tx_inout");
+        setNavigationIcon(sendCoinsButton, "send");
+        setNavigationIcon(receiveCoinsButton, "receive");
+        setNavigationIcon(historyButton, "transaction_0");
+        setNavigationIcon(coinJoinCoinsButton, "configure");
+        if (smartnodeButton) setNavigationIcon(smartnodeButton, "synced");
         overviewButton->setChecked(true);
         GUIUtil::updateFonts();
 
 #ifdef ENABLE_WALLET
         m_wallet_selector = new QComboBox(this);
+        m_wallet_selector->setMinimumContentsLength(10);
+        m_wallet_selector->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        m_wallet_selector->setMaximumWidth(172);
         connect(m_wallet_selector, SIGNAL(currentIndexChanged(int)), this, SLOT(setCurrentWalletBySelectorIndex(int)));
 
-        QVBoxLayout* walletSelectorLayout = new QVBoxLayout(this);
+        QVBoxLayout* walletSelectorLayout = new QVBoxLayout;
         walletSelectorLayout->addWidget(m_wallet_selector);
         walletSelectorLayout->setSpacing(0);
         walletSelectorLayout->setMargin(0);
@@ -676,23 +730,81 @@ void BitcoinGUI::createToolBars()
         m_wallet_selector_action->setVisible(false);
 #endif
 
-        QLabel *logoLabel = new QLabel();
-        logoLabel->setObjectName("lblToolbarLogo");
-        logoLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        QWidget* navigationSpace = new QWidget(toolbar);
+        navigationSpace->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+        toolbar->addWidget(navigationSpace);
+        QToolButton* appearanceButton = new QToolButton(toolbar);
+        appearanceButton->setObjectName("themeToggle");
+        appearanceButton->setText(tr("Day / Night"));
+        appearanceButton->setToolTip(tr("Switch between day and night mode (Ctrl+Shift+L)"));
+        appearanceButton->setAccessibleName(tr("Switch between day and night mode"));
+        appearanceButton->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_L));
+        connect(appearanceButton, &QToolButton::clicked, this, []() {
+            QSettings().setValue("theme", GUIUtil::getActiveTheme() == "Dark" ? "Light" : "Dark");
+            GUIUtil::loadTheme(true);
+        });
+        toolbar->addWidget(appearanceButton);
+        QToolButton* settingsButton = new QToolButton(toolbar);
+        settingsButton->setText(tr("Settings"));
+        setNavigationIcon(settingsButton, "configure");
+        connect(settingsButton, &QToolButton::clicked, optionsAction, &QAction::trigger);
+        toolbar->addWidget(settingsButton);
+        QLabel* sidebarFooter = new QLabel(tr("Babacoin Core") + "\n" + QString::fromStdString(FormatVersion(CLIENT_VERSION)), toolbar);
+        sidebarFooter->setObjectName("sidebarFooter");
+        toolbar->addWidget(sidebarFooter);
+        GUIUtil::setFont({appearanceButton, settingsButton}, GUIUtil::FontWeight::Normal, 11);
+        GUIUtil::setFont({sidebarFooter}, GUIUtil::FontWeight::Normal, 8);
 
-        appToolBarLogoAction = toolbar->addWidget(logoLabel);
-
-        /** Create additional container for toolbar and walletFrame and make it the central widget.
-            This is a workaround mostly for toolbar styling on Mac OS but should work fine for every other OSes too.
-        */
-        QVBoxLayout *layout = new QVBoxLayout;
+        QWidget* page = new QWidget(this);
+        page->setObjectName("walletPage");
+        QVBoxLayout* pageLayout = new QVBoxLayout(page);
+        pageLayout->setContentsMargins(0, 0, 0, 0);
+        pageLayout->setSpacing(0);
+        QWidget* header = new QWidget(page);
+        header->setObjectName("walletHeader");
+        QHBoxLayout* headerLayout = new QHBoxLayout(header);
+        headerLayout->setContentsMargins(28, 18, 28, 18);
+        QVBoxLayout* heading = new QVBoxLayout;
+        heading->setSpacing(3);
+        QLabel* title = new QLabel(tr("Overview"), header);
+        title->setObjectName("walletPageTitle");
+        heading->addWidget(title);
+        QLabel* subtitle = new QLabel(tr("Babacoin · BBC"), header);
+        subtitle->setObjectName("walletPageSubtitle");
+        heading->addWidget(subtitle);
+        headerLayout->addLayout(heading);
+        headerLayout->addStretch();
+        const QString chain = QString::fromStdString(Params().NetworkIDString());
+        QLabel* networkBadge = new QLabel(chain == "main" ? tr("Main network") : chain.toUpper(), header);
+        networkBadge->setObjectName("walletNetworkBadge");
+        networkBadge->setToolTip(tr("Selected network. Connection and synchronization status are shown below."));
+        headerLayout->addWidget(networkBadge);
+        QToolButton* quickReceive = new QToolButton(header);
+        quickReceive->setObjectName("walletQuickReceive");
+        quickReceive->setText(tr("Receive"));
+        connect(quickReceive, &QToolButton::clicked, receiveCoinsButton, &QToolButton::click);
+        headerLayout->addWidget(quickReceive);
+        QToolButton* quickSend = new QToolButton(header);
+        quickSend->setObjectName("walletQuickSend");
+        quickSend->setText(tr("Send"));
+        connect(quickSend, &QToolButton::clicked, sendCoinsButton, &QToolButton::click);
+        headerLayout->addWidget(quickSend);
+        GUIUtil::setFont({title}, GUIUtil::FontWeight::Bold, 18);
+        GUIUtil::setFont({subtitle}, GUIUtil::FontWeight::Normal, 9);
+        GUIUtil::setFont({networkBadge}, GUIUtil::FontWeight::Normal, 8);
+        GUIUtil::setFont({quickReceive, quickSend}, GUIUtil::FontWeight::Bold, 10);
+        pageLayout->addWidget(header);
+        pageLayout->addWidget(walletFrame, 1);
+        QHBoxLayout* layout = new QHBoxLayout;
         layout->addWidget(toolbar);
-        layout->addWidget(walletFrame);
+        layout->addWidget(page, 1);
         layout->setSpacing(0);
-        layout->setContentsMargins(QMargins());
-        QWidget *containerWidget = new QWidget();
+        layout->setContentsMargins(0, 0, 0, 0);
+        QWidget* containerWidget = new QWidget(this);
+        containerWidget->setObjectName("walletShell");
         containerWidget->setLayout(layout);
         setCentralWidget(containerWidget);
+        GUIUtil::updateFonts();
     }
 #endif // ENABLE_WALLET
 }
@@ -865,6 +977,9 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     }
 #endif // ENABLE_WALLET
 
+    for (const auto& name : {"walletQuickReceive", "walletQuickSend"}) {
+        if (auto* button = findChild<QToolButton*>(name)) button->setEnabled(enabled);
+    }
     sendCoinsMenuAction->setEnabled(enabled);
 #ifdef ENABLE_WALLET
     coinJoinCoinsMenuAction->setEnabled(enabled && clientModel->coinJoinOptions().isEnabled());
@@ -1032,7 +1147,10 @@ void BitcoinGUI::openClicked()
 
 void BitcoinGUI::highlightTabButton(QAbstractButton *button, bool checked)
 {
-    GUIUtil::setFont({button}, checked ? GUIUtil::FontWeight::Bold : GUIUtil::FontWeight::Normal, 16);
+    GUIUtil::setFont({button}, checked ? GUIUtil::FontWeight::Bold : GUIUtil::FontWeight::Normal, 13);
+    if (checked) {
+        if (auto* title = findChild<QLabel*>("walletPageTitle")) title->setText(QString(button->text()).remove('&'));
+    }
     GUIUtil::updateFonts();
 }
 
@@ -1214,21 +1332,10 @@ void BitcoinGUI::updateWidth()
     if (windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen)) {
         return;
     }
-    int nWidthWidestButton{0};
-    int nButtonsVisible{0};
-    for (QAbstractButton* button : tabGroup->buttons()) {
-        if (!button->isEnabled()) {
-            continue;
-        }
-        QFontMetrics fm(button->font());
-        nWidthWidestButton = std::max<int>(nWidthWidestButton, fm.width(button->text()));
-        ++nButtonsVisible;
-    }
-    // Add 30 per button as padding and use minimum 980 which is the minimum required to show all tab's contents
-    // Use nButtonsVisible + 1 <- for the babacoin logo
-    int nWidth = std::max<int>(980, (nWidthWidestButton + 30) * (nButtonsVisible + 1));
-    setMinimumWidth(nWidth);
-    resize(nWidth, height());
+    // Navigation is vertical now; do not multiply label widths or reset the
+    // user's chosen window width when a tab is enabled or disabled.
+    setMinimumWidth(960);
+    if (width() < minimumWidth()) resize(minimumWidth(), height());
 }
 
 void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, const QString& blockHash, double nVerificationProgress, bool header)

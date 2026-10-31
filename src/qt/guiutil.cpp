@@ -4,6 +4,25 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#ifdef WIN32
+#ifdef _WIN32_WINNT
+#undef _WIN32_WINNT
+#endif
+#define _WIN32_WINNT 0x0501
+#ifdef _WIN32_IE
+#undef _WIN32_IE
+#endif
+#define _WIN32_IE 0x0501
+#define WIN32_LEAN_AND_MEAN 1
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <shellapi.h>
+#include <shlobj.h>
+#include <shlwapi.h>
+#endif
+
 #include <qt/guiutil.h>
 
 #include <qt/appearancewidget.h>
@@ -26,23 +45,7 @@
 #include <ui_interface.h>
 #include <util.h>
 
-#ifdef WIN32
-#ifdef _WIN32_WINNT
-#undef _WIN32_WINNT
-#endif
-#define _WIN32_WINNT 0x0501
-#ifdef _WIN32_IE
-#undef _WIN32_IE
-#endif
-#define _WIN32_IE 0x0501
-#define WIN32_LEAN_AND_MEAN 1
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <shellapi.h>
-#include <shlobj.h>
-#include <shlwapi.h>
-#endif
+
 
 #include <boost/scoped_array.hpp>
 
@@ -141,12 +144,12 @@ static std::set<QWidget*> setRectsDisabled;
 #endif
 
 static const std::map<ThemedColor, QColor> themedColors = {
-    { ThemedColor::DEFAULT, QColor(85, 85, 85) },
+    { ThemedColor::DEFAULT, QColor(38, 57, 64) },
     { ThemedColor::UNCONFIRMED, QColor(128, 128, 128) },
     { ThemedColor::BLUE, QColor(0, 141, 228) },
     { ThemedColor::ORANGE, QColor(199, 147, 4) },
-    { ThemedColor::RED, QColor(168, 72, 50) },
-    { ThemedColor::GREEN, QColor(94, 140, 65) },
+    { ThemedColor::RED, QColor(179, 67, 82) },
+    { ThemedColor::GREEN, QColor(29, 122, 101) },
     { ThemedColor::BAREADDRESS, QColor(140, 140, 140) },
     { ThemedColor::TX_STATUS_OPENUNTILDATE, QColor(64, 64, 255) },
     { ThemedColor::BACKGROUND_WIDGET, QColor(234, 234, 236) },
@@ -158,12 +161,12 @@ static const std::map<ThemedColor, QColor> themedColors = {
 };
 
 static const std::map<ThemedColor, QColor> themedDarkColors = {
-    { ThemedColor::DEFAULT, QColor(199, 199, 199) },
+    { ThemedColor::DEFAULT, QColor(223, 233, 237) },
     { ThemedColor::UNCONFIRMED, QColor(170, 170, 170) },
     { ThemedColor::BLUE, QColor(0, 89, 154) },
     { ThemedColor::ORANGE, QColor(199, 147, 4) },
-    { ThemedColor::RED, QColor(168, 72, 50) },
-    { ThemedColor::GREEN, QColor(94, 140, 65) },
+    { ThemedColor::RED, QColor(240, 139, 151) },
+    { ThemedColor::GREEN, QColor(85, 193, 160) },
     { ThemedColor::BAREADDRESS, QColor(140, 140, 140) },
     { ThemedColor::TX_STATUS_OPENUNTILDATE, QColor(64, 64, 255) },
     { ThemedColor::BACKGROUND_WIDGET, QColor(45, 45, 46) },
@@ -1320,27 +1323,8 @@ bool loadFonts()
         return false;
     }
 
-    // Print debug logs for added fonts fetched by the added ids
-    for (const auto& i : vecFontIds) {
-        auto families = QFontDatabase::applicationFontFamilies(i);
-        for (const QString& f : families) {
-            qDebug() << __func__ << ": - Font id " << i << " is family: " << f;
-            const QStringList fontStyles = database.styles(f);
-            for (const QString& style : fontStyles) {
-                qDebug() << __func__ << ": Style for family " << f << " with id: " << i << ": " << style;
-            }
-        }
-    }
-    // Print debug logs for added fonts fetched by the family name
-    const QStringList fontFamilies = database.families();
-    for (const QString& f : fontFamilies) {
-        if (f.contains(family)) {
-            const QStringList fontStyles = database.styles(f);
-            for (const QString& style : fontStyles) {
-                qDebug() << __func__ << ": Family: " << f << ", Style: " << style;
-            }
-        }
-    }
+    // Do not enumerate every system font and log every style during startup.
+    // The two supported families are queried below when their weights are needed.
 
     setApplicationFont();
 
@@ -1515,6 +1499,14 @@ void updateFonts()
         ++nUpdatable;
 
         QFont font = w->font();
+        // QSS and native styles may provide a valid pixel-sized font. Convert
+        // it before caching point sizes; never abort a wallet for that choice.
+        if (font.pointSize() <= 0) {
+            const qreal points = font.pixelSize() > 0
+                ? qreal(font.pixelSize()) * 72.0 / std::max(1, w->logicalDpiY())
+                : defaultFontSize;
+            font.setPointSizeF(std::max(qreal(1), points));
+        }
         assert(font.pointSize() > 0);
         font.setFamily(qApp->font().family());
         font.setWeight(getFontWeightNormal());

@@ -22,6 +22,7 @@ trap 'result=$?; test ! -f config.log || cp config.log "$output/"; exit "$result
     --disable-bench --disable-stacktraces --disable-shared \
     --with-boost="$MINGW_PREFIX" \
     BDB_CFLAGS="-I$deps/include" BDB_LIBS="-L$deps/lib -ldb_cxx-4.8" \
+    BLS_LIBS="-lbls-dash -lgmp -lsodium" \
     CPPFLAGS="-I$deps/include" LDFLAGS="-L$deps/lib"
 make -j"$JOBS" LIBTOOL_APP_LDFLAGS=
 make -C src -j"$JOBS" LIBTOOL_APP_LDFLAGS= test/test_babacoin.exe qt/test/test_babacoin-qt.exe

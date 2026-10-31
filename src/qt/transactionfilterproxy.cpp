@@ -98,6 +98,7 @@ void TransactionFilterProxy::setWatchOnlyFilter(WatchOnlyFilter filter)
 
 void TransactionFilterProxy::setLimit(int limit)
 {
+    if (limitRows == limit) return;
     Q_EMIT layoutAboutToBeChanged();
     this->limitRows = limit;
     Q_EMIT layoutChanged();

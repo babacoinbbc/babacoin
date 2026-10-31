@@ -474,8 +474,9 @@ use_pkgconfig=yes
 case $host in
   *mingw*)
 
-     #pkgconfig does more harm than good with MinGW
-     use_pkgconfig=no
+     # Legacy cross toolchains may lack .pc files. Native MSYS2 builds opt in
+     # with an explicit target pkg-config so transitive dependencies are kept.
+     if test "x$PKG_CONFIG" = x; then use_pkgconfig=no; fi
 
      TARGET_OS=windows
      AC_CHECK_LIB([mingwthrd],      [main],, AC_MSG_ERROR(libmingwthrd missing))
@@ -1460,6 +1461,9 @@ AC_SUBST(TESTDEFS)
 AC_SUBST(LEVELDB_TARGET_FLAGS)
 AC_SUBST(MINIUPNPC_CPPFLAGS)
 AC_SUBST(MINIUPNPC_LIBS)
+AC_ARG_VAR([BLS_LIBS], [BLS library and transitive dependency linker flags])
+if test "x$BLS_LIBS" = x; then BLS_LIBS="-lbls-dash -lgmp"; fi
+AC_SUBST(BLS_LIBS)
 AC_SUBST(CRYPTO_LIBS)
 AC_SUBST(SSL_LIBS)
 AC_SUBST(EVENT_LIBS)

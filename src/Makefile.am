@@ -47,7 +47,7 @@ BITCOIN_INCLUDES=-I$(builddir) $(BDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS) $(
 BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
 BITCOIN_INCLUDES += $(UNIVALUE_CFLAGS)
 
-BLS_LIBS=-lbls-dash -lgmp
+BLS_LIBS=@BLS_LIBS@
 
 LIBBITCOIN_SERVER=libbabacoin_server.a
 LIBBITCOIN_COMMON=libbabacoin_common.a

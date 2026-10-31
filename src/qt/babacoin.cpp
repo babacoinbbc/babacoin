@@ -46,6 +46,9 @@
 #include <boost/thread.hpp>
 
 #include <QApplication>
+#include <QDir>
+#include <QElapsedTimer>
+#include <QEventLoop>
 #include <QDebug>
 #include <QLibraryInfo>
 #include <QLocale>
@@ -369,6 +372,7 @@ void BitcoinApplication::createSplashScreen(const NetworkStyle *networkStyle)
     SplashScreen *splash = new SplashScreen(m_node, 0, networkStyle);
     // We don't hold a direct pointer to the splash screen after creation, but the splash
     // screen will take care of deleting itself when slotFinish happens.
+    splash->showMessage(tr("Preparing the wallet interface..."), Qt::AlignBottom | Qt::AlignLeft, QColor("#dfe9ed"));
     splash->show();
     connect(this, SIGNAL(splashFinished(QWidget*)), splash, SLOT(slotFinish(QWidget*)));
     connect(this, SIGNAL(requestedShutdown()), splash, SLOT(close()));
@@ -556,6 +560,7 @@ static void SetupUIArgs()
     gArgs.AddArg("-allowselfsignedrootcertificates", strprintf("Allow self signed root certificates (default: %u)", DEFAULT_SELFSIGNED_ROOTCERTS), true, OptionsCategory::GUI);
 #endif
     gArgs.AddArg("-choosedatadir", strprintf(QObject::tr("Choose data directory on startup (default: %u)").toStdString(), DEFAULT_CHOOSE_DATADIR), false, OptionsCategory::GUI);
+    gArgs.AddArg("-uiconfigdir=<dir>", "Use an existing absolute directory for isolated GUI settings only. Does not change the network or wallet data directory.", true, OptionsCategory::GUI);
     gArgs.AddArg("-custom-css-dir", "Set a directory which contains custom css files. Those will be used as stylesheets for the UI.", false, OptionsCategory::GUI);
     gArgs.AddArg("-font-family", QObject::tr("Set the font family. Possible values: %1. (default: %2)").arg("SystemDefault, Montserrat").arg(GUIUtil::fontFamilyToString(GUIUtil::getFontFamilyDefault())).toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-font-scale", QObject::tr("Set a scale factor which gets applied to the base font size. Possible range %1 (smallest fonts) to %2 (largest fonts). (default: %3)").arg(-100).arg(100).arg(GUIUtil::getFontScaleDefault()).toStdString(), false, OptionsCategory::GUI);
@@ -620,6 +625,17 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(QAPP_ORG_NAME);
     QApplication::setOrganizationDomain(QAPP_ORG_DOMAIN);
     QApplication::setApplicationName(QAPP_APP_NAME_DEFAULT);
+    // Permit visual QA without reading or changing the user's GUI registry settings.
+    if (gArgs.IsArgSet("-uiconfigdir")) {
+        QDir directory(QString::fromStdString(gArgs.GetArg("-uiconfigdir", "")));
+        if (!directory.isAbsolute() || !directory.exists()) {
+            QMessageBox::critical(nullptr, QObject::tr(PACKAGE_NAME), QObject::tr("The isolated GUI settings directory must already exist and be absolute."));
+            return EXIT_FAILURE;
+        }
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, directory.absolutePath());
+        QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope, directory.absolutePath());
+    }
 
     /// 4. Initialization of translations, so that intro dialog is in user's language
     // Now that QSettings are accessible, initialize translations
@@ -715,12 +731,21 @@ int main(int argc, char *argv[])
     qInstallMessageHandler(DebugMessageHandler);
     // Allow parameter interaction before we create the options model
     app.parameterSetup();
+    // Paint startup feedback before font discovery and interface setup. Core
+    // verification remains unchanged and still runs before the wallet is usable.
+    if (gArgs.GetBoolArg("-splash", DEFAULT_SPLASHSCREEN) && !gArgs.GetBoolArg("-min", false)) {
+        app.createSplashScreen(networkStyle.data());
+        app.processEvents(QEventLoop::ExcludeUserInputEvents);
+    }
+    QElapsedTimer fontTimer;
+    fontTimer.start();
     // Load custom application fonts and setup font management
     if (!GUIUtil::loadFonts()) {
         QMessageBox::critical(0, QObject::tr(PACKAGE_NAME),
                               QObject::tr("Error: Failed to load application fonts."));
         return EXIT_FAILURE;
     }
+    LogPrintf("GUI startup: font setup completed in %d ms\n", fontTimer.elapsed());
     // Load GUI settings from QSettings
     app.createOptionsModel(gArgs.GetBoolArg("-resetguisettings", false));
     // Validate/set font family
@@ -811,8 +836,6 @@ int main(int argc, char *argv[])
     // Subscribe to global signals from core
     std::unique_ptr<interfaces::Handler> handler = node->handleInitMessage(InitMessage);
 
-    if (gArgs.GetBoolArg("-splash", DEFAULT_SPLASHSCREEN) && !gArgs.GetBoolArg("-min", false))
-        app.createSplashScreen(networkStyle.data());
 
     int rv = EXIT_SUCCESS;
     try

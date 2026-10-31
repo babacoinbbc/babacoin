@@ -14,6 +14,8 @@ class ClientModel;
 class TransactionFilterProxy;
 class TxViewDelegate;
 class WalletModel;
+class WalletActivityGraph;
+class QLabel;
 
 namespace Ui {
     class OverviewPage;
@@ -55,12 +57,16 @@ private:
     int cachedNumISLocks;
 
     TxViewDelegate *txdelegate;
+    WalletActivityGraph* activityGraph;
+    QLabel* emptyTransactions;
+    QLabel* heroBalance;
     std::unique_ptr<TransactionFilterProxy> filter;
 
     void SetupTransactionList(int nNumItems);
     void DisableCoinJoinCompletely();
 
 private Q_SLOTS:
+    void updateRecentActivity();
     void toggleCoinJoin();
     void updateDisplayUnit();
     void updateCoinJoinProgress();

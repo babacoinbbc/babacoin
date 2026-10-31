@@ -7,6 +7,8 @@
 #include <qt/test/compattests.h>
 
 #include <compat/byteswap.h>
+#include <qt/guiutil.h>
+#include <QLabel>
 
 void CompatTests::bswapTests()
 {
@@ -20,4 +22,15 @@ void CompatTests::bswapTests()
 	QVERIFY(bswap_16(u1) == e1);
 	QVERIFY(bswap_32(u2) == e2);
 	QVERIFY(bswap_64(u3) == e3);
+}
+
+void CompatTests::pixelSizedFont()
+{
+    QVERIFY(GUIUtil::loadFonts());
+    QLabel label;
+    QFont font = label.font();
+    font.setPixelSize(18);
+    label.setFont(font);
+    GUIUtil::updateFonts();
+    QVERIFY(label.font().pointSizeF() > 0);
 }
