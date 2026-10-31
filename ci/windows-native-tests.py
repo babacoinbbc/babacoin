@@ -14,8 +14,10 @@ output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
 os.environ["PATH"] = str(build / "src") + os.pathsep + os.environ["PATH"]
 os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(build / "src/platforms")
-os.environ["QT_QPA_PLATFORM"] = "minimal"
+os.environ["QT_QPA_PLATFORM"] = "minimal:enable_fonts"
 os.environ["QT_STYLE_OVERRIDE"] = "Fusion"
+os.environ["QT_LOGGING_TO_CONSOLE"] = "1"
+os.environ["QT_FORCE_STDERR_LOGGING"] = "1"
 for name in ("test/test_babacoin", "qt/test/test_babacoin-qt"):
     binary = build / "src" / (name + ".exe")
     log = output / (binary.stem + ".log")

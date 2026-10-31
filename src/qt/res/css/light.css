@@ -278,14 +278,14 @@ QHeaderView
 ******************************************************/
 
 QHeaderView::section { /* Table Header Sections */
-    background-color: #b08c37;
+    background-color: #e4be60;
     border-color: #f2f4f1;
-    color: #f2f4f1;
+    color: #14232a;
 }
 
 QHeaderView::section:hover { /* Table Header Sections */
-    background-color: #a38233;
-    color: #f2f4f1;
+    background-color: #efce80;
+    color: #14232a;
 }
 
 /******************************************************
