@@ -59,5 +59,10 @@ brew list --versions > "$output/packages.txt"
 printf '%s\n' "$GITHUB_SHA" > "$output/SOURCE_COMMIT"
 (cd "$output/bin" && sha256sum * > ../SHA256SUMS)
 archive="babacoin-macos-$(uname -m)-test.tar.gz"
-tar -czf "$output/$archive" -C "$output" bin Babacoin-Qt.app
+cp contrib/desktop/test-wallet.sh "$output/TEST-WALLET.sh"
+cp doc/release/TEST-WALLET-README.txt "$output/TEST-WALLET-README.txt"
+cp COPYING "$output/COPYING"
+cp doc/release/dependency-notices.md "$output/DEPENDENCIES.md"
+chmod +x "$output/TEST-WALLET.sh"
+tar -czf "$output/$archive" -C "$output" bin Babacoin-Qt.app TEST-WALLET.sh TEST-WALLET-README.txt SOURCE_COMMIT COPYING DEPENDENCIES.md runtime-libraries.txt packages.txt
 (cd "$output" && sha256sum "$archive" > "$archive.sha256")

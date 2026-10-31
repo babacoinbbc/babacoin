@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run INSIDE a disposable Ubuntu container, with /src mounted read-only.
+# Run INSIDE a disposable Ubuntu/Debian container, with /src mounted read-only.
 # Never run this dependency installer directly on a production node.
 set -euo pipefail
 test "${BBC_DISPOSABLE_BUILD:-0}" = 1 || { echo 'Run inside a disposable container; see doc/ubuntu-compatibility.md' >&2; exit 2; }
@@ -8,9 +8,11 @@ output=$(cd "$1" && pwd)
 export DEBIAN_FRONTEND=noninteractive
 export JOBS=${JOBS:-2}
 apt-get update
+bsd_tools=bsdextrautils
+if ! apt-cache show "$bsd_tools" >/dev/null 2>&1; then bsd_tools=bsdmainutils; fi
 apt-get install -y --no-install-recommends ca-certificates curl git build-essential \
     libtool autotools-dev automake pkg-config libssl-dev libevent-dev libboost-all-dev \
-    libminiupnpc-dev libzmq3-dev python3 cmake libgmp-dev patch bsdmainutils \
+    libminiupnpc-dev libzmq3-dev python3 cmake libgmp-dev patch "$bsd_tools" \
     qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
     libprotobuf-dev protobuf-compiler libqrencode-dev
 dpkg-query -W -f='${Package}\t${Version}\n' > "$output/packages.tsv"
@@ -35,6 +37,7 @@ trap collect_logs EXIT
 python3 test/lint/check-network-compatibility.py
 python3 test/util/wallet_backup_safety_test.py
 python3 test/util/test_report_safety_test.py
+python3 test/util/release_archive_safety_test.py
 python3 test/util/dkg_sender_safety_test.py
 python3 test/util/bdb_configure_safety_test.py
 # Bionic ships CMake 3.10, but the existing BLS 1.1.0 requires >=3.14.
@@ -76,7 +79,15 @@ for bin in "$output"/bin/*; do
 done
 (cd "$output/bin" && sha256sum * > ../SHA256SUMS)
 . /etc/os-release
-archive="babacoin-ubuntu-$VERSION_ID-$(uname -m).tar.gz"
+cp contrib/desktop/test-wallet.sh "$output/bin/TEST-WALLET.sh"
+cp doc/release/TEST-WALLET-README.txt "$output/bin/TEST-WALLET-README.txt"
+cp "$output/SOURCE_COMMIT" "$output/bin/SOURCE_COMMIT"
+cp "$output/runtime-libraries.txt" "$output/bin/RUNTIME-LIBRARIES.txt"
+cp "$output/packages.tsv" "$output/bin/PACKAGES.tsv"
+cp COPYING "$output/bin/COPYING"
+cp doc/release/dependency-notices.md "$output/bin/DEPENDENCIES.md"
+chmod +x "$output/bin/TEST-WALLET.sh"
+archive="babacoin-$ID-$VERSION_ID-$(uname -m).tar.gz"
 tar -czf "$output/$archive" -C "$output/bin" .
 (cd "$output" && sha256sum "$archive" > "$archive.sha256")
 cp config.log "$output/config.log"

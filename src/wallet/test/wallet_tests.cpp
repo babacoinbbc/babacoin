@@ -5,6 +5,7 @@
 #include <wallet/wallet.h>
 
 #include <iostream>
+#include <cstdio>
 #include <memory>
 #include <set>
 #include <stdint.h>
@@ -16,6 +17,7 @@
 #include <rpc/server.h>
 #include <test/test_babacoin.h>
 #include <validation.h>
+#include <ui_interface.h>
 #include <wallet/coincontrol.h>
 #include <wallet/test/wallet_test_fixture.h>
 
@@ -43,6 +45,86 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
     GetBlockFileInfo(oldTip->GetBlockPos().nFile)->nSize = MAX_BLOCKFILE_SIZE;
     CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()));
     CBlockIndex* newTip = chainActive.Tip();
+
+    // Startup cancellation must preserve the previous persisted scan locator.
+    // Exercise CreateWalletFromFile itself, with an abort at the first progress
+    // notification. No existing wallet or user data is involved.
+    {
+        const WalletLocation location("startup-rescan-abort-test");
+        // The real BDB environment and directory locks are normally process
+        // scoped. Close this test's error stream/locks before fixture cleanup.
+        struct DatabaseCleanup {
+            fs::path path;
+            ~DatabaseCleanup() {
+                std::string filename;
+                auto* env = GetWalletEnv(path, filename);
+                if (env->IsInitialized()) {
+                    FILE* errors = nullptr;
+                    env->dbenv->get_errfile(&errors);
+                    env->Close();
+                    if (errors) std::fclose(errors);
+                    // Later fixtures use in-memory databases without file IDs.
+                    // Keep this closed test cache entry from treating those
+                    // mock handles as physical files in CheckUniqueFileid.
+                    env->Reset();
+                    env->MakeMock();
+                    env->Close();
+                }
+                ReleaseDirectoryLocks();
+            }
+        } cleanup{location.GetPath()};
+        CBlockLocator original;
+        { LOCK(cs_main); original = chainActive.GetLocator(chainActive.Genesis()); }
+        {
+            CWallet seed(location, WalletDatabase::Create(location.GetPath()));
+            bool firstRun = false;
+            BOOST_REQUIRE(seed.LoadWallet(firstRun) == DBErrors::LOAD_OK);
+            AddKey(seed, coinbaseKey);
+            seed.SetBestChain(original);
+        }
+        bool aborted = false;
+        boost::signals2::scoped_connection progress;
+        boost::signals2::scoped_connection init = uiInterface.InitMessage.connect(
+            [&](const std::string& message) {
+                if (message != "Rescanning...") return;
+                auto wallet = GetWallet(location.GetName());
+                if (!wallet) return;
+                progress = wallet->ShowProgress.connect(
+                    [raw = wallet.get(), &aborted](const std::string&, int value) {
+                        if (value == 0) { aborted = true; raw->AbortRescan(); }
+                    });
+            });
+        auto loaded = CWallet::CreateWalletFromFile(location);
+        const bool rejected = !loaded;
+        progress.disconnect();
+        init.disconnect();
+        if (loaded) {
+            UnregisterValidationInterface(loaded.get());
+            RemoveWallet(loaded);
+            loaded.reset();
+        }
+        auto database = WalletDatabase::Create(location.GetPath());
+        CBlockLocator stored;
+        const bool read = WalletBatch(*database).ReadBestBlock(stored);
+        database.reset();
+        BOOST_CHECK(aborted);
+        BOOST_CHECK(rejected);
+        BOOST_CHECK(read);
+        BOOST_CHECK(stored.vHave == original.vHave);
+        // A subsequent uninterrupted startup must retry from the old locator
+        // and recover the owned coinbase transactions instead of skipping them.
+        auto retry = CWallet::CreateWalletFromFile(location);
+        BOOST_CHECK(retry != nullptr);
+        if (retry) {
+            BOOST_CHECK(retry->GetImmatureBalance() > 0);
+            CBlockLocator completed;
+            BOOST_CHECK(WalletBatch(retry->GetDBHandle()).ReadBestBlock(completed));
+            { LOCK(cs_main); BOOST_CHECK(completed.vHave == chainActive.GetLocator().vHave); }
+            UnregisterValidationInterface(retry.get());
+            RemoveWallet(retry);
+            retry.reset();
+        }
+    }
 
     LOCK(cs_main);
 

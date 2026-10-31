@@ -1,6 +1,6 @@
 {
   "baseline_commit": "7cdd64b4435d5fef4f63accfaa1706f2425a3324",
-  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately.",
+  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately. Explicit V2 wallet exception: fail closed on incomplete startup rescan before advancing the persisted checkpoint.",
   "files": [
     {
       "path": "src/amount.h",
@@ -1405,7 +1405,9 @@
     {
       "path": "src/wallet/wallet.cpp",
       "scope": "full",
-      "sha256": "d57632ebe8be3c64d6cc23bd3f15aef1b56645d97be736ca47dfc32d5c1728bf"
+      "sha256": "a61a7a2cf600de61cd2a48c7f82f03550ee6ac3216d35ed6a492a3d25fe35c84",
+      "original_sha256": "d57632ebe8be3c64d6cc23bd3f15aef1b56645d97be736ca47dfc32d5c1728bf",
+      "approved_change": "Fail startup before persisting a new scan locator when rescanning is aborted, interrupted by shutdown, or a block could not be read. Preserve the previous checkpoint for retry; no key, serialization, balance calculation or consensus rule change. Integration regression reproduces old checkpoint advancement and checks successful retry."
     },
     {
       "path": "src/wallet/wallet.h",

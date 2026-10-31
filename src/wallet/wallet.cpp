@@ -5310,7 +5310,12 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(const WalletLocation& loc
             if (!reserver.reserve()) {
                 return error(_("Failed to rescan the wallet during initialization"));
             }
-            walletInstance->ScanForWalletTransactions(pindexRescan, nullptr, reserver, true);
+            CBlockIndex* failedBlock = walletInstance->ScanForWalletTransactions(pindexRescan, nullptr, reserver, true);
+            // Never advance the persisted locator after an incomplete scan.
+            // Otherwise the next startup can skip transactions not yet read.
+            if (failedBlock || walletInstance->IsAbortingRescan() || ShutdownRequested()) {
+                return error(_("Wallet rescan was interrupted or could not read every block. The previous scan checkpoint was preserved; restart to retry."));
+            }
         }
         LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
         walletInstance->SetBestChain(chainActive.GetLocator());

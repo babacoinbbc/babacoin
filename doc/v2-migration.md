@@ -1,0 +1,126 @@
+# V2 migration, configuration and recovery
+
+## Release status and network review
+
+V2.0.0-rc.1 is a release candidate. It retains the audited main-branch network
+identity and schedules, including changes that already existed relative to V1.
+It does not trigger a remote upgrade, move coins or introduce a new activation.
+Check operator/miner adoption and the current chain/spork state before a
+production migration. Arbitrary historical-version agreement is not guaranteed.
+
+The existing collateral schedule changes from 1,800,000 to 2,000,000 BBC at
+height 1,250,000. The existing founder destination schedule also changes there;
+actual enforcement must be read with the founder-validation code. The spork key
+rotation is effective on upgrade. Quorum/ChainLocks availability depends on the
+network and valid signed sporks, not only on installing this binary. Do not
+paste a spork private key, RPC secret, mnemonic or wallet password into GitHub.
+
+A collateral output is an exact-value UTXO. Sending more coins to its address
+cannot enlarge that output. No helper automatically spends or re-registers a
+smartnode collateral. Plan such actions separately with verified ownership and
+operator settings; do not treat a software update as a coin-transfer instruction.
+
+## Existing wallet: preserve the recovery path
+
+1. Record the running version, selected network, actual data directory, current
+   height and synchronization state. Saved GUI preferences may override defaults.
+2. Create a private backup using the running wallet's backup facility / local
+   `backupwallet` RPC. If RPC backup fails, stop and investigate; do not copy a
+   live wallet as a fallback. A filesystem copy is appropriate only after a
+   clean shutdown. Retain the working binary and a recoverable data snapshot.
+3. Verify the release checksums and source/platform manifest. Extract into a
+   new application directory. Do not overwrite the only working installation.
+4. Validate a backup copy in an isolated directory with external P2P disabled
+   before considering production use. The included preview launcher creates a
+   NEW regtest wallet; it does not validate your real wallet backup.
+5. Stop the old application cleanly before any deliberate production start.
+   Never let two applications open the same wallet/data directory concurrently.
+6. Recheck address ownership, transaction history, pending/immature/watch-only
+   amounts, synchronization and smartnode state. Keep RPC private. A successful
+   open alone does not prove all balances or network activations agree.
+
+Cross-version tests used newly generated encrypted and unencrypted wallets.
+They are not a blanket guarantee for every large, previously damaged or
+feature-rich production wallet. No automatic `-upgradewallet`, key export,
+reindex, bootstrap import or OS upgrade is part of V2 setup.
+
+## Paths and independent settings
+
+| Setting | Meaning |
+|---|---|
+| `-datadir=/absolute/path` | Blockchain, wallet and node data; directory must exist |
+| `-conf=/absolute/path/babacoin.conf` | Explicit configuration file |
+| `-uiconfigdir=/absolute/path` | Separate GUI preferences only; existing absolute directory required |
+| `-regtest=1` | Independent development network and test coins |
+| `-connect=0 -listen=0 -dnsseed=0 -discover=0 -upnp=0 -listenonion=0 -maxconnections=0` | Offline P2P test settings |
+
+Default data directories: Linux `~/.babacoin/`, Mac
+`~/Library/Application Support/BabaCoin/`, Windows `%APPDATA%\BabaCoin\`.
+`-uiconfigdir` does not select a wallet or a network. Do not confuse test GUI
+preferences with a production data backup.
+
+## Local RPC configuration
+
+For an operator who deliberately needs local RPC, an example `babacoin.conf` is:
+
+```ini
+server=1
+rpcbind=127.0.0.1
+rpcallowip=127.0.0.1
+rpcport=17668
+```
+
+Local cookie authentication avoids putting a static RPC password in this
+example. Do not expose RPC port 17668 to the Internet. Mainnet P2P uses port
+6678; P2P and RPC are different services. A GUI preview does not require RPC.
+For remote management use a separately reviewed secure transport rather than
+opening public RPC. The restored `share/rpcauth/rpcauth.py` helper is available
+when an operator explicitly requires hashed RPC credentials.
+
+Appearance preferences are stored locally. Day/Night switching and Ctrl+Shift+L
+persist the theme. Existing font family and scaling controls remain available.
+The selected-network badge identifies the configured network; it does not
+claim that synchronization or quorum protection has completed.
+
+## Slow startup and rescanning
+
+Startup may include database loading, block-index verification, wallet loading,
+rescanning and network synchronization. V2 gives earlier visual feedback and
+logs font setup timing. It does not skip verification or mark a required rescan
+complete simply to show a balance sooner.
+
+Do not leave recovery flags such as `-rescan`, `-zapwallettxes` or
+`-salvagewallet` in routine launch scripts without understanding why they are
+required. Do not add explicit overrides that suppress a scan required by the
+wallet. Preserve the last startup log and investigate the phase that consumes
+time; a small fresh-wallet timing is not a benchmark for a large real wallet.
+
+An interrupted, aborted or unreadable-block startup rescan now rejects wallet
+initialization before advancing its persisted scan locator. Restart retries
+from the previous checkpoint; this prioritizes correct transaction discovery
+over showing an incomplete balance. It does not implement per-block checkpoint
+acceleration or eliminate the time needed for a required scan.
+
+## Fresh Linux package helper
+
+Run the reviewed tagged `contrib/install.sh` as a normal user with an explicit
+`BBC_VERSION`. It refuses existing data, binaries, services and running nodes.
+It selects only exact Ubuntu LTS or Debian 12/13 packages and native x86_64 /
+aarch64 architecture, verifies the archive and installs into a new user-owned
+folder. `BBC_INSTALL_DIR` can select another new absolute destination.
+
+The helper never uses sudo, installs dependencies, changes OS security updates,
+interrupts apt/dpkg, changes firewall rules, enables services, starts a daemon or
+creates a wallet. Install the matching runtime libraries deliberately using your
+OS package manager; package/library lists are included in the release. Legacy
+Oracle/seed/OS-upgrade helpers now exit without changes. Review `contrib/README.md`.
+
+## Rollback and future improvements
+
+Keep old binaries and private backups. A rollback must consider wallet feature
+versions, database state, chain state and network rules, not only an executable
+filename. Never downgrade automatically or test rollback against the only data
+copy. Full history replay, broader migration fixtures, physical Pi validation,
+publisher signing/notarization and independent review remain explicit release
+confidence goals. Production consensus changes require separate proposals and
+activation plans.

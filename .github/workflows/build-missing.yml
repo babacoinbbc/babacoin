@@ -65,6 +65,9 @@ jobs:
         Copy-Item desktop-build/src/*.dll package/
         Copy-Item -Recurse desktop-build/src/platforms,desktop-build/licenses package/
         Copy-Item desktop-build/SOURCE_COMMIT,desktop-build/packages.txt,desktop-build/COPYING package/
+        Copy-Item contrib/desktop/test-wallet.cmd package/TEST-WALLET.cmd
+        Copy-Item doc/release/TEST-WALLET-README.txt package/
+        Copy-Item doc/release/dependency-notices.md package/DEPENDENCIES.md
         Compress-Archive -Path package/* -DestinationPath desktop-output/babacoin-windows-x86_64-test.zip
         $hash = (Get-FileHash desktop-output/babacoin-windows-x86_64-test.zip -Algorithm SHA256).Hash.ToLowerInvariant()
         "$hash  babacoin-windows-x86_64-test.zip" | Set-Content -Encoding ascii desktop-output/babacoin-windows-x86_64-test.zip.sha256
@@ -72,6 +75,29 @@ jobs:
       if: always()
       with:
         name: babacoin-tested-windows-x64
+        path: desktop-output
+        if-no-files-found: error
+  windows-arm64-emulation:
+    name: Windows x64 on ARM64 emulation tests
+    needs: windows-build
+    runs-on: windows-11-arm
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+      with:
+        name: babacoin-windows-native-build
+        path: desktop-build
+    - name: Verify ARM64 host and test the packaged x64 binaries
+      shell: pwsh
+      run: |
+        if ($env:RUNNER_ARCH -ne 'ARM64') { throw 'An ARM64 runner is required.' }
+        python ci/windows-native-tests.py desktop-build desktop-output
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: babacoin-tested-windows-arm64-emulation
         path: desktop-output
         if-no-files-found: error
   windows-build:

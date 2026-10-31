@@ -1,0 +1,23 @@
+{
+  "scope": "Fresh test wallet and TestChain100Setup only; no real user wallet.",
+  "pre_fix": {
+    "result": "FAIL as expected",
+    "failed_assertions": [
+      "startup rejected after abort",
+      "persisted locator equals previous checkpoint"
+    ]
+  },
+  "post_fix": {
+    "result": "PASS",
+    "checks": [
+      "aborted initialization rejected",
+      "previous locator preserved",
+      "uninterrupted retry succeeds",
+      "owned coinbases recovered",
+      "completed locator matches chain tip",
+      "existing rescan/pruned-block assertions retained"
+    ]
+  },
+  "production_change": "Return an initialization error before SetBestChain when ScanForWalletTransactions fails, aborts or is interrupted by shutdown. No key format, serialization, balance formula or consensus change.",
+  "test_case": "wallet_tests/rescan"
+}

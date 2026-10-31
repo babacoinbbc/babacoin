@@ -4,6 +4,7 @@ import configparser
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import subprocess
 import sys
@@ -51,6 +52,8 @@ for name in ("src/secp256k1/tests.exe", "src/secp256k1/exhaustive_tests.exe",
                        cwd=directory, timeout=1800)
 assert subprocess.check_output([str(build / "src/bdb-version.exe")], text=True).strip() == "4.8.30"
 report = {"source_commit": (build / "SOURCE_COMMIT").read_text(encoding="utf-8-sig").strip(),
+          "host_runner_architecture": os.environ.get("RUNNER_ARCH", platform.machine()),
+          "executable_architecture": "x86_64",
           "core_cases": 343, "qt_suites": 6, "transaction_utility_cases": 49,
           "rpcauth_cases": 3, "secp256k1_suites": 2, "univalue_suites": 3, "result": "PASS", "binaries_sha256": {}}
 for binary in sorted((build / "src").rglob("*.exe")):

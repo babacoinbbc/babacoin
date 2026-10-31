@@ -1,74 +1,44 @@
-# BabaCoin Contrib Scripts
+# Babacoin operator helpers
 
-Operator scripts and guides for running BabaCoin nodes in production.
+V2 separates package installation, wallet migration, node configuration and
+network administration. No helper is authorized to combine those operations
+silently.
 
-## Oracle Cloud ARM Scripts
+## Verified downloads for fresh Linux installations
 
-These scripts target the default **Oracle Cloud VM.Standard.A1.Flex** ARM instance with the stock Ubuntu image.
+Review the tagged source first. Then run as a regular user:
 
-### `setup-seed-oracle-22.04-arm.sh`
-
-One-shot seed node installer for **Ubuntu 22.04 LTS aarch64**. Installs BabaCoin v2.0.0, configures the daemon, opens firewall ports, and registers a systemd service.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-oracle-22.04-arm.sh | bash
-
-# With specific seed number
-curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-oracle-22.04-arm.sh | SEED_NUM=03 bash
-
-# Non-interactive (for automation)
-curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/setup-seed-oracle-22.04-arm.sh | SEED_NUM=03 AUTO_YES=1 bash
+```sh
+BBC_VERSION=v2.0.0-rc.1 bash contrib/install.sh
 ```
 
-**What it does:**
-1. Checks for existing v2.0.0 (skip binary install if already installed)
-2. Stops any running daemon gracefully
-3. Installs all runtime dependencies (boost 1.74, miniupnpc 17, etc.)
-4. Downloads and installs v2.0.0 ARM64 binary to `/usr/local/bin/`
-5. Auto-detects external IP
-6. Auto-assigns seed number from hostname (e.g. `node-3` → `03`)
-7. Generates `babacoin.conf` with strong random RPC password
-8. Configures UFW and opens Oracle's default iptables DROP policy
-9. Creates systemd service with auto-restart
-10. Starts the daemon and verifies RPC works
+The helper requires an explicit published tag, selects the exact Ubuntu or
+Debian version and native architecture, verifies SHA256, rejects unsafe archive
+members and installs into a new user-owned directory. `BBC_INSTALL_DIR` may
+select a different **new absolute directory**. It does not start applications,
+create wallets, change configuration, require sudo, install dependencies,
+open firewall ports or enable a service. Existing nodes/data are refused.
+Read [migration and settings](../doc/v2-migration.md) before production use.
 
-### `upgrade-oracle-arm-20-to-22.sh`
+Ubuntu packages are never substituted for Debian packages. Raspberry Pi OS
+64-bit follows its Debian base, but physical device testing remains separate.
+Inspect the packaged runtime-library and build-package lists on your exact OS.
 
-Automated in-place upgrade from **Ubuntu 20.04 (Focal)** to **22.04 (Jammy)** on Oracle ARM instances. Uses manual `sources.list` migration which is more reliable than `do-release-upgrade` on EOL 20.04.
+## Existing installations
 
-```bash
-# ALWAYS run inside screen/tmux!
-screen -S upgrade
+Use the running wallet's `backupwallet` operation or copy a cleanly stopped
+wallet privately. A failed RPC backup does not fall back to copying live data.
+`prepare-wallet.sh backup` implements this fail-closed behavior. Do not run a
+new binary against your only wallet copy as a compatibility experiment.
 
-# Take an Oracle Cloud boot volume snapshot FIRST
-curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/upgrade-oracle-arm-20-to-22.sh | bash
-```
+Legacy Oracle/seed setup and automatic OS-upgrade scripts now exit without
+changes. Their previous binary selection, forced package-manager interruption
+and security-update modifications are not part of the V2 installation path.
+Systemd and public P2P configuration are explicit operator decisions; RPC must
+remain private. No private-key export is part of V2 setup.
 
-Env vars:
-- `AUTO_YES=1` - Skip confirmation prompts (only if you know what you're doing)
-- `AUTO_REBOOT=1` - Automatically reboot when upgrade finishes
+## Offline GUI preview
 
-After upgrade completes and you've rebooted, run `setup-seed-oracle-22.04-arm.sh` to install BabaCoin on the fresh 22.04 system.
-
-### `UPGRADE-20.04-TO-22.04.md`
-
-Manual step-by-step guide for the 20.04 → 22.04 upgrade, for operators who prefer not to use the automated script or need to troubleshoot issues.
-
-## Assumptions
-
-- Default user is `ubuntu` with passwordless sudo (Oracle Cloud default)
-- SSH access via key (no password auth)
-- Port 6678/tcp allowed in Oracle Cloud Security List (Ingress Rule)
-- Stable network connection during installation/upgrade
-
-## Non-Oracle Environments
-
-These scripts assume Oracle Cloud defaults. For other environments:
-
-- **DigitalOcean, Hetzner, etc.**: Scripts should work if the default user has passwordless sudo. Check `/etc/sudoers.d/` for your distribution's default.
-- **Bare metal / home server**: Add `ubuntu ALL=(ALL) NOPASSWD:ALL` to sudoers (or adapt the scripts to use interactive sudo).
-- **AWS EC2 Ubuntu**: Works as-is (default `ubuntu` user has NOPASSWD sudo).
-
-## License
-
-Same as BabaCoin Core - MIT License.
+Release packages contain `TEST-WALLET.cmd` or `TEST-WALLET.sh`. Every run creates
+new regtest data and GUI settings with external P2P disabled. Never put a real
+wallet in that test directory.
