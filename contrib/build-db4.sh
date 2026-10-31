@@ -21,9 +21,13 @@ patch -p1 < "$repo/depends/patches/bdb/clang_cxx_11.patch"
 chmod u+w dist/config.guess dist/config.sub
 cp "$repo/depends/config.guess" "$repo/depends/config.sub" dist/
 cd build_unix
+configure_args=(--prefix="$prefix" --disable-shared --enable-cxx --disable-replication)
+case "$(uname -s)" in
+    MINGW*|MSYS*) configure_args+=(--host="$(gcc -dumpmachine)" --enable-mingw) ;;
+esac
 CFLAGS="${CFLAGS:--O2 -fPIC -std=gnu11 -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=incompatible-pointer-types}" \
 CXXFLAGS="${CXXFLAGS:--O2 -fPIC -std=c++17}" \
-    ../dist/configure --prefix="$prefix" --disable-shared --enable-cxx --disable-replication
+    ../dist/configure "${configure_args[@]}"
 make -j"${JOBS:-2}" libdb_cxx-4.8.a libdb-4.8.a
 make install_lib install_include
 echo "BDB_CFLAGS=-I$prefix/include"

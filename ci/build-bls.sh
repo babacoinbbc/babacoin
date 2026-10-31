@@ -24,9 +24,9 @@ cmake ../source -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC \
     -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
-make -j"${JOBS:-2}"
+cmake --build . --parallel "${JOBS:-2}"
 # Upstream's install target preserves nested Relic include paths.
 test -s libbls-dash.a
-make install
+cmake --install .
 test -s "$prefix/lib/libbls-dash.a"
 test -s "$prefix/include/bls-dash/bls.hpp"
