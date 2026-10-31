@@ -77,6 +77,13 @@ differences from V1, not new promises of historical-version compatibility.
 They must be included in operator review; no spork is broadcast by publishing
 this release. PoW, the mainnet genesis, address formats and ports are retained.
 
+Historical founder payments retain the published V1 destination
+`BLbWwABzjJGsSeibe6oJvTK5aEq8Sx7rU9`; the existing future destination is
+`B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT` from block 1,250,000. An earlier
+candidate's incorrect historical address was caught by an existing-data trial
+and is covered by public historical-coinbase regressions. Never approve a
+database rebuild merely to work around that incompatible candidate.
+
 Official source and releases: <https://github.com/babacoinbbc/babacoin>.
 Never disclose a wallet seed, private key, RPC password or spork private key in
 a support ticket or upgrade announcement.

@@ -107,6 +107,12 @@ expiry height. It fixes payment selection at that boundary and supports early
 registration of the final tier. These rules require a coordinated upgrade from
 V1; retaining the same genesis does not make that upgrade optional.
 
+An actual V1 data-directory trial exposed an incorrect historical founder
+destination in the earlier main-branch source. V2 restores the published V1
+destination before the existing 1,250,000 transition, with five public historical
+coinbase regressions. Mainnet founder validation is enforced from its original
+start; historical acceptance is not repaired by skipping those checks.
+
 | Parameter | Existing mainnet value |
 |---|---|
 | Ticker | BBC |

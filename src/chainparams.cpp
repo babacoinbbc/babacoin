@@ -589,7 +589,7 @@ public:
         std::vector<FounderRewardStructure> rewardStructures = {  {INT_MAX, 5} };// 5% founder/dev fee forever
         consensus.nFounderPayment = FounderPayment(rewardStructures, 250,
           std::vector<FounderAddressStructure>{
-            {nFounderAddressChangeHeight - 1, "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF"},
+            {nFounderAddressChangeHeight - 1, "BLbWwABzjJGsSeibe6oJvTK5aEq8Sx7rU9"},
             {INT_MAX, "B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT"}
           });
         // Historical tiers must stay listed: isValidCollateral() matches on amount

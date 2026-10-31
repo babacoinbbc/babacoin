@@ -1,6 +1,6 @@
 {
   "baseline_commit": "7cdd64b4435d5fef4f63accfaa1706f2425a3324",
-  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately. Explicit V2 wallet exception: fail closed on incomplete startup rescan before advancing the persisted checkpoint. Explicit owner-selected V2 consensus exception: candidate-height payment selection at 1,250,000, with immediate early 2M registration retained. Original hashes are preserved in the five affected entries. This is not a claim of V1 consensus compatibility.",
+  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately. Explicit V2 wallet exception: fail closed on incomplete startup rescan before advancing the persisted checkpoint. Explicit owner-selected V2 consensus exception: candidate-height payment selection at 1,250,000, with immediate early 2M registration retained. Original hashes are preserved in the five affected entries. This is not a claim of V1 consensus compatibility. Historical founder correction: mainnet uses the actual published V1 destination and original enforcement start; original hashes retained for chainparams.cpp and consensus/tx_verify.cpp. Five public coinbase fixtures document the observed mismatch. Existing wallet test data is never published.",
   "files": [
     {
       "path": "src/amount.h",
@@ -69,9 +69,9 @@
     {
       "path": "src/chainparams.cpp",
       "scope": "excluding-regtest",
-      "sha256": "91276d694485519de7dcf932bf416b10f2bd4b13397bc1f1a56c44b52f084c0d",
+      "sha256": "8f33b21061fe3c29409396095ffed5a9a3b125d804658c7380cdfe5c0be88892",
       "original_sha256": "7ac121aa8dacfeaa0ed3a42f45a550c807c0a9a8164e9b33ff86c55cf0dd3581",
-      "approved_change": "Keep 1,250,000 expiry, permit immediate 2M registration, and enable candidate-height payment selection at expiry. No start-height restriction is introduced. Owner-selected network policy; requires the documented mandatory validating-node upgrade and independent PR review."
+      "approved_change": "Retain the owner-selected immediate 2M registration and 1,250,000 payment expiry; activate candidate-height payee selection at expiry. Restore the actual V1 historical founder destination BLbWwABzjJGsSeibe6oJvTK5aEq8Sx7rU9 before the existing future founder transition. Proven by public V1 coinbases; no historical-address bypass."
     },
     {
       "path": "src/chainparams.h",
@@ -118,7 +118,9 @@
     {
       "path": "src/consensus/tx_verify.cpp",
       "scope": "full",
-      "sha256": "0a75dd04e1cd25b8cbd964af3fdc457326f2b3249cabfd425327d186b597bbe3"
+      "sha256": "341033122c47f083bf8f04bc52539d9122ff7a6a5ad0a358411ce8d39e2a433c",
+      "original_sha256": "0a75dd04e1cd25b8cbd964af3fdc457326f2b3249cabfd425327d186b597bbe3",
+      "approved_change": "Restore mainnet V1 founder enforcement from the configured start instead of the incompatible height-950000 bypass. Non-main enforcement threshold unchanged. The address schedule, not weaker historical checking, repairs the reproduced existing-chain rejection."
     },
     {
       "path": "src/consensus/tx_verify.h",

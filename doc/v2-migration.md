@@ -3,7 +3,9 @@
 ## Release status and network review
 
 V2.0.0-rc.1 is a release candidate. It retains the audited main-branch network
-identity and schedules, including changes that already existed relative to V1.
+identity and selected future boundaries, including changes already present
+relative to V1. It corrects the historical founder destination to match V1 and
+real mainnet coinbases; the earlier main-branch historical address was wrong.
 It does not trigger a remote installation or move coins. This is a mandatory
 network upgrade for V1 validators: 2,000,000 BBC registrations are allowed
 immediately, without an opening-height restriction, and V1 can reject the first
@@ -22,6 +24,14 @@ actual enforcement must be read with the founder-validation code. The spork key
 rotation is effective on upgrade. Quorum/ChainLocks availability depends on the
 network and valid signed sporks, not only on installing this binary. Do not
 paste a spork private key, RPC secret, mnemonic or wallet password into GitHub.
+
+The historical mainnet founder address is `BLbWwABzjJGsSeibe6oJvTK5aEq8Sx7rU9`,
+as recorded in V1 and sampled public blocks through height 1,060,265. The existing
+future destination is `B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT` from 1,250,000.
+An earlier candidate wrongly expected `BRBe...` for existing blocks and could
+show a misleading "Corrupted block database" prompt. Do not approve reindexing
+as a workaround for that candidate's rule mismatch. Mainnet now retains V1's
+founder enforcement from its configured start instead of a height-950000 bypass.
 
 A collateral output is an exact-value UTXO. Sending more coins to its address
 cannot enlarge that output. No helper automatically spends or re-registers a

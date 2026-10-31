@@ -10,6 +10,7 @@
 #include <consensus/validation.h>
 
 #include <chainparams.h>
+#include <chainparamsbase.h>
 #include <future/fee.h>
 #include <spork.h>
 //#include <future/utils.h>
@@ -257,12 +258,12 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, int nHeig
 		FounderPayment founderPayment = Params().GetConsensus().nFounderPayment;
 		CAmount founderReward = founderPayment.getFounderPaymentAmount(nHeight, blockReward);
 		int founderStartHeight = founderPayment.getStartBlock();
-		// Enforcement only after block 950000 — historical blocks (pre-sync) are
-		// trusted even if they don't carry a founder payment output. This allows
-		// v2.0.0 nodes to sync the existing v1.0.0 network chain without false
-		// positives on the founder check.
-		const int FOUNDER_ENFORCEMENT_HEIGHT = 950000;
-		if(nHeight > founderStartHeight && nHeight >= FOUNDER_ENFORCEMENT_HEIGHT && founderReward && !founderPayment.IsBlockPayeeValid(tx,nHeight,blockReward)) {
+		// Preserve mainnet V1 enforcement from the configured start. Historical sync is
+		// repaired by retaining the actual V1 destination in the address schedule,
+		// not by accepting missing or redirected payments in historical blocks.
+		// Other networks retain their pre-existing enforcement threshold.
+		const bool enforceFounder = Params().NetworkIDString() == CBaseChainParams::MAIN || nHeight >= 950000;
+		if(nHeight > founderStartHeight && enforceFounder && founderReward && !founderPayment.IsBlockPayeeValid(tx,nHeight,blockReward)) {
 			return state.DoS(100, false, REJECT_INVALID, "bad-cb-founder-payment-not-found");
 		}
     }
