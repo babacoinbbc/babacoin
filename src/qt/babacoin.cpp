@@ -12,6 +12,7 @@
 
 #include <chainparams.h>
 #include <qt/clientmodel.h>
+#include <qt/explorerpeers.h>
 #include <fs.h>
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
@@ -230,6 +231,7 @@ private:
     interfaces::Node& m_node;
     OptionsModel *optionsModel;
     ClientModel *clientModel;
+    ExplorerPeers* explorerPeers;
     BitcoinGUI *window;
     QTimer *pollShutdownTimer;
 #ifdef ENABLE_WALLET
@@ -311,6 +313,7 @@ BitcoinApplication::BitcoinApplication(interfaces::Node& node, int &argc, char *
     m_node(node),
     optionsModel(0),
     clientModel(0),
+    explorerPeers(nullptr),
     window(0),
     pollShutdownTimer(0),
 #ifdef ENABLE_WALLET
@@ -324,6 +327,8 @@ BitcoinApplication::BitcoinApplication(interfaces::Node& node, int &argc, char *
 
 BitcoinApplication::~BitcoinApplication()
 {
+    delete explorerPeers;
+    explorerPeers = nullptr;
     if(coreThread)
     {
         qDebug() << __func__ << ": Stopping thread";
@@ -419,6 +424,8 @@ void BitcoinApplication::requestInitialize()
 
 void BitcoinApplication::requestShutdown()
 {
+    delete explorerPeers;
+    explorerPeers = nullptr;
     // Show a simple window indicating shutdown status
     // Do this first as some of the steps may take some time below,
     // for example the RPC console may still be executing a command.
@@ -491,6 +498,9 @@ void BitcoinApplication::initializeResult(bool success)
 
         clientModel = new ClientModel(m_node, optionsModel);
         window->setClientModel(clientModel);
+        explorerPeers = new ExplorerPeers(m_node, this);
+        connect(optionsModel, &OptionsModel::explorerPeersChanged, explorerPeers, &ExplorerPeers::setEnabled);
+        explorerPeers->setEnabled(optionsModel->getExplorerPeers());
 
 #ifdef ENABLE_WALLET
         m_handler_load_wallet = m_node.handleLoadWallet([this](std::unique_ptr<interfaces::Wallet> wallet) {
@@ -571,6 +581,7 @@ static void SetupUIArgs()
     gArgs.AddArg("-font-weight-normal", QObject::tr("Set the font weight for normal texts. Possible range %1 to %2 (default: %3)").arg(0).arg(8).arg(GUIUtil::weightToArg(GUIUtil::getFontWeightNormalDefault())).toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-lang=<lang>", QObject::tr("Set language, for example \"de_DE\" (default: system locale)").toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-min", QObject::tr("Start minimized").toStdString(), false, OptionsCategory::GUI);
+    gArgs.AddArg("-explorerpeers", "Use HTTPS Babacoin Explorer peer hints in the desktop wallet (default: 0; suspended with proxy or explicit network restrictions)", false, OptionsCategory::GUI);
     gArgs.AddArg("-resetguisettings", QObject::tr("Reset all settings changed in the GUI").toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-rootcertificates=<file>", QObject::tr("Set SSL root certificates for payment request (default: -system-)").toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-splash", strprintf(QObject::tr("Show splash screen on startup (default: %u)").toStdString(), DEFAULT_SPLASHSCREEN), false, OptionsCategory::GUI);

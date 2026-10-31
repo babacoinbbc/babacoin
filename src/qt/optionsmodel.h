@@ -67,6 +67,7 @@ public:
         CoinJoinAmount,      // int
         CoinJoinMultiSession,// bool
         Listen,                 // bool
+        ExplorerPeerDiscovery, // bool, Qt-only live preference
         OptionIDRowCount,
     };
 
@@ -86,6 +87,7 @@ public:
     int getDisplayUnit() const { return nDisplayUnit; }
     QString getThirdPartyTxUrls() const { return strThirdPartyTxUrls; }
     bool getProxySettings(QNetworkProxy& proxy) const;
+    bool getExplorerPeers() const;
     bool getCoinControlFeatures() const { return fCoinControlFeatures; }
     bool getShowAdvancedCJUI() { return fShowAdvancedCJUI; }
     const QString& getOverriddenByCommandLine() { return strOverriddenByCommandLine; }
@@ -125,6 +127,7 @@ Q_SIGNALS:
     void AdvancedCJUIChanged(bool);
     void coinControlFeaturesChanged(bool);
     void hideTrayIconChanged(bool);
+    void explorerPeersChanged(bool);
 };
 
 #endif // BITCOIN_QT_OPTIONSMODEL_H

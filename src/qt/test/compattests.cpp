@@ -8,11 +8,15 @@
 
 #include <compat/byteswap.h>
 #include <qt/guiutil.h>
+#include <qt/explorerpeers.h>
 #include <QLabel>
 #include <QApplication>
 #include <QFile>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 void CompatTests::bswapTests()
 {
@@ -86,4 +90,68 @@ void CompatTests::stylesheetLineEndings()
     QVERIFY(writeStyles(true));
     GUIUtil::loadStyleSheet(true);
     QCOMPARE(qApp->styleSheet(), lf);
+}
+
+void CompatTests::explorerPeerSafety()
+{
+    ExplorerPeers::Policy policy;
+    QVERIFY(!ExplorerPeers::Allowed(policy));
+    policy.enabled = true;
+    QVERIFY(ExplorerPeers::Allowed(policy));
+    for (int condition = 0; condition != 9; ++condition) {
+        auto blocked = policy;
+        switch (condition) {
+        case 0: blocked.network = "test"; break;
+        case 1: blocked.network = "regtest"; break;
+        case 2: blocked.active = false; break;
+        case 3: blocked.shuttingDown = true; break;
+        case 4: blocked.explicitPeers = true; break;
+        case 5: blocked.restrictedNetworks = true; break;
+        case 6: blocked.proxy = true; break;
+        case 7: blocked.dnsSeed = false; break;
+        case 8: blocked.maxConnections = 0; break;
+        }
+        QVERIFY(!ExplorerPeers::Allowed(blocked));
+    }
+    const int64_t now = 1700000000;
+    auto encode = [](const QJsonArray& peers) {
+        QJsonObject root;
+        root.insert("addnode_peers", peers);
+        return QJsonDocument(root).toJson(QJsonDocument::Compact);
+    };
+    auto entry = [](QString host, QJsonValue port = QJsonValue(QStringLiteral("6678"))) {
+        QJsonObject object;
+        object.insert("address", host);
+        object.insert("port", port);
+        return object;
+    };
+    QJsonArray valid;
+    valid.append(entry("8.8.8.8"));
+    valid.append(entry("8.8.4.4")); // Same network group, no second hint.
+    valid.append(entry("1.1.1.1", QJsonValue(6678)));
+    valid.append(entry("[2606:4700:4700::1111]"));
+    auto parsed = ExplorerPeers::Parse(encode(valid), now);
+    QCOMPARE(parsed.size(), size_t(3));
+    for (const auto& address : parsed) {
+        QVERIFY(address.IsRoutable());
+        QCOMPARE(address.GetPort(), uint16_t(6678));
+        QCOMPARE(int64_t(address.nTime), now - 3 * 24 * 60 * 60);
+    }
+    QJsonArray hostile;
+    for (const auto& host : {"127.0.0.1", "192.168.1.1", "10.1.2.3", "172.16.0.1", "169.254.1.1",
+                             "0.0.0.0", "::1", "fe80::1", "fc00::1", "::ffff:127.0.0.1",
+                             "localhost", "example.com", "https://8.8.8.8", "8.8.8.8:22", "8.8.8.8\n"}) {
+        hostile.append(entry(host));
+    }
+    hostile.append(entry("8.8.8.8", QJsonValue(22)));
+    hostile.append(entry("8.8.8.8", QJsonValue("6678;anything")));
+    hostile.append(QJsonValue("addnode=8.8.8.8"));
+    QVERIFY(ExplorerPeers::Parse(encode(hostile), now).empty());
+    for (const auto& malformed : {QByteArray("[]"), QByteArray("{}"), QByteArray("not json"),
+                                  QByteArray(ExplorerPeers::MAX_RESPONSE_BYTES + 1, ' ')}) {
+        QVERIFY(ExplorerPeers::Parse(malformed, now).empty());
+    }
+    QJsonArray many;
+    for (int group = 1; group < 40; ++group) many.append(entry(QString("8.%1.1.1").arg(group)));
+    QCOMPARE(ExplorerPeers::Parse(encode(many), now).size(), ExplorerPeers::MAX_PEERS);
 }

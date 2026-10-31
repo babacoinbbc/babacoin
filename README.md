@@ -40,6 +40,15 @@ separate operator coordination and review.
   a single unrelated sender without the individual checks.
 - **Broader packaging:** Ubuntu LTS, Debian, Windows and both Mac architectures,
   plus explicit ARM64 and Windows-on-ARM emulation validation targets.
+- **Optional Explorer discovery:** a live desktop Network preference fetches
+  bounded HTTPS peer hints from the official Explorer. Public IP/port checks,
+  network-group limits and existing peer validation apply; it is off by default.
+- **Smartnode setup wizard:** current-height collateral checks, a separate
+  collateral transfer review, local transaction preparation, exact fee review
+  and explicit registration confirmation. The operator secret stays on the server.
+- **Web Wallet tab:** open the separate Web Wallet in your default browser;
+  local keys and wallet files are never automatically imported. Embedded browser
+  support is future work; test-network previews disable the mainnet launch button.
 - **Isolated previews:** every package includes a launcher that creates new
   regtest data and separate GUI preferences with external P2P disabled.
 
@@ -129,6 +138,9 @@ for local RPC; never publish RPC credentials, seeds or private keys. Keep RPC
 bound to loopback and do not expose it through the public P2P firewall rule.
 Examples and the distinction between `-datadir`, `-conf` and `-uiconfigdir` are in
 [the settings guide](doc/v2-migration.md).
+See [Smartnode setup](doc/smartnode-setup.md) for the wizard's scope and recovery
+steps. The new wizard is a self-operated, zero-operator-reward registration flow;
+it does not deploy or administer a remote VPS.
 
 The verified Linux download helper is optional and **fresh-install only**:
 
@@ -179,6 +191,8 @@ promised financial returns.
    replays. Signing requires the project's actual publisher credentials.
 3. **Wallet capabilities:** improve hardware-wallet integration, offline signing,
    accessibility and transaction workflows after design and security review.
+   Investigate a separately isolated embedded Web Wallet with supported browser
+   engines and updated build tooling; V2 opens the system browser instead.
 4. **Wider clients:** investigate mobile and additional OS targets with explicit
    threat models and real runtime tests. They are not advertised as delivered.
 5. **Network evolution:** publish proposals, compatibility analysis, activation

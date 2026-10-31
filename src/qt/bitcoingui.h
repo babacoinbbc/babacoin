@@ -113,6 +113,7 @@ private:
     QToolButton *coinJoinCoinsButton;
     QToolButton *receiveCoinsButton;
     QToolButton *historyButton;
+    QToolButton* webWalletButton;
     QToolButton *smartnodeButton;
     QAction* appToolBarLogoAction;
     QAction *quitAction;
@@ -275,8 +276,10 @@ private Q_SLOTS:
     void gotoOverviewPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
+    void gotoWebWalletPage();
     /** Switch to smartnode page */
     void gotoSmartnodePage();
+    void showSmartnodeWizard();
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */

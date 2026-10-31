@@ -209,6 +209,9 @@ public:
     //! Get network active.
     virtual bool getNetworkActive() = 0;
 
+    //! Offer untrusted, ordinary mainnet peer candidates; never manual peers.
+    virtual void addPeerAddresses(const std::vector<CAddress>& addresses) = 0;
+
     //! Get tx confirm target.
     virtual unsigned int getTxConfirmTarget() = 0;
 

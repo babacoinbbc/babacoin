@@ -2017,3 +2017,6 @@ QWidget#OverviewPage QListView { border: none; background: transparent; padding:
 QWidget#OverviewPage QListView::item { border-bottom: 1px solid transparent; }
 
 QLabel#walletNetworkBadge { color: #94722b; border: 1px solid #b99540; border-radius: 7px; padding: 6px 10px; margin-right: 6px; }
+QFrame#webWalletCard { border: 1px solid transparent; border-radius: 16px; }
+QPushButton#webWalletOpenButton { background: #e4be60; color: #14232a; border-radius: 8px; padding: 12px 22px; }
+QPushButton#webWalletOpenButton:disabled { background: #bcc5c7; color: #53676f; }

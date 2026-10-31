@@ -117,6 +117,49 @@ Oracle/seed/OS-upgrade helpers now exit without changes. Review `contrib/README.
 
 ## Rollback and future improvements
 
+## Optional Explorer discovery (desktop wallet)
+
+In **Settings → Options → Network**, enable **Discover additional peers from
+Babacoin Explorer**. It is off by default, changes immediately and persists in
+the current GUI preference profile. `babacoin-qt -explorerpeers=1` or
+`-explorerpeers=0` explicitly overrides the preference; this is a desktop option,
+not a new `babacoind` HTTP client.
+
+The fixed HTTPS endpoint is the one used by the Explorer's public network page:
+`https://explorer.babacoin.network/ext/getnetworkpeers/internal`. The Explorer
+sees the client's public IP. The request contains no wallet data, credentials,
+balance or chain height. TLS peer verification stays enabled; redirects and
+cookies are not followed/stored. Requests have a 15-second timeout and a 64-KiB
+response limit, at startup and at most once per 30 minutes while enabled.
+
+Only routable numeric IPv4/IPv6 candidates on mainnet P2P port 6678 are accepted,
+up to 16 per response and one per network group. They enter ordinary address
+discovery with one shared source bucket, not the privileged manual `addnode`
+list. Existing seeds, configured nodes, bans and full peer/block validation
+remain effective. No configuration file is rewritten and no peer is whitelisted.
+
+Fetching pauses on test/regtest, disabled networking, shutdown, configured P2P
+proxies, explicit `-connect`, `-onlynet`, `-dnsseed=0` or nonpositive connection
+limits. Turning the preference off aborts its request and stops refreshes;
+already learned ordinary addresses age normally. Explorer outages or a changed
+API do not prevent the wallet opening or normal discovery continuing.
+
+## Smartnodes and the Web Wallet
+
+The [Smartnode wizard guide](smartnode-setup.md) covers existing-collateral
+registration, separate fee funds, public BLS keys, review and cancellation.
+Its final broadcast requires explicit consent; preparation alone does not submit
+a transaction. A remote VPS is installed and administered separately.
+
+The **Web Wallet** tab opens `https://web.babacoin.network/` in the default
+browser only when requested. Local and web keys, balances and recovery procedures
+are separate; there is no automatic import or wallet/RPC bridge. The mainnet
+website launch is disabled in local test-network previews. Embedded browsing is
+future work requiring a supported browser stack and review of the site's framing
+policy; it is not claimed as included in V2.
+
+## Rollback and future improvements
+
 Keep old binaries and private backups. A rollback must consider wallet feature
 versions, database state, chain state and network rules, not only an executable
 filename. Never downgrade automatically or test rollback against the only data

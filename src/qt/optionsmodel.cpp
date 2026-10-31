@@ -219,6 +219,8 @@ void OptionsModel::Init(bool resetSettings)
 #endif
 
     // Network
+    if (!settings.contains("fExplorerPeers")) settings.setValue("fExplorerPeers", false);
+    if (gArgs.IsArgSet("-explorerpeers")) addOverriddenOption("-explorerpeers");
     if (!settings.contains("fUseUPnP"))
         settings.setValue("fUseUPnP", DEFAULT_UPNP);
     if (!m_node.softSetBoolArg("-upnp", settings.value("fUseUPnP").toBool()))
@@ -428,6 +430,8 @@ QVariant OptionsModel::data(const QModelIndex & index, int role) const
             return settings.value("nThreadsScriptVerif");
         case Listen:
             return settings.value("fListen");
+        case ExplorerPeerDiscovery:
+            return getExplorerPeers();
         default:
             return QVariant();
         }
@@ -650,6 +654,10 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                 setRestartRequired(true);
             }
             break;
+        case ExplorerPeerDiscovery:
+            settings.setValue("fExplorerPeers", value.toBool());
+            Q_EMIT explorerPeersChanged(getExplorerPeers());
+            break;
         default:
             break;
         }
@@ -658,6 +666,12 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
     Q_EMIT dataChanged(index, index);
 
     return successful;
+}
+
+bool OptionsModel::getExplorerPeers() const
+{
+    return gArgs.IsArgSet("-explorerpeers") ? gArgs.GetBoolArg("-explorerpeers", false) :
+        QSettings().value("fExplorerPeers", false).toBool();
 }
 
 /** Updates current unit in memory, settings and emits displayUnitChanged(newUnit) signal */

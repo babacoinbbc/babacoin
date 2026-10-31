@@ -68,6 +68,11 @@ using namespace boost::placeholders;
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPainter>
+#include <QPointer>
+#ifdef ENABLE_WALLET
+#include <qt/smartnodewizard.h>
+#include <qt/walletview.h>
+#endif
 
 const std::string BitcoinGUI::DEFAULT_UIPLATFORM =
 #if defined(Q_OS_MAC)
@@ -98,6 +103,7 @@ BitcoinGUI::BitcoinGUI(interfaces::Node& node, const NetworkStyle* networkStyle,
     appToolBarLogoAction(0),
     overviewButton(0),
     historyButton(0),
+    webWalletButton(nullptr),
     smartnodeButton(0),
     quitAction(0),
     sendCoinsButton(0),
@@ -583,6 +589,10 @@ void BitcoinGUI::createMenuBar()
         tools->addAction(openGraphAction);
         tools->addAction(openPeersAction);
         tools->addAction(openRepairAction);
+#ifdef ENABLE_WALLET
+        QAction* setupSmartnode = tools->addAction(tr("Smartnode setup wizard..."));
+        connect(setupSmartnode, &QAction::triggered, this, &BitcoinGUI::showSmartnodeWizard);
+#endif
         tools->addSeparator();
         tools->addAction(openConfEditorAction);
         tools->addAction(showBackupsAction);
@@ -650,6 +660,10 @@ void BitcoinGUI::createToolBars()
         historyButton->setText(tr("&Transactions"));
         historyButton->setStatusTip(tr("Browse transaction history"));
         tabGroup->addButton(historyButton);
+        webWalletButton = new QToolButton(this);
+        webWalletButton->setText(tr("Web Wallet"));
+        webWalletButton->setStatusTip(tr("Open the separate BBC Web Wallet in your browser"));
+        tabGroup->addButton(webWalletButton);
 
         coinJoinCoinsButton = new QToolButton(this);
         coinJoinCoinsButton->setText(coinJoinCoinsMenuAction->text());
@@ -670,6 +684,7 @@ void BitcoinGUI::createToolBars()
         connect(coinJoinCoinsButton, SIGNAL(clicked()), this, SLOT(gotoCoinJoinCoinsPage()));
         connect(receiveCoinsButton, SIGNAL(clicked()), this, SLOT(gotoReceiveCoinsPage()));
         connect(historyButton, SIGNAL(clicked()), this, SLOT(gotoHistoryPage()));
+        connect(webWalletButton, &QToolButton::clicked, this, &BitcoinGUI::gotoWebWalletPage);
 
         // Give the selected tab button a bolder font.
         connect(tabGroup, SIGNAL(buttonToggled(QAbstractButton *, bool)), this, SLOT(highlightTabButton(QAbstractButton *, bool)));
@@ -705,6 +720,7 @@ void BitcoinGUI::createToolBars()
         setNavigationIcon(sendCoinsButton, "send");
         setNavigationIcon(receiveCoinsButton, "receive");
         setNavigationIcon(historyButton, "transaction_0");
+        setNavigationIcon(webWalletButton, "connect_4");
         setNavigationIcon(coinJoinCoinsButton, "configure");
         if (smartnodeButton) setNavigationIcon(smartnodeButton, "synced");
         overviewButton->setChecked(true);
@@ -970,6 +986,7 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
         coinJoinCoinsButton->setEnabled(enabled && clientModel->coinJoinOptions().isEnabled());
         receiveCoinsButton->setEnabled(enabled);
         historyButton->setEnabled(enabled);
+        webWalletButton->setEnabled(enabled);
         if (smartnodeButton != nullptr) {
             QSettings settings;
             smartnodeButton->setEnabled(enabled && settings.value("fShowSmartnodesTab").toBool());
@@ -1166,6 +1183,12 @@ void BitcoinGUI::gotoHistoryPage()
     if (walletFrame) walletFrame->gotoHistoryPage();
 }
 
+void BitcoinGUI::gotoWebWalletPage()
+{
+    webWalletButton->setChecked(true);
+    if (walletFrame) walletFrame->gotoWebWalletPage();
+}
+
 void BitcoinGUI::gotoSmartnodePage()
 {
     QSettings settings;
@@ -1173,6 +1196,22 @@ void BitcoinGUI::gotoSmartnodePage()
         smartnodeButton->setChecked(true);
         if (walletFrame) walletFrame->gotoSmartnodePage();
     }
+}
+
+void BitcoinGUI::showSmartnodeWizard()
+{
+#ifdef ENABLE_WALLET
+    if (!walletFrame || !walletFrame->currentWalletView() || !walletFrame->currentWalletView()->getWalletModel()) {
+        QMessageBox::information(this, tr("Smartnode setup"), tr("Load a wallet before starting the setup wizard."));
+        return;
+    }
+    QPointer<WalletView> view = walletFrame->currentWalletView();
+    SmartnodeWizard wizard(view->getWalletModel(), [this, view](const QString& address, CAmount amount) {
+        if (!view) return;
+        view->prepareCollateralTransfer(address, amount);
+    }, this);
+    wizard.exec();
+#endif
 }
 
 void BitcoinGUI::gotoReceiveCoinsPage()

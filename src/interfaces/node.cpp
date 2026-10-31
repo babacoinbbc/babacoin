@@ -311,6 +311,18 @@ class NodeImpl : public Node
         }
     }
     bool getNetworkActive() override { return g_connman && g_connman->GetNetworkActive(); }
+    void addPeerAddresses(const std::vector<CAddress>& addresses) override
+    {
+        if (!g_connman || !g_connman->GetNetworkActive() || Params().NetworkIDString() != "main") return;
+        std::vector<CAddress> candidates;
+        for (const auto& address : addresses) {
+            if (candidates.size() == 16) break;
+            if (address.IsRoutable() && address.GetPort() == Params().GetDefaultPort() &&
+                (address.GetNetwork() == NET_IPV4 || address.GetNetwork() == NET_IPV6)) candidates.push_back(address);
+        }
+        // All Explorer hints share one source group; existing seeds and bans remain effective.
+        g_connman->AddNewAddresses(candidates, CAddress());
+    }
     unsigned int getTxConfirmTarget() override { CHECK_WALLET(return ::nTxConfirmTarget); }
     CAmount getRequiredFee(unsigned int tx_bytes) override { CHECK_WALLET(return GetRequiredFee(tx_bytes)); }
     CAmount getMinimumFee(unsigned int tx_bytes,

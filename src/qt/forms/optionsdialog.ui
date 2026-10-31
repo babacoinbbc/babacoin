@@ -451,6 +451,16 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="explorerPeers">
+         <property name="toolTip">
+          <string>Queries explorer.babacoin.network over HTTPS for additional public mainnet peer candidates. The Explorer sees your IP address. Off by default; pauses with a proxy, explicit peers, restricted networks or disabled discovery. Changing this preference takes effect immediately.</string>
+         </property>
+         <property name="text">
+          <string>Discover additional peers from Babacoin Explorer</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QCheckBox" name="connectSocks">
          <property name="toolTip">
           <string>Connect to the Babacoin network through a SOCKS5 proxy.</string>

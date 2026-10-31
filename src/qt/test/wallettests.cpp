@@ -12,6 +12,12 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
+#include <qt/smartnodewizard.h>
+#include <qt/webwalletpage.h>
+#include <wallet/rpcwallet.h>
+#include <rpc/server.h>
+#include <validationinterface.h>
+#include <chainparamsbase.h>
 #include <key_io.h>
 #include <test/test_babacoin.h>
 #include <validation.h>
@@ -33,6 +39,42 @@
 #include <QTextEdit>
 #include <QListView>
 #include <QDialogButtonBox>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QPlainTextEdit>
+#include <QFile>
+#include <QTemporaryDir>
+#include <QRegularExpression>
+
+void WalletTests::smartnodeFundingSafety()
+{
+    const COutPoint collateral(uint256S("01"), 0);
+    const COutPoint feeInput(uint256S("02"), 1);
+    const CScript change = CScript() << OP_TRUE;
+    CMutableTransaction tx;
+    tx.nVersion = 3;
+    tx.nType = TRANSACTION_PROVIDER_REGISTER;
+    tx.vin.emplace_back(feeInput);
+    tx.vout.emplace_back(9000, change);
+    CAmount fee;
+    QVERIFY(SmartnodeSetup::CheckFunding(tx, collateral, change, 10000, 1000, fee));
+    QCOMPARE(fee, CAmount(1000));
+    for (int attack = 0; attack != 8; ++attack) {
+        auto unsafe = tx;
+        CAmount input = 10000, limit = 1000;
+        switch (attack) {
+        case 0: unsafe.vin[0].prevout = collateral; break;
+        case 1: unsafe.vin.push_back(unsafe.vin[0]); break;
+        case 2: unsafe.vout[0].scriptPubKey = CScript() << OP_FALSE; break;
+        case 3: unsafe.vout[0].nValue = 10001; break;
+        case 4: unsafe.vout[0].nValue = -1; break;
+        case 5: limit = 999; break;
+        case 6: input = 9000; break;
+        case 7: unsafe.nType = TRANSACTION_NORMAL; break;
+        }
+        QVERIFY(!SmartnodeSetup::CheckFunding(unsafe, collateral, change, input, limit, fee));
+    }
+}
 
 namespace
 {
@@ -224,4 +266,156 @@ void TestGUI()
 void WalletTests::walletTests()
 {
     TestGUI();
+}
+
+void WalletTests::smartnodeRegistrationWorkflow()
+{
+    // This fixture creates only a private regtest chain; no network threads start.
+    TestChainSetup chain(500);
+    QVERIFY(Params().NetworkIDString() == CBaseChainParams::REGTEST);
+    RegisterWalletRPCCommands(tableRPC);
+    auto wallet = std::make_shared<CWallet>(WalletLocation(), WalletDatabase::CreateMock());
+    AddWallet(wallet);
+    bool firstRun;
+    QCOMPARE(wallet->LoadWallet(firstRun), DBErrors::LOAD_OK);
+    {
+        LOCK(wallet->cs_wallet);
+        wallet->AddKeyPubKey(chain.coinbaseKey, chain.coinbaseKey.GetPubKey());
+    }
+    {
+        LOCK(cs_main);
+        WalletRescanReserver reserver(wallet.get());
+        QVERIFY(reserver.reserve());
+        wallet->ScanForWalletTransactions(chainActive.Genesis(), nullptr, reserver, true);
+    }
+    wallet->SetBroadcastTransactions(true);
+    RegisterValidationInterface(wallet.get());
+    struct Cleanup {
+        std::shared_ptr<CWallet> wallet;
+        ~Cleanup() {
+            SyncWithValidationInterfaceQueue();
+            UnregisterValidationInterface(wallet.get());
+            RemoveWallet(wallet);
+        }
+    } cleanup{wallet};
+    auto node = interfaces::MakeNode();
+    OptionsModel options(*node);
+    WalletModel model(std::move(node->getWallets()[0]), *node, &options);
+    auto call = [&](const std::string& name, const UniValue& parameters) {
+        return node->executeRpc(name, parameters, "/wallet/");
+    };
+    auto newAddress = [&] { return call("getnewaddress", UniValue(UniValue::VARR)).get_str(); };
+    const auto collateralAddress = newAddress();
+    const auto feeAddress = newAddress();
+    const auto ownerAddress = newAddress();
+    const auto payoutAddress = newAddress();
+    UniValue recipients(UniValue::VOBJ);
+    recipients.pushKV(collateralAddress, 10);
+    recipients.pushKV(feeAddress, 5);
+    UniValue send(UniValue::VARR); send.push_back(""); send.push_back(recipients);
+    const uint256 fundingHash = uint256S(call("sendmany", send).get_str());
+    const auto funding = model.wallet().getTx(fundingHash);
+    QVERIFY(funding);
+    chain.CreateAndProcessBlock({CMutableTransaction(*funding)}, GetScriptForRawPubKey(chain.coinbaseKey.GetPubKey()));
+    SyncWithValidationInterfaceQueue();
+    COutPoint collateral;
+    for (size_t i = 0; i < funding->vout.size(); ++i) {
+        if (funding->vout[i].nValue == 10 * COIN) collateral = COutPoint(fundingHash, i);
+    }
+    QVERIFY(!collateral.IsNull());
+    QVERIFY(!model.wallet().isLockedCoin(collateral));
+    CBLSSecretKey operatorSecret;
+    operatorSecret.MakeNewKey();
+    const QString publicKey = QString::fromStdString(operatorSecret.GetPublicKey().ToString());
+    const auto initialMempool = mempool.size();
+
+    for (bool submit : {false, true}) {
+        QVERIFY(!model.wallet().isLockedCoin(collateral)); // Cancelling the previous preparation restored its new lock.
+        SmartnodeWizard wizard(&model, {});
+        QString message;
+        bool allowBroadcast = false;
+        QTimer dialogs(&wizard);
+        dialogs.setInterval(10);
+        connect(&dialogs, &QTimer::timeout, &wizard, [&] {
+            for (QWidget* widget : QApplication::topLevelWidgets()) {
+                auto* box = qobject_cast<QMessageBox*>(widget);
+                if (!box || box->parentWidget() != &wizard) continue;
+                message = box->text();
+                if (box->button(QMessageBox::Yes)) box->button(allowBroadcast ? QMessageBox::Yes : QMessageBox::Cancel)->click();
+                else if (box->button(QMessageBox::Ok)) box->button(QMessageBox::Ok)->click();
+            }
+        });
+        dialogs.start();
+        wizard.show();
+        wizard.next();
+        QCOMPARE(wizard.currentId(), 1);
+        auto set = [&](const char* name, const QString& value) {
+            auto* field = wizard.findChild<QLineEdit*>(name);
+            if (!field) return false;
+            field->setText(value);
+            return true;
+        };
+        QVERIFY(set("smartnodeService", QString("127.0.0.1:%1").arg(Params().GetDefaultPort())));
+        QVERIFY(set("smartnodeOperatorPublic", publicKey));
+        QVERIFY(set("smartnodeOwner", QString::fromStdString(ownerAddress)));
+        QVERIFY(set("smartnodePayout", QString::fromStdString(payoutAddress)));
+        auto* source = wizard.findChild<QComboBox*>("smartnodeFeeSource");
+        QVERIFY(source);
+        source->setEditText(QString::fromStdString(feeAddress));
+        wizard.next();
+        QVERIFY2(wizard.currentId() == 2, qPrintable(message));
+        QCOMPARE(mempool.size(), initialMempool); // Preparation and dry-run do not relay or insert.
+        QVERIFY(model.wallet().isLockedCoin(collateral));
+        if (!submit) {
+            wizard.reject();
+        } else {
+            wizard.accept(); // An unchecked consent box must prevent broadcasting.
+            QCOMPARE(mempool.size(), initialMempool);
+            auto* consent = wizard.findChild<QCheckBox*>("smartnodeRegistrationConsent");
+            QVERIFY(consent);
+            consent->setChecked(true);
+            allowBroadcast = true; // Explicitly permit only this fixture's regtest confirmation.
+            wizard.accept();
+            QVERIFY2(wizard.result() == QDialog::Accepted, qPrintable(message));
+            QCOMPARE(mempool.size(), initialMempool + 1);
+        }
+    }
+    QVERIFY(model.wallet().isLockedCoin(collateral));
+    UniValue query(UniValue::VARR); query.push_back(collateral.hash.ToString()); query.push_back(int64_t(collateral.n));
+    const auto stillUnspent = call("gettxout", query);
+    QVERIFY(!stillUnspent.isNull());
+    QCOMPARE(AmountFromValue(stillUnspent["value"]), 10 * COIN);
+    WebWalletPage web;
+    auto* openWeb = web.findChild<QPushButton*>("webWalletOpenButton");
+    QVERIFY(openWeb && !openWeb->isEnabled()); // Test coins cannot launch the mainnet Web Wallet.
+}
+
+extern UniValue createConfigFile(std::string, std::string, std::string);
+
+void WalletTests::legacyConfigExportSafety()
+{
+    BasicTestingSetup test(CBaseChainParams::REGTEST);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    struct RestoreDirectory {
+        fs::path original{fs::current_path()};
+        ~RestoreDirectory() { boost::system::error_code error; fs::current_path(original, error); }
+    } restore;
+    fs::current_path(directory.path().toStdString());
+    const auto first = createConfigFile("TEST-ONLY-NOT-A-SECRET", "127.0.0.1", "test-collateral").get_str();
+    QFile file(QString::fromStdString(first));
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const auto original = file.readAll();
+    file.close();
+    QVERIFY(original.contains("rpcbind=127.0.0.1\n"));
+    QVERIFY(original.contains(QByteArray("rpcport=") + QByteArray::number(BaseParams().RPCPort()) + '\n'));
+    QVERIFY(QRegularExpression("rpcpassword=[A-Za-z0-9_-]{20}\\n").match(QString::fromUtf8(original)).hasMatch());
+    const auto second = createConfigFile("TEST-ONLY-NOT-A-SECRET", "127.0.0.1", "test-collateral").get_str();
+    QVERIFY(first != second);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.readAll(), original);
+    file.close();
+#ifndef WIN32
+    QVERIFY((fs::status(first).permissions() & (fs::group_all | fs::others_all)) == fs::no_perms);
+#endif
 }

@@ -7,6 +7,10 @@
 #include <consensus/validation.h>
 #include <core_io.h>
 #include <init.h>
+#include <chainparamsbase.h>
+#include <fs.h>
+#include <random.h>
+#include <util.h>
 #include <messagesigner.h>
 #include <rpc/server.h>
 #include <txmempool.h>
@@ -30,14 +34,13 @@
 #include <limits.h>
 #include <iostream>
 #include <fstream>
-#include <boost/random.hpp>
-#include <ctime>
 #include <stdio.h>
 #ifdef WIN32
 #include <direct.h>
 #define getcwd _getcwd
 #else
 #include <unistd.h>
+#include <sys/stat.h>
 #endif
 
 #include <smartnode/smartnode-meta.h>
@@ -51,7 +54,7 @@ std::string get_current_dir()
 {
   char buff[FILENAME_MAX];
   char* r = getcwd(buff, FILENAME_MAX);
-  (void*)r;
+  if (!r) throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot access the current directory for configuration export");
   std::string current_dir(buff);
 //  current_dir += '/';
 #ifdef WIN32
@@ -61,42 +64,17 @@ std::string get_current_dir()
 }
 
 static const std::string LOWER_CASE = "abcdefghijklmnopqrstuvwxyz";
-static const std::string SPECIAL = "~!@#$%^&*+<>[];:,.?|";
+static const std::string SPECIAL = "-_"; // Safe in unquoted configuration values.
 static const std::string NUMBER = "0123456789";
 
 static std::string generateRandomString(int length, bool specialChar)
 {
-  std::time_t now = std::time(0);
-  boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
-  int charOptions = specialChar ? 4 : 3;
-  int specialLength = SPECIAL.length()-1;
-  boost::random::uniform_int_distribution<> randomOption{1, charOptions};
-  boost::random::uniform_int_distribution<> randomChar{0,25};
-  boost::random::uniform_int_distribution<> randomNum{0,9};
-  boost::random::uniform_int_distribution<> randomSpecial{0,specialLength};
+  const std::string alphabet = LOWER_CASE + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + NUMBER + (specialChar ? SPECIAL : "");
   std::string str;
   str.reserve(length);
   for(int i = 0; i < length; i++)
   {
-    int option = randomOption(gen);
-    char ch;
-    switch(option)
-    {
-      case 1:
-        str.push_back(LOWER_CASE[randomChar(gen)]);
-    		break;
-    	case 2:
-    		str.push_back(LOWER_CASE[randomChar(gen)] - 32);
-    		break;
-    	case 3:
-    		str.push_back(NUMBER[randomNum(gen)]);
-    		break;
-    	case 4:
-    		str.push_back(SPECIAL[randomSpecial(gen)]);
-    		break;
-    	default:
-    		continue;
-    }
+    str.push_back(alphabet[GetRandInt(alphabet.size())]);
   }
   return str;
 }
@@ -1132,22 +1110,25 @@ UniValue signMessage(CWallet * const pwallet, std::string strAddress, std::strin
 }
 
 UniValue createConfigFile(string blsPrivateKey, string ip, string address) {
-
-	string fileName = get_current_dir() + "/" + address + "_babacoin.conf";
-	ofstream configFile(fileName);
+	string fileName = get_current_dir() + "/" + address + "_" + GetRandHash().GetHex().substr(0, 16) + "_babacoin.conf";
+	FILE* configFile = fsbridge::fopen(fs::path(fileName), "wbx");
+	if (!configFile) throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot create a new configuration file; registration was not submitted");
+#ifndef WIN32
+	if (fchmod(fileno(configFile), S_IRUSR | S_IWUSR) != 0) {
+	    fclose(configFile);
+	    throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot restrict configuration file permissions; registration was not submitted");
+	}
+#endif
 	string username = generateRandomString(10, false);
 	string password = generateRandomString(20, true);
-	configFile << "rpcuser=" << username << endl;
-	configFile << "rpcpassword=" << password << endl;
-	configFile << "rpcport=8484\n";
-	configFile << "rpcallowip=127.0.0.1\n";
-	configFile << "server=1\n";
-	configFile << "daemon=1\n";
-	configFile << "listen=1\n";
-	configFile << "smartnodeblsprivkey=" << blsPrivateKey << endl;
-	configFile << "externalip=" << ip << endl;
-	configFile.flush();
-	configFile.close();
+	const string content = "rpcuser=" + username + "\nrpcpassword=" + password +
+	    "\nrpcport=" + std::to_string(BaseParams().RPCPort()) +
+	    "\nrpcbind=127.0.0.1\nrpcallowip=127.0.0.1\nserver=1\nlisten=1\nsmartnodeblsprivkey=" +
+	    blsPrivateKey + "\nexternalip=" + ip + "\n";
+	const bool written = fwrite(content.data(), 1, content.size(), configFile) == content.size();
+	const bool committed = written && FileCommit(configFile);
+	const int closed = fclose(configFile);
+	if (!committed || closed != 0) throw JSONRPCError(RPC_INTERNAL_ERROR, "Configuration export failed; registration was not submitted");
 	return fileName;
 }
 
@@ -1191,7 +1172,21 @@ UniValue protx_quick_setup(const JSONRPCRequest& request) {
 	submitRequest.params.push_back("register_submit");
 	submitRequest.params.push_back(prepareResult["tx"]);
 	submitRequest.params.push_back(msg);
-	UniValue txid = protx_register_submit(submitRequest);
+	// Keep an exclusive local recovery file before the irreversible broadcast.
+	UniValue config = createConfigFile(blsKeys["secret"].get_str(), request.params[3].get_str(), prepareResult["collateralAddress"].get_str());
+	UniValue txid;
+	try {
+	    txid = protx_register_submit(submitRequest);
+	} catch (const UniValue& failure) {
+	    UniValue reported = failure;
+	    UniValue data(UniValue::VOBJ);
+	    data.pushKV("configuration_path", config.get_str());
+	    reported.pushKV("data", data);
+	    throw reported;
+	} catch (...) {
+	    LogPrintf("Smartnode configuration retained at %s; check registration status before retrying.\n", config.get_str());
+	    throw;
+	}
 	UniValue result = UniValue(UniValue::VOBJ);
 	//signedMessage
 	result.pushKV("txid", txid.get_str());
@@ -1204,7 +1199,6 @@ UniValue protx_quick_setup(const JSONRPCRequest& request) {
 	result.pushKV("signedMessage", msg.get_str());
 	result.pushKV("operatorPublic", blsKeys["public"].get_str());
 	result.pushKV("operatorSecret", blsKeys["secret"].get_str());
-	UniValue config = createConfigFile( blsKeys["secret"].get_str(),request.params[3].get_str(),  prepareResult["collateralAddress"].get_str());
 	result.pushKV("babacoin.conf",config.get_str());
 
 	return result;

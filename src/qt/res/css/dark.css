@@ -1080,7 +1080,7 @@ QLabel#walletPageSubtitle, QLabel#activityHint, QLabel#emptyTransactions { color
 QToolButton#walletQuickReceive { background: #15232b; color: #e3edf0; border: 1px solid #2b414b; }
 QToolButton#walletQuickReceive:hover { border-color: #b99137; }
 QWidget#OverviewPage QFrame#frame, QWidget#OverviewPage QFrame#frame_2,
-QWidget#OverviewPage QFrame#activityCard, QWidget#OverviewPage QFrame#frameCoinJoin {
+QFrame#webWalletCard, QWidget#OverviewPage QFrame#activityCard, QWidget#OverviewPage QFrame#frameCoinJoin {
     background: #15232b; border-color: #2b414b;
 }
 QWidget#OverviewPage QLabel#label_4, QWidget#OverviewPage QLabel#label_5,
