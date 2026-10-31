@@ -460,6 +460,8 @@ void BitcoinApplication::addWallet(WalletModel* walletModel)
     connect(walletModel, SIGNAL(unload()), this, SLOT(removeWallet()));
 
     m_wallet_models.push_back(walletModel);
+    // Apply registered fonts after newly added wallet widgets are polished.
+    QTimer::singleShot(0, window, []() { GUIUtil::updateFonts(); });
 #endif
 }
 
@@ -512,6 +514,7 @@ void BitcoinApplication::initializeResult(bool success)
         {
             window->show();
         }
+        GUIUtil::updateFonts();
         Q_EMIT splashFinished(window);
 
         // Let the users setup their prefered appearance if there are no settings for it defined yet.
