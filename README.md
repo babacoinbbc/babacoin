@@ -23,6 +23,12 @@ separate operator coordination and review.
 
 ## What changes in V2
 
+![Babacoin V2 desktop wallet in night mode](doc/images/v2-wallet-night.png)
+
+*Windows development preview with isolated regtest data and test coins. The
+supplied gold artwork is retained unchanged and rendered at the sidebar's
+display density. Final release candidates also display the pre-release notice.*
+
 - **Day and night themes:** persistent appearance, keyboard switching and a
   redesigned navigation panel, balance summary and recent-activity view.
   Theme loading normalizes Windows line endings and safely filters multiple

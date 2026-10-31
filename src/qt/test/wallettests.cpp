@@ -408,6 +408,7 @@ void WalletTests::legacyConfigExportSafety()
     const auto original = file.readAll();
     file.close();
     QVERIFY(original.contains("rpcbind=127.0.0.1\n"));
+    QVERIFY(original.startsWith("regtest=1\n"));
     QVERIFY(original.contains(QByteArray("rpcport=") + QByteArray::number(BaseParams().RPCPort()) + '\n'));
     QVERIFY(QRegularExpression("rpcpassword=[A-Za-z0-9_-]{20}\\n").match(QString::fromUtf8(original)).hasMatch());
     const auto second = createConfigFile("TEST-ONLY-NOT-A-SECRET", "127.0.0.1", "test-collateral").get_str();

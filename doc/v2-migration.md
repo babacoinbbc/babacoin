@@ -115,8 +115,6 @@ creates a wallet. Install the matching runtime libraries deliberately using your
 OS package manager; package/library lists are included in the release. Legacy
 Oracle/seed/OS-upgrade helpers now exit without changes. Review `contrib/README.md`.
 
-## Rollback and future improvements
-
 ## Optional Explorer discovery (desktop wallet)
 
 In **Settings → Options → Network**, enable **Discover additional peers from

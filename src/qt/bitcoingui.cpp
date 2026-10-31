@@ -627,15 +627,38 @@ void BitcoinGUI::createToolBars()
         QVBoxLayout* brandLayout = new QVBoxLayout(brand);
         brandLayout->setContentsMargins(18, 20, 18, 22);
         QLabel* brandIcon = new QLabel(brand);
-        brandIcon->setPixmap(windowIcon().pixmap(58, 58));
-        brandLayout->addWidget(brandIcon);
-        QLabel* brandName = new QLabel(tr("Babacoin"), brand);
+        brandIcon->setObjectName("walletBrandIcon");
+        brandIcon->setAlignment(Qt::AlignCenter);
+        brandIcon->setFixedSize(88, 88);
+        brandIcon->setAccessibleName(tr("Babacoin gold logo"));
+        brandLayout->addWidget(brandIcon, 0, Qt::AlignHCenter);
+        QLabel* brandName = new QLabel(brand);
         brandName->setObjectName("walletBrandName");
-        brandLayout->addWidget(brandName);
+        brandName->setAccessibleName(tr("Babacoin"));
+        brandName->setAlignment(Qt::AlignCenter);
+        const QPixmap suppliedBrand(":/images/babacoin_brand_gold");
+        if (!suppliedBrand.isNull()) {
+            const qreal ratio = devicePixelRatioF();
+            auto sidebarPixmap = [&](const QRect& region, const QSize& logicalSize) {
+                QPixmap result = suppliedBrand.copy(region).scaled(
+                    qRound(logicalSize.width() * ratio), qRound(logicalSize.height() * ratio),
+                    Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                result.setDevicePixelRatio(ratio);
+                return result;
+            };
+            // Keep the supplied 5000x912 artwork unchanged. Render its coin and
+            // wordmark as separate views so both remain legible in a narrow rail.
+            brandIcon->setPixmap(sidebarPixmap(QRect(0, 0, 912, 912), QSize(88, 88)));
+            brandName->setPixmap(sidebarPixmap(QRect(1150, 100, 3850, 720), QSize(156, 30)));
+        } else {
+            brandIcon->setPixmap(QIcon(":/icons/babacoin").pixmap(88, 88));
+            brandName->setText(tr("Babacoin"));
+        }
+        brandLayout->addWidget(brandName, 0, Qt::AlignHCenter);
         QLabel* brandCaption = new QLabel(tr("BBC WALLET"), brand);
         brandCaption->setObjectName("walletBrandCaption");
+        brandCaption->setAlignment(Qt::AlignHCenter);
         brandLayout->addWidget(brandCaption);
-        GUIUtil::setFont({brandName}, GUIUtil::FontWeight::Bold, 18);
         GUIUtil::setFont({brandCaption}, GUIUtil::FontWeight::Normal, 8);
         appToolBarLogoAction = toolbar->addWidget(brand);
 

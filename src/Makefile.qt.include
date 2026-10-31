@@ -321,6 +321,7 @@ BITCOIN_QT_CPP += $(BITCOIN_QT_WALLET_CPP)
 endif
 
 RES_IMAGES = \
+  qt/res/images/babacoin_brand_gold.png \
   qt/res/images/arrow_down_dark.png \
   qt/res/images/arrow_down_light.png \
   qt/res/images/arrow_left_dark.png \

@@ -465,6 +465,14 @@ void SmartnodeWizard::accept()
 
 void SmartnodeWizard::exportServerTemplate()
 {
+    QString networkOption;
+    const auto network = Params().NetworkIDString();
+    if (network == CBaseChainParams::REGTEST) networkOption = "regtest=1\n";
+    else if (network == CBaseChainParams::TESTNET) networkOption = "testnet=1\n";
+    else if (network != CBaseChainParams::MAIN) {
+        showError(tr("Named devnet configuration requires its original network parameters and must be prepared manually."));
+        return;
+    }
     const QString path = QFileDialog::getSaveFileName(this, tr("Save a new public server template"), "babacoin-smartnode-template.conf", tr("Configuration (*.conf)"));
     if (path.isEmpty()) return;
     if (QFile::exists(path)) { showError(tr("Choose a new filename; existing configuration files are preserved.")); return; }
@@ -474,7 +482,7 @@ void SmartnodeWizard::exportServerTemplate()
     stream << "# Public template only. Install the matching Babacoin server separately.\n"
            << "# Generate BLS keys locally on the server: babacoin-cli bls generate\n"
            << "# Keep the secret on that server and paste only its public key into the wallet wizard.\n"
-           << "server=1\nlisten=1\nrpcbind=127.0.0.1\nrpcallowip=127.0.0.1\n"
+           << networkOption << "server=1\nlisten=1\nrpcbind=127.0.0.1\nrpcallowip=127.0.0.1\n"
            << "port=" << Params().GetDefaultPort() << "\nrpcport=" << BaseParams().RPCPort() << "\n"
            << "# externalip=YOUR_SERVER_IPV4:" << Params().GetDefaultPort() << "\n"
            << "# smartnodeblsprivkey=YOUR_SERVER_GENERATED_SECRET\n";

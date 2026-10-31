@@ -36,7 +36,9 @@ The wizard does not install an OS, use SSH, open a firewall or prove server upti
    secret privately there and paste only the public result into the wizard.
    The optional public configuration template contains placeholders, no private
    key or RPC password. Add the matching secret locally on the server and keep
-   RPC on loopback. No operator private key is requested by the desktop wizard.
+   RPC on loopback. Main/test/regtest exports retain the selected network;
+   named devnet templates require manual network parameters. No operator private
+   key is requested by the desktop wizard.
 4. **Review:** the wallet prepares and signs locally without inserting or relaying
    the transaction. The wizard checks the exact funding inputs and outputs,
    references collateral without spending it and shows the exact registration

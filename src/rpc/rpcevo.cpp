@@ -1110,6 +1110,11 @@ UniValue signMessage(CWallet * const pwallet, std::string strAddress, std::strin
 }
 
 UniValue createConfigFile(string blsPrivateKey, string ip, string address) {
+	const auto network = Params().NetworkIDString();
+	std::string networkOption;
+	if (network == CBaseChainParams::REGTEST) networkOption = "regtest=1\n";
+	else if (network == CBaseChainParams::TESTNET) networkOption = "testnet=1\n";
+	else if (network != CBaseChainParams::MAIN) throw JSONRPCError(RPC_INVALID_PARAMETER, "Named devnet configuration must be prepared manually; registration was not submitted");
 	string fileName = get_current_dir() + "/" + address + "_" + GetRandHash().GetHex().substr(0, 16) + "_babacoin.conf";
 	FILE* configFile = fsbridge::fopen(fs::path(fileName), "wbx");
 	if (!configFile) throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot create a new configuration file; registration was not submitted");
@@ -1121,7 +1126,7 @@ UniValue createConfigFile(string blsPrivateKey, string ip, string address) {
 #endif
 	string username = generateRandomString(10, false);
 	string password = generateRandomString(20, true);
-	const string content = "rpcuser=" + username + "\nrpcpassword=" + password +
+	const string content = networkOption + "rpcuser=" + username + "\nrpcpassword=" + password +
 	    "\nrpcport=" + std::to_string(BaseParams().RPCPort()) +
 	    "\nrpcbind=127.0.0.1\nrpcallowip=127.0.0.1\nserver=1\nlisten=1\nsmartnodeblsprivkey=" +
 	    blsPrivateKey + "\nexternalip=" + ip + "\n";
