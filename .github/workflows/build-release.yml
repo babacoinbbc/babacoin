@@ -1,229 +1,55 @@
-name: Build Babacoin v2.0.0 — Multi-Platform
-
-on:
+name: Validated multi-platform draft release
+'on':
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
-
+    - v*
+  workflow_dispatch: null
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions:
   contents: read
-
 jobs:
-
   ubuntu-compatibility:
     uses: ./.github/workflows/ubuntu-compatibility.yml
-
-  build-macos-arm64:
-    name: macOS Apple Silicon (arm64)
-    runs-on: macos-14
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          brew update
-          for pkg in autoconf automake libtool pkg-config openssl@3 libevent boost miniupnpc zeromq cmake gmp qt@5 protobuf libqrencode; do
-            brew install "$pkg" 2>/dev/null || true
-          done
-          brew install berkeley-db@5 2>/dev/null || brew install berkeley-db 2>/dev/null || true
-
-      - name: Build and install bls-dash
-        run: |
-          BREW_PREFIX=$(brew --prefix)
-          GMP_PREFIX=$(brew --prefix gmp 2>/dev/null || echo "$BREW_PREFIX")
-          unset RELIC_MAIN
-          git init /tmp/bls-src
-          git -C /tmp/bls-src remote add origin https://github.com/dashpay/bls-signatures.git
-          git -C /tmp/bls-src fetch --depth=1 origin 2daa8f8e220d9bd6aa0ac42a2eb550bb8c7341b5
-          git -C /tmp/bls-src checkout --detach FETCH_HEAD
-          # GCC 13+ (Ubuntu 24.04) needs explicit <memory> include for unique_ptr
-          # Only apply patch on Linux (macOS clang handles it)
-          if [ "$(uname)" = "Linux" ]; then
-            for f in /tmp/bls-src/src/threshold.cpp /tmp/bls-src/src/threshold.hpp; do
-              if [ -f "$f" ]; then
-                ( echo '#include <memory>'; cat "$f" ) > "$f.new" && mv "$f.new" "$f"
-              fi
-            done
-          fi
-          mkdir -p /tmp/bls-src/build && cd /tmp/bls-src/build
-          cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$BREW_PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DGMP_INCLUDE_DIR="$GMP_PREFIX/include" -DGMP_LIBRARY="$GMP_PREFIX/lib/libgmp.a" -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0
-          make -j$(sysctl -n hw.logicalcpu)
-          LIB=$(find /tmp/bls-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
-          if [ -z "$LIB" ]; then
-            echo "ERROR: libdashbls.a not found!"; find /tmp/bls-src/build -name "*.a"; exit 1
-          fi
-          sudo mkdir -p "$BREW_PREFIX/lib" "$BREW_PREFIX/include/bls-dash"
-          sudo cp "$LIB" "$BREW_PREFIX/lib/libbls-dash.a"
-          sudo find /tmp/bls-src/src -maxdepth 1 -name "*.hpp" -exec cp {} "$BREW_PREFIX/include/bls-dash/" \;
-          sudo find /tmp/bls-src/build/_deps/relic-src/include -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
-          sudo find /tmp/bls-src/build/_deps/relic-build/include -name "*.h" -exec cp {} "$BREW_PREFIX/include/" \; 2>/dev/null || true
-          echo "Library : $(ls -lh $BREW_PREFIX/lib/libbls-dash.a)"
-          echo "Headers : $(ls $BREW_PREFIX/include/bls-dash/)"
-          echo "Relic   : $(ls $BREW_PREFIX/include/relic_conf.h 2>/dev/null || echo MISSING)"
-
-      - name: Build Babacoin
-        run: |
-          P=$(brew --prefix)
-          BOOST_PREFIX=$(brew --prefix boost 2>/dev/null || echo "$P")
-          BDB_PREFIX=$(brew --prefix berkeley-db@5 2>/dev/null || brew --prefix berkeley-db 2>/dev/null || echo "$P")
-          ./autogen.sh
-          ./configure --with-incompatible-bdb --with-boost="$BOOST_PREFIX" --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared PKG_CONFIG_PATH="$P/opt/openssl@3/lib/pkgconfig:$P/opt/qt@5/lib/pkgconfig:$BDB_PREFIX/lib/pkgconfig" LDFLAGS="-L$P/opt/openssl@3/lib -L$BDB_PREFIX/lib -L$BOOST_PREFIX/lib -L$P/opt/libevent/lib -L$P/opt/zeromq/lib -L$P/opt/miniupnpc/lib -L$P/lib" CPPFLAGS="-I$P/opt/openssl@3/include -I$BDB_PREFIX/include -I$BOOST_PREFIX/include -I$P/opt/libevent/include -I$P/opt/zeromq/include -I$P/opt/miniupnpc/include -I$P/include" CXXFLAGS="-std=c++17" BDB_LIBS="-L$BDB_PREFIX/lib -ldb_cxx" BDB_CFLAGS="-I$BDB_PREFIX/include"
-          make -j$(sysctl -n hw.logicalcpu)
-
-      - name: Package
-        run: |
-          mkdir -p dist
-          strip src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt
-          cp src/babacoind src/babacoin-cli src/babacoin-tx src/qt/babacoin-qt dist/
-          tar -czf babacoin-v2.0.0-macos-arm64.tar.gz -C dist .
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: babacoin-macos-arm64
-          path: babacoin-v2.0.0-macos-arm64.tar.gz
-
-  # ─────────────────────────────────────────
-  # Raspberry Pi ARM64 — QEMU
-  # ─────────────────────────────────────────
-
-  build-windows:
-    name: Windows x64
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install MinGW + tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y g++-mingw-w64-x86-64 mingw-w64 autoconf automake libtool pkg-config python3 nsis curl xz-utils bsdmainutils cmake libgmp-dev
-
-      - name: Set POSIX threading
-        run: |
-          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
-          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
-
-      - name: Cache depends
-        uses: actions/cache@v4
-        with:
-          path: depends/built
-          key: windows-depends-${{ hashFiles('depends/packages/*.mk') }}-v3
-
-      - name: Pre-fetch GMP + Qt sources
-        run: |
-          mkdir -p depends/sources
-          curl -L --retry 3 -o depends/sources/gmp-6.3.0.tar.bz2 https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2
-          curl -L --retry 3 -o depends/sources/qtbase-opensource-src-5.9.6.tar.xz https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qtbase-opensource-src-5.9.6.tar.xz
-          curl -L --retry 3 -o depends/sources/qttranslations-opensource-src-5.9.6.tar.xz https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qttranslations-opensource-src-5.9.6.tar.xz
-          curl -L --retry 3 -o depends/sources/qttools-opensource-src-5.9.6.tar.xz https://download.qt.io/new_archive/qt/5.9/5.9.6/submodules/qttools-opensource-src-5.9.6.tar.xz
-
-      - name: Build depends (bdb, qt, qrencode)
-        run: |
-          make -C depends HOST=x86_64-w64-mingw32 -j$(nproc)
-
-      - name: Build bls-dash for Windows (cross)
-        run: |
-          INSTALL_PREFIX=$GITHUB_WORKSPACE/depends/x86_64-w64-mingw32
-          # Inline toolchain file - /usr/share/mingw-w64/toolchain-*.cmake yok
-          cat > /tmp/mingw-toolchain.cmake <<'EOF'
-          SET(CMAKE_SYSTEM_NAME Windows)
-          SET(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc-posix)
-          SET(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++-posix)
-          SET(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
-          SET(CMAKE_MAKE_PROGRAM make)
-          SET(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)
-          SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-          SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-          SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-          EOF
-          unset RELIC_MAIN
-          git init /tmp/bls-win-src
-          git -C /tmp/bls-win-src remote add origin https://github.com/dashpay/bls-signatures.git
-          git -C /tmp/bls-win-src fetch --depth=1 origin 2daa8f8e220d9bd6aa0ac42a2eb550bb8c7341b5
-          git -C /tmp/bls-win-src checkout --detach FETCH_HEAD
-          mkdir -p /tmp/bls-win-src/build && cd /tmp/bls-win-src/build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_TOOLCHAIN_FILE=/tmp/mingw-toolchain.cmake -DCMAKE_MAKE_PROGRAM=make -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 -DBUILD_BLS_TESTS=0 -DBUILD_BLS_BENCHMARKS=0 -DBUILD_SHARED_LIBS=OFF
-          make -j$(nproc)
-          LIB=$(find /tmp/bls-win-src/build -maxdepth 1 -name "libbls-dash.a" 2>/dev/null | head -1)
-          if [ -z "$LIB" ]; then
-            echo "ERROR: libbls-dash.a not found!"; find /tmp/bls-win-src/build -name "*.a"; exit 1
-          fi
-          mkdir -p $INSTALL_PREFIX/lib $INSTALL_PREFIX/include/bls-dash
-          cp "$LIB" $INSTALL_PREFIX/lib/libbls-dash.a
-          find /tmp/bls-win-src/src -maxdepth 1 -name "*.hpp" -exec cp {} $INSTALL_PREFIX/include/bls-dash/ \;
-          find /tmp/bls-win-src/build/_deps/relic-src/include -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
-          find /tmp/bls-win-src/build/_deps/relic-build/include -name "*.h" -exec cp {} $INSTALL_PREFIX/include/ \; 2>/dev/null || true
-          echo "Library   : $(ls -lh $INSTALL_PREFIX/lib/libbls-dash.a)"
-          echo "Headers   : $(ls $INSTALL_PREFIX/include/bls-dash/ | head -5)"
-          echo "Relic     : $(ls $INSTALL_PREFIX/include/relic_conf.h 2>/dev/null || echo MISSING)"
-
-      - name: Build Babacoin
-        run: |
-          ./autogen.sh
-          CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site ./configure --prefix=$PWD/depends/x86_64-w64-mingw32 --host=x86_64-w64-mingw32 --disable-tests --disable-bench --with-gui=qt5 --disable-stacktraces --disable-shared --with-incompatible-bdb CPPFLAGS="-I$PWD/depends/x86_64-w64-mingw32/include" LDFLAGS="-L$PWD/depends/x86_64-w64-mingw32/lib"
-          make -j$(nproc)
-
-      - name: Package
-        run: |
-          mkdir -p dist
-          for bin in src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe src/qt/babacoin-qt.exe; do
-            test -s "$bin"
-            cp "$bin" dist/
-          done
-          zip -j babacoin-v2.0.0-windows-x86_64.zip dist/*
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: babacoin-windows-x64
-          path: babacoin-v2.0.0-windows-x86_64.zip
-
-  # ─────────────────────────────────────────
-  # Release — sadece tag push'ta
-  # ─────────────────────────────────────────
-
   upload-release:
     name: Assemble tested draft release
     needs:
-      - ubuntu-compatibility
-      - build-macos-arm64
-      - build-windows
+    - ubuntu-compatibility
+    - desktop-compatibility
     runs-on: ubuntu-24.04
     permissions:
       contents: write
-    # The default success() condition requires ALL build/test jobs to pass.
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-      - name: Preserve existing releases
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              await github.rest.repos.getReleaseByTag({
-                ...context.repo,
-                tag: context.ref.replace('refs/tags/', '')
-              });
-              core.setFailed('A release already exists for this tag. Refusing to replace it.');
-            } catch (error) {
-              if (error.status !== 404) throw error;
-            }
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Babacoin ${{ github.ref_name }}
-          draft: true
-          prerelease: ${{ contains(github.ref_name, '-test') || contains(github.ref_name, '-rc') }}
-          generate_release_notes: true
-          files: |
-            artifacts/**/*.tar.gz
-            artifacts/**/*.tar.gz.sha256
-            artifacts/**/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    - name: Preserve existing releases
+      uses: actions/github-script@v7
+      with:
+        script: |
+          try {
+            await github.rest.repos.getReleaseByTag({
+              ...context.repo,
+              tag: context.ref.replace('refs/tags/', '')
+            });
+            core.setFailed('A release already exists for this tag. Refusing to replace it.');
+          } catch (error) {
+            if (error.status !== 404) throw error;
+          }
+    - uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Babacoin ${{ github.ref_name }}
+        draft: true
+        prerelease: ${{ contains(github.ref_name, '-test') || contains(github.ref_name, '-rc') }}
+        generate_release_notes: true
+        files: |
+          artifacts/**/*.tar.gz
+          artifacts/**/*.tar.gz.sha256
+          artifacts/**/*.zip
+          artifacts/**/*.zip.sha256
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  desktop-compatibility:
+    uses: ./.github/workflows/build-missing.yml

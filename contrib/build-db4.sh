@@ -18,6 +18,7 @@ cd db-4.8.30.NC
 patch -p1 < "$repo/depends/patches/bdb/clang_cxx_11.patch"
 # BDB's original 2010 platform scripts predate AArch64. Use the same maintained
 # scripts as the existing depends recipe, including for native ARM64 builds.
+chmod u+w dist/config.guess dist/config.sub
 cp "$repo/depends/config.guess" "$repo/depends/config.sub" dist/
 cd build_unix
 CFLAGS="${CFLAGS:--O2 -fPIC -std=gnu11 -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=incompatible-pointer-types}" \

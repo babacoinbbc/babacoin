@@ -4,6 +4,8 @@ set -euo pipefail
 test "${GITHUB_ACTIONS:-false}" = true
 output=$PWD/desktop-output
 mkdir -p "$output"
+printf '%s\n' "$GITHUB_SHA" > "$output/SOURCE_COMMIT"
+uname -a > "$output/build-environment.txt"
 brew install autoconf automake libtool pkg-config openssl@3 libevent boost \
     miniupnpc zeromq cmake gmp qt@5 protobuf libqrencode coreutils gnu-sed
 p=$(brew --prefix)

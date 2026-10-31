@@ -1,7 +1,20 @@
 name: Native Windows and macOS compatibility (no release upload)
 'on':
-  workflow_dispatch: {}
-  workflow_call: {}
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platforms to validate
+        type: choice
+        options:
+        - all
+        - macos
+        - windows
+        default: all
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        default: all
 permissions:
   contents: read
 jobs:
@@ -27,6 +40,7 @@ jobs:
         name: babacoin-tested-macos-${{ matrix.arch }}
         path: desktop-output
         if-no-files-found: error
+    if: ${{ inputs.platform != 'windows' }}
   windows-cross:
     name: Windows x64
     runs-on: ubuntu-22.04
@@ -110,12 +124,13 @@ jobs:
         printf '%s\n' "$GITHUB_SHA" > desktop-output/SOURCE_COMMIT
         cp config.log desktop-output/
         zip -j desktop-output/babacoin-windows-x86_64-test.zip src/babacoind.exe src/babacoin-cli.exe src/babacoin-tx.exe src/qt/babacoin-qt.exe
-        (cd desktop-output && sha256sum *.zip > archive.sha256)
+        (cd desktop-output && sha256sum *.zip > babacoin-windows-x86_64-test.zip.sha256)
     - uses: actions/upload-artifact@v4
       with:
         name: babacoin-windows-cross-build
         path: desktop-output
         if-no-files-found: error
+    if: ${{ inputs.platform != 'macos' }}
   windows-native:
     name: Windows x64 native tests
     needs: windows-cross
