@@ -1311,11 +1311,15 @@ void BitcoinGUI::updateCoinJoinVisibility()
 #else
     bool fEnabled = false;
 #endif
-    // CoinJoin button is the third QToolButton, show/hide the underlying QAction
-    // Hiding the QToolButton itself doesn't work for the GUI part
-    // but is still needed for shortcuts to work properly.
+    // Find the widget action rather than relying on navigation positions.
+    // Branding and the wallet selector can change the action order.
     if (appToolBar != nullptr) {
-        appToolBar->actions()[4]->setVisible(fEnabled);
+        for (QAction* action : appToolBar->actions()) {
+            if (appToolBar->widgetForAction(action) == coinJoinCoinsButton) {
+                action->setVisible(fEnabled);
+                break;
+            }
+        }
         coinJoinCoinsButton->setVisible(fEnabled);
         GUIUtil::updateButtonGroupShortcuts(tabGroup);
     }
