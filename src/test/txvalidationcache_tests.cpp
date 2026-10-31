@@ -221,8 +221,18 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         ValidateCheckInputsForAllFlags(spend_tx, SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_LOW_S | SCRIPT_VERIFY_STRICTENC, false);
     }
 
-    // And if we produce a block with this tx, it should be valid (DERSIG not
-    // enabled yet), even though there's no cache entry.
+    // BBC regtest already enforces DER signatures: reject the malformed form.
+    const auto rejected = CreateAndProcessBlock({spend_tx}, p2pk_scriptPubKey);
+    BOOST_CHECK(chainActive.Tip()->GetBlockHash() != rejected.GetHash());
+    // Fund the remaining flag/cache checks with the same spend and a valid DER
+    // signature, without disabling the production consensus checks.
+    {
+        std::vector<unsigned char> signature;
+        const auto hash = SignatureHash(p2pk_scriptPubKey, spend_tx, 0, SIGHASH_ALL, 0, SigVersion::BASE);
+        BOOST_REQUIRE(coinbaseKey.Sign(hash, signature));
+        signature.push_back(static_cast<unsigned char>(SIGHASH_ALL));
+        spend_tx.vin[0].scriptSig = CScript() << signature;
+    }
     CBlock block;
 
     block = CreateAndProcessBlock({spend_tx}, p2pk_scriptPubKey);

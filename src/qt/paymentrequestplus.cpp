@@ -11,6 +11,7 @@
 
 #include <script/script.h>
 #include <util.h>
+#include <utiltime.h>
 
 #include <stdexcept>
 
@@ -90,7 +91,9 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
     }
 
     std::vector<X509*> certs;
-    const QDateTime currentTime = QDateTime::currentDateTime();
+    // Use the application clock so certificate fixtures can be tested at a
+    // fixed date. OpenSSL still enforces the certificate store's time policy.
+    const QDateTime currentTime = QDateTime::fromMSecsSinceEpoch(GetTime() * 1000, Qt::UTC);
     for (int i = 0; i < certChain.certificate_size(); i++) {
         QByteArray certData(certChain.certificate(i).data(), certChain.certificate(i).size());
         QSslCertificate qCert(certData, QSsl::Der);

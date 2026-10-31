@@ -1,0 +1,13 @@
+{
+  "release_tag": "v.1.0.0",
+  "release_embedded_commit": "8aa50e4409facb10168db390189033ff70ba9233",
+  "tag_commit": "d8512d921ac08eaac2f5b1970ee9f64e7d5018ab",
+  "windows_daemon_sha256": "54c9a3d0514edf2ce0d5620c7271e98f85d59917d28e0e12979567d6f7d50aa4",
+  "linux_ubuntu18_daemon_sha256": "46af06dff6c2190ceeeb6eec2ee19463a55b69d006e6cf62c16f825e78942e24",
+  "main_genesis": "84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854",
+  "windows_v1_genesis_ghost_rider_pow": "000c5a0b4720b28e4e86a15a50f5358a9eee5f72127bf450eb479dd38ae6bcde",
+  "core_crypto_and_block_source_equal_ignoring_eol_between_embedded_commit_and_tag": true,
+  "note": "The same-binary control validates test orchestration, not new-versus-old compatibility.",
+  "linux_ubuntu20_daemon_sha256": "39782f47ae69c30ce12fea19c4ad9eacf8607928012cd61524817e6184782816",
+  "linux_ubuntu20_nested_tar_sha256": "3c3eb4ef3a5595b17637da7981c22fe8e6e3ef8f66401355d11e9e92e3a7025c"
+}

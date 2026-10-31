@@ -6,8 +6,8 @@
 Generate valid and invalid base58 address and private key test vectors.
 
 Usage:
-    gen_base58_test_vectors.py valid 50 > ../../src/test/data/base58_keys_valid.json
-    gen_base58_test_vectors.py invalid 50 > ../../src/test/data/base58_keys_invalid.json
+    gen_base58_test_vectors.py valid 50 > ../../src/test/data/key_io_valid.json
+    gen_base58_test_vectors.py invalid 50 > ../../src/test/data/key_io_invalid.json
 '''
 # 2012 Wladimir J. van der Laan
 # Released under MIT License
@@ -18,26 +18,33 @@ import random
 from binascii import b2a_hex
 
 # key types
-PUBKEY_ADDRESS = 76
-SCRIPT_ADDRESS = 16
-PUBKEY_ADDRESS_TEST = 140
-SCRIPT_ADDRESS_TEST = 19
-PRIVKEY = 204
-PRIVKEY_TEST = 239
+PUBKEY_ADDRESS = 25
+SCRIPT_ADDRESS = 102
+PUBKEY_ADDRESS_TEST = 26
+SCRIPT_ADDRESS_TEST = 105
+PRIVKEY = 205
+PRIVKEY_TEST = 206
+PUBKEY_ADDRESS_REGTEST = 140
+SCRIPT_ADDRESS_REGTEST = 19
+PRIVKEY_REGTEST = 239
 
-metadata_keys = ['isPrivkey', 'isTestnet', 'addrType', 'isCompressed']
+metadata_keys = ['isPrivkey', 'chain', 'addrType', 'isCompressed']
 # templates for valid sequences
 templates = [
   # prefix, payload_size, suffix, metadata
   #                                  None = N/A
-  ((PUBKEY_ADDRESS,),      20, (),   (False, False, 'pubkey', None)),
-  ((SCRIPT_ADDRESS,),      20, (),   (False, False, 'script',  None)),
-  ((PUBKEY_ADDRESS_TEST,), 20, (),   (False, True,  'pubkey', None)),
-  ((SCRIPT_ADDRESS_TEST,), 20, (),   (False, True,  'script',  None)),
-  ((PRIVKEY,),             32, (),   (True,  False, None,  False)),
-  ((PRIVKEY,),             32, (1,), (True,  False, None,  True)),
-  ((PRIVKEY_TEST,),        32, (),   (True,  True,  None,  False)),
-  ((PRIVKEY_TEST,),        32, (1,), (True,  True,  None,  True))
+  ((PUBKEY_ADDRESS,),      20, (),   (False, 'main', 'pubkey', None)),
+  ((SCRIPT_ADDRESS,),      20, (),   (False, 'main', 'script', None)),
+  ((PUBKEY_ADDRESS_TEST,), 20, (),   (False, 'test', 'pubkey', None)),
+  ((SCRIPT_ADDRESS_TEST,), 20, (),   (False, 'test', 'script', None)),
+  ((PRIVKEY,),             32, (),   (True, 'main', None, False)),
+  ((PRIVKEY,),             32, (1,), (True, 'main', None, True)),
+  ((PRIVKEY_TEST,),        32, (),   (True, 'test', None, False)),
+  ((PRIVKEY_TEST,),        32, (1,), (True, 'test', None, True)),
+  ((PUBKEY_ADDRESS_REGTEST,), 20, (), (False, 'regtest', 'pubkey', None)),
+  ((SCRIPT_ADDRESS_REGTEST,), 20, (), (False, 'regtest', 'script', None)),
+  ((PRIVKEY_REGTEST,),      32, (),   (True, 'regtest', None, False)),
+  ((PRIVKEY_REGTEST,),      32, (1,), (True, 'regtest', None, True))
 ]
 
 def is_valid(v):
@@ -63,7 +70,13 @@ def gen_valid_vectors():
             rv = b58encode_chk(prefix + payload + suffix)
             assert is_valid(rv)
             metadata = {x: y for x, y in zip(metadata_keys,template[3]) if y is not None}
-            hexrepr = b2a_hex(payload)
+            # key_io_tests expects the output script for addresses, raw bytes for WIF.
+            expected = payload
+            if metadata.get('addrType') == 'pubkey':
+                expected = bytes.fromhex('76a914') + payload + bytes.fromhex('88ac')
+            elif metadata.get('addrType') == 'script':
+                expected = bytes.fromhex('a914') + payload + bytes.fromhex('87')
+            hexrepr = b2a_hex(expected)
             if isinstance(hexrepr, bytes):
                 hexrepr = hexrepr.decode('utf8')
             yield (rv, hexrepr, metadata)

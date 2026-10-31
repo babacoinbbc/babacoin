@@ -4350,7 +4350,11 @@ int test_ecdsa_der_parse(const unsigned char *sig, size_t siglen, int certainly_
     }
     ECDSA_SIG_free(sig_openssl);
 
-    ret |= (parsed_der && !parsed_openssl) << 4;
+    /* OpenSSL 3 rejects negative DER integers at decoding time. libsecp256k1
+     * deliberately parses their encoding but maps invalid scalars to zero.
+     * Only valid scalar pairs must be accepted by both libraries; their
+     * canonical round-trip and signature checks below remain mandatory. */
+    ret |= (valid_der && !parsed_openssl) << 4;
     ret |= (valid_der && !valid_openssl) << 5;
     ret |= (roundtrips_openssl && !parsed_der) << 6;
     ret |= (roundtrips_der != roundtrips_openssl) << 7;
@@ -4549,6 +4553,10 @@ static void random_ber_signature(unsigned char *sig, size_t *len, int* certainly
 
 void run_ecdsa_der_parse(void) {
     int i,j;
+    /* Valid DER encoding of a negative scalar: accepted as an invalid (zero)
+     * scalar by libsecp256k1, rejected while decoding by OpenSSL 3. */
+    static const unsigned char negative_scalar[] = {0x30, 0x06, 0x02, 0x01, 0x80, 0x02, 0x01, 0x01};
+    CHECK(test_ecdsa_der_parse(negative_scalar, sizeof(negative_scalar), 1, 0) == 0);
     for (i = 0; i < 200 * count; i++) {
         unsigned char buffer[2048];
         size_t buflen = 0;

@@ -1,0 +1,5 @@
+{
+  "url": "https://raw.githubusercontent.com/bitcoin/bitcoin/v0.21.0/share/rpcauth/rpcauth.py",
+  "sha256": "f6801bddc71dec638934872986e07b29a1c4c0d93ebeacf58fdf9baae8bd35a1",
+  "adaptation": "Only the configuration-file label is renamed to babacoin.conf. Restores the missing MIT-licensed upstream helper already documented and referenced by the test configuration."
+}

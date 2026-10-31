@@ -13,16 +13,19 @@
 #   7. Installs systemd service (auto-start on boot)
 #   8. Starts the daemon
 #   9. Creates a wallet and generates a receive address
-#  10. Shows you the address + private key (save them!)
+#  10. Shows the public address; private-key export is opt-in on a terminal
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/babacoinbbc/babacoin/main/contrib/install.sh | bash
+#   Download and review this script first. It only permits fresh installations.
+#   BBC_VERSION=reviewed-published-tag bash contrib/install.sh
+#   For tested source builds, see doc/ubuntu-compatibility.md.
 #
 # Options (env vars):
 #   SEED_NUM=XX          Assign seed number (default: auto)
 #   AUTO_YES=1           Skip all confirmations (for CI/automation)
 #   SKIP_WALLET=1        Don't create wallet (just install node)
-#   BBC_VERSION=tag      Override release tag (default: v2.0.2)
+#   EXPORT_PRIVATE_KEY=1 Explicitly export the receive key on an interactive terminal
+#   BBC_VERSION=tag      Required: explicitly select a reviewed published release
 #
 # Requirements:
 #   - Linux (Ubuntu/Debian/Raspberry Pi OS)
@@ -40,7 +43,8 @@ set -euo pipefail
 SEED_NUM="${SEED_NUM:-auto}"
 AUTO_YES="${AUTO_YES:-0}"
 SKIP_WALLET="${SKIP_WALLET:-0}"
-BBC_VERSION="${BBC_VERSION:-v2.0.2}"
+EXPORT_PRIVATE_KEY="${EXPORT_PRIVATE_KEY:-0}"
+BBC_VERSION="${BBC_VERSION:-}"
 WORK_DIR="${HOME}/bbc-install-$(date +%s)"
 DATA_DIR="${HOME}/.babacoin"
 BBC_USER="${USER}"
@@ -83,6 +87,17 @@ printf "  Repo:        https://github.com/%s\n" "$REPO"
 # ============================================================================
 
 step "1/10" "Preflight checks"
+
+# This is a fresh-install helper, never an automatic wallet/node upgrader.
+# Refuse before sudo, package installation, config writes or binary replacement.
+if [ -e "$DATA_DIR" ] || command -v babacoind >/dev/null 2>&1 \
+   || [ -e /etc/systemd/system/babacoind.service ] \
+   || [ -e /lib/systemd/system/babacoind.service ] \
+   || [ -e /usr/lib/systemd/system/babacoind.service ] \
+   || { command -v pgrep >/dev/null 2>&1 && pgrep -x babacoind >/dev/null 2>&1; }; then
+    die "Existing Babacoin installation/data detected. This installer cannot upgrade it. Keep the working binary and data; follow doc/ubuntu-compatibility.md and validate an RPC backup copy in an isolated directory."
+fi
+[ -n "$BBC_VERSION" ] || die "Set BBC_VERSION to an explicitly reviewed published release tag. There is no automatic default upgrade; see doc/ubuntu-compatibility.md."
 
 # Not root
 if [ "$EUID" -eq 0 ]; then
@@ -749,15 +764,26 @@ else
 
     if [ -n "$WALLET_ADDR" ]; then
         ok "Wallet address: $WALLET_ADDR"
-        # Export privkey
-        WALLET_PRIVKEY=$(babacoin-cli dumpprivkey "$WALLET_ADDR" 2>/dev/null || echo "")
+        # Never leak a spending key into unattended installation logs by default.
+        if [ "$EXPORT_PRIVATE_KEY" = 1 ]; then
+            if [ -t 1 ]; then
+                WALLET_PRIVKEY=$(babacoin-cli dumpprivkey "$WALLET_ADDR" 2>/dev/null || echo "")
+            else
+                warn "Private-key export requires an interactive terminal; skipping export."
+            fi
+        fi
 
         # Backup wallet.dat
         BACKUP_DIR="$HOME/babacoin-backups"
         mkdir -p "$BACKUP_DIR"
         chmod 700 "$BACKUP_DIR"
-        BACKUP_FILE="$BACKUP_DIR/wallet-$(hostname)-$(date +%Y%m%d-%H%M%S).dat"
-        babacoin-cli backupwallet "$BACKUP_FILE" 2>/dev/null && chmod 400 "$BACKUP_FILE" && ok "Wallet backup: $BACKUP_FILE"
+        BACKUP_FILE="$BACKUP_DIR/wallet-$(hostname)-$(date +%Y%m%d-%H%M%S)-$$.dat"
+        if babacoin-cli backupwallet "$BACKUP_FILE"; then
+            chmod 400 "$BACKUP_FILE"
+            ok "Wallet backup: $BACKUP_FILE"
+        else
+            die "Wallet backup failed. Installation is not complete; resolve the RPC error and create a verified backup before proceeding."
+        fi
     else
         warn "Could not generate wallet address — run manually later:"
         warn "  babacoin-cli getnewaddress \"seed-receive\""

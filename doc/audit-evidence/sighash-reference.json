@@ -1,0 +1,21 @@
+{
+  "method": "Independent Python legacy transaction serialization + double SHA256; also agrees with SignatureHashOld reference and unchanged production SignatureHash. These are inherited fixture digest errors, not a production signature-rule change.",
+  "cases": [
+    {
+      "previous_expected": "6131a80ef2be3995fe907fdb46657dcf45d9b773178fb172f42a60f8c3350b64",
+      "independent_sha256d": "88d644eee44d69eb00f7ca3c9e5f662aac1ccb70d820864a63c9825bd6229b1f",
+      "hash_type": -1872059682,
+      "input": 0,
+      "script": "51ac52",
+      "preimage_hex": "0200000001a4b439022381709441566a1901279e48735afc0ee78c46104c833303489bc98f010000000351ac52d32ec01804853e4d04000000000563ab536353ef3c9e02000000000400ab520050d0a801000000000500530000abf24e6802000000000552516a515268ec9ff5dea26a90"
+    },
+    {
+      "previous_expected": "b42f3c54cf124d51d65f95f98f0fafb7d970d2b6cd82bd9587996bd2a478f09d",
+      "independent_sha256d": "b9bc30f5a93ef6c023073f1e5f4a904b55ffdc567ca62d53fdcb5ba1ff608132",
+      "hash_type": 631327355,
+      "input": 1,
+      "script": "536a5152ac",
+      "preimage_hex": "02000000035d286021f63c81fe46edb7c3a12d35e837703c3430e705529f6345820513ee840000000000fffffffff67652e0c0d4d9b94799ad8ab776a8db2be3a002655f73a4e6539838667246430100000005536a5152aca7984aba755e425e9671212019b3413932764750f25e675081703ae6d6d83dce2cff66de0300000000ffffffff03ecbc59010000000005ac6aab63652ac2b8040000000003536aabef76060000000000026563b7e2e9847b4aa125"
+    }
+  ]
+}

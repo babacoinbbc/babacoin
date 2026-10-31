@@ -1,4 +1,4 @@
-# Babacoin Core — v1.0.0
+# Babacoin Core
 
 [![Build Status](https://github.com/babacoinbbc/babacoin/actions/workflows/build-release.yml/badge.svg)](https://github.com/babacoinbbc/babacoin/actions)
 [![GitHub Release](https://img.shields.io/github/v/release/babacoinbbc/babacoin)](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)
@@ -6,14 +6,20 @@
 
 > ### 🚀 Stable release: v1.0.0
 >
-> v1.0.0 is the current production release running across the network.
-> All nodes (mining, smartnodes, wallets) should run this version.
+> v1.0.0 is the latest published stable release. This does not establish which
+> versions every active network participant currently runs.
+> The `main` source identifies itself as v2.0.0 and contains additional network
+> rules. Do not treat it as an OS-only replacement for this release. See the
+> [compatibility validation guide](doc/ubuntu-compatibility.md).
+> Yerel inceleme bulguları: [Türkçe denetim raporu](doc/audit-2026-10-30-tr.md).
 >
 > **→ [Download v1.0.0](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)**
 >
-> The release page includes a `bootstrap.zip` snapshot for fast first-time
-> sync. Place it inside your `~/.babacoin/` directory before starting the
-> node.
+> The release page includes a `bootstrap.zip` snapshot. The daemon does not
+> automatically import ZIP files. Never extract a snapshot over an existing
+> wallet or data directory. Validate its raw block files in a separate directory
+> before considering it for a new installation; copied chainstate is not proof
+> that the blocks have been validated.
 
 ---
 
@@ -22,7 +28,7 @@
 Babacoin (BBC) is a decentralized financial technology that is fast, reliable, and secure, with negligible transaction costs. It operates on its own blockchain — a fork of the Raptoreum codebase — featuring:
 
 - **ASIC-resistant Proof of Work** — minable with both CPUs and GPUs
-- **Smartnode consensus** — immune to 51% attacks
+- **Smartnodes and quorum-based ChainLocks** — protection depends on active quorums and spork configuration
 - **CoinJoin privacy** — built-in balance mixing directly within the wallet
 - **Low transaction fees** — designed for everyday use
 
@@ -35,25 +41,19 @@ Block Explorer: [https://explorer.babacoin.network](https://explorer.babacoin.ne
 
 ### Platform Support
 
-Full multi-platform build support with automated GitHub Actions CI/CD:
-
-| Platform | Architecture | Status |
-|---|---|---|
-| Ubuntu 20.04 LTS | x86_64, ARM64 | Supported |
-| Ubuntu 22.04 LTS | x86_64, ARM64 | Supported |
-| Ubuntu 24.04 LTS | x86_64, ARM64 | Supported |
-| Ubuntu 26.04 LTS | x86_64 | Preview — GitHub's 26.04 runner is still in beta |
-| macOS Intel | x86_64 | Supported |
-| macOS Apple Silicon | arm64 | Supported |
-| Raspberry Pi 4 / 5 | ARM64 | Supported |
-| Windows | x64 | Supported |
+Ubuntu LTS validation targets are 18.04, 20.04, 22.04, 24.04 and 26.04 on
+x86_64 and ARM64. The workflow builds in each target Ubuntu userspace and runs
+unit/GUI tests and an isolated wallet smoke test. A configured target does not
+mean its checks have passed. See [validation and wallet portability](doc/ubuntu-compatibility.md)
+for reproduction steps and limitations. Windows, macOS and Raspberry Pi hardware
+need their own runtime validation.
 
 ### Technical Changes
 
 - **C++17** standard adopted across all builds
 - **OpenSSL 3.x** compatibility — fixed deprecated `SSL_library_init()` call
-- **BerkeleyDB 5.3** support — Ubuntu 20.04+ ships `libdb5.3` instead of `libdb4.8`
-- **GCC 12+** compatibility — resolved `u_int8_t` type conflict in BDB atomic headers
+- **Portable wallets** — Berkeley DB 4.8 is required by default; other database versions require explicit opt-in
+- **BDB compiler compatibility** — retain the atomic builtin patch and verify the BDB 4.8 source archive
 - **CI/CD** — Dockerfile.builder updated to Ubuntu 22.04 LTS
 - **GitHub Actions** — automated build and release pipeline for all supported platforms
 
@@ -92,126 +92,45 @@ that already paid them and make the existing chain unsyncable.
 
 Pre-built binaries are available on the [Releases page](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0):
 
-| File | Platform |
+| Published v1.0.0 file | Platform |
 |---|---|
-| `babacoin-v.1.0.0-linux-ubuntu20.04-x86_64.tar.gz` | Ubuntu 20.04 |
-| `babacoin-v.1.0.0-linux-ubuntu22.04-x86_64.tar.gz` | Ubuntu 22.04 |
-| `babacoin-v.1.0.0-macos-x86_64.tar.gz` | macOS Intel |
-| `babacoin-v.1.0.0-macos-arm64.tar.gz` | macOS Apple Silicon |
-| `babacoin-v.1.0.0-raspberry-pi-arm64.tar.gz` | Raspberry Pi 4 / 5 |
-| `babacoin-v.1.0.0-windows-x86_64.zip` | Windows x64 |
+| `babacoin-ubuntu18-1.0.0-SNAPSHOT.zip` | Ubuntu 18.04 |
+| `babacoin-ubuntu20-1.0.0-SNAPSHOT.zip` | Ubuntu 20.04 |
+| `babacoin-macos-1.0.0-SNAPSHOT.zip` | macOS |
+| `babacoin-win-1.0.0-SNAPSHOT.zip` | Windows x64 |
+
+These are legacy release assets, not evidence that the edited source has passed
+compatibility validation. New Ubuntu build outputs include separate SHA-256 files.
 
 ---
 
 ## Building from Source
 
-### Ubuntu 20.04 / 22.04 / 24.04
+### Ubuntu 18.04 through 26.04 LTS
 
-Install dependencies:
+Follow the [Ubuntu compatibility guide](doc/ubuntu-compatibility.md). It supplies
+an isolated build path, BDB 4.8 source verification, the pinned BLS dependency,
+and tests. Do not open a production wallet as a build test.
 
-```bash
-sudo apt-get update
-sudo apt-get install -y \
-    build-essential libtool autotools-dev automake pkg-config \
-    libssl-dev libevent-dev libboost-all-dev \
-    libdb5.3-dev libdb5.3++-dev \
-    libminiupnpc-dev libzmq3-dev python3
-```
+### Raspberry Pi 4 / 5
 
-Build:
-
-```bash
-git clone https://github.com/babacoinbbc/babacoin.git
-cd babacoin
-./autogen.sh
-./configure \
-    --with-incompatible-bdb \
-    BDB_LIBS="-ldb_cxx-5.3" \
-    BDB_CFLAGS="-I/usr/include"
-make -j$(nproc)
-```
-
----
-
-### Ubuntu 18.04 (BDB 4.8)
-
-```bash
-sudo apt-get install -y libdb4.8-dev libdb4.8++-dev
-./autogen.sh
-./configure
-make -j$(nproc)
-```
-
----
-
-### macOS (Intel and Apple Silicon)
-
-Install dependencies via Homebrew:
-
-```bash
-brew install autoconf automake libtool pkg-config \
-    openssl@3 libevent boost miniupnpc zeromq berkeley-db@5
-```
-
-Build:
-
-```bash
-./autogen.sh
-export PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig"
-export LDFLAGS="-L$(brew --prefix openssl@3)/lib -L$(brew --prefix berkeley-db@5)/lib"
-export CPPFLAGS="-I$(brew --prefix openssl@3)/include -I$(brew --prefix berkeley-db@5)/include"
-./configure --with-incompatible-bdb
-make -j$(sysctl -n hw.logicalcpu)
-```
-
----
-
-### Raspberry Pi 4 / 5 (ARM64 — Native Build)
-
-```bash
-sudo apt-get install -y \
-    build-essential libssl-dev libevent-dev libboost-all-dev \
-    libdb5.3-dev libdb5.3++-dev libzmq3-dev
-
-./autogen.sh
-./configure \
-    --with-incompatible-bdb \
-    BDB_LIBS="-ldb_cxx-5.3" \
-    BDB_CFLAGS="-I/usr/include"
-make -j4
-```
-
----
-
-### Windows (Cross-compile from Ubuntu)
-
-```bash
-sudo apt-get install -y g++-mingw-w64-x86-64 mingw-w64
-
-cd depends
-make HOST=x86_64-w64-mingw32 -j$(nproc) NO_QT=1
-cd ..
-
-./autogen.sh
-CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site \
-./configure \
-    --host=x86_64-w64-mingw32 \
-    --with-incompatible-bdb
-make -j$(nproc)
-```
-
----
+Use the same ARM64 Ubuntu build path from the guide on a 64-bit OS. The native
+ARM64 matrix builds replace the former separate untested Pi package path.
+Raspberry Pi hardware still needs its own runtime validation.
 
 ### Docker
 
-```bash
-cd ci
-docker build -f Dockerfile.builder -t babacoin-builder .
-docker run --rm -v $(pwd)/..:/babacoin-src babacoin-builder bash -c \
-  "cd /babacoin-src && ./autogen.sh && \
-   ./configure --with-incompatible-bdb BDB_LIBS='-ldb_cxx-5.3' && \
-   make -j$(nproc)"
-```
+Use the disposable container command in the [compatibility guide](doc/ubuntu-compatibility.md).
+It builds BDB 4.8 and BLS explicitly, retains tests, and records library/package
+versions. Do not substitute the system BDB 5.3 for a portable wallet build.
+
+### Windows and macOS
+
+Existing cross-platform build recipes are in `.github/workflows/build-release.yml`
+and `.github/workflows/build-missing.yml`. These platforms require their own
+validation. In particular, the legacy macOS recipe explicitly opts into a
+non-portable system Berkeley DB; an Ubuntu result does not validate that wallet
+format or make it safe to exchange production wallet files across these builds.
 
 ---
 
@@ -351,15 +270,22 @@ Full roadmap: [https://babacoin.network](https://babacoin.network)
 
 ## Automated CI/CD
 
-Every push to a version tag (`v*`) triggers the GitHub Actions pipeline defined in `.github/workflows/build-release.yml`. The workflow compiles binaries for every supported platform in parallel and uploads them automatically to the GitHub Releases page. The Ubuntu 26.04 job is marked `continue-on-error` because GitHub's 26.04 runner is still in preview; if it fails, the rest of the release still publishes.
+Version tags (`v*`) trigger `.github/workflows/build-release.yml`. The Ubuntu
+matrix runs on 18.04, 20.04, 22.04, 24.04 and 26.04 userspaces using currently
+available 24.04 host runners. Every Ubuntu build/test job must succeed before a
+**draft** release can be assembled. Existing releases are preserved. There is no
+optional failing Ubuntu target and no automatic public publication.
 
-Manual builds can be triggered from the Actions tab at any time using the `workflow_dispatch` option.
+Manual builds remain available through `workflow_dispatch`. The legacy missing
+platforms workflow only creates build artifacts; it no longer overwrites a release.
 
 ---
 
 ## Development
 
-The `main` branch is kept stable at all times. Feature development happens in dedicated branches and is merged through Pull Requests.
+Changes must pass compatibility and safety checks before release. Review network
+rule differences separately from build changes; a successful compilation is not
+a network compatibility or fund-safety certification.
 
 Run unit tests:
 

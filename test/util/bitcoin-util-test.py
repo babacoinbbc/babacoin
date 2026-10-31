@@ -28,7 +28,8 @@ import sys
 def main():
     config = configparser.ConfigParser()
     config.optionxform = str
-    config.readfp(open(os.path.join(os.path.dirname(__file__), "../config.ini"), encoding="utf8"))
+    with open(os.path.join(os.path.dirname(__file__), "../config.ini"), encoding="utf8") as stream:
+        config.read_file(stream)
     env_conf = dict(config.items('environment'))
 
     parser = argparse.ArgumentParser(description=__doc__)
@@ -58,8 +59,8 @@ def bctester(testDir, input_basename, buildenv):
         try:
             bctest(testDir, testObj, buildenv)
             logging.info("PASSED: " + testObj["description"])
-        except:
-            logging.info("FAILED: " + testObj["description"])
+        except Exception:
+            logging.exception("FAILED: " + testObj["description"])
             failed_testcases.append(testObj["description"])
 
     if failed_testcases:

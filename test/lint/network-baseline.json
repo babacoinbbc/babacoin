@@ -1,0 +1,1436 @@
+{
+  "baseline_commit": "7cdd64b4435d5fef4f63accfaa1706f2425a3324",
+  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately.",
+  "files": [
+    {
+      "path": "src/amount.h",
+      "scope": "full",
+      "sha256": "1fd82047cc7b5229695cfd75d28f3642ff32b8015b0f4b2f9a72f65b40ec932b"
+    },
+    {
+      "path": "src/arith_uint256.cpp",
+      "scope": "full",
+      "sha256": "4ad8ad11c379f8a279fb702ef14e2be7a82035e9bb6c8b6752d53d7790971b65"
+    },
+    {
+      "path": "src/arith_uint256.h",
+      "scope": "full",
+      "sha256": "b5b6cd1cfff4daeabf31022a7a1a012eeaf471c1d7b6abeb2ed944a9df5f3a50"
+    },
+    {
+      "path": "src/bls/bls.cpp",
+      "scope": "full",
+      "sha256": "698b8a12deab44fae561949217ad204e9a4385c844c4b164ca9696770421721c"
+    },
+    {
+      "path": "src/bls/bls.h",
+      "scope": "full",
+      "sha256": "cd1063ed6974a829912f0983997581baa960e4ca36d35c4fef476100bc6cdfdd",
+      "original_sha256": "27b2902242b2d79bc485929cde33654689f83de6cf8da63f8e248a55691741c5",
+      "approved_change": "Initialize move encoding state; explicitly default existing copy/move operations for GCC 7. No serialization format change."
+    },
+    {
+      "path": "src/bls/bls_batchverifier.h",
+      "scope": "full",
+      "sha256": "98bbae101ec23329fada3a7a7a273ce9e1dbb1985ac7e72c1259d056a6d68597"
+    },
+    {
+      "path": "src/bls/bls_ies.cpp",
+      "scope": "full",
+      "sha256": "0f9b58f0042ec289c08856a9e7c1057585e536acdac4832cfa11169abc5c8b7b"
+    },
+    {
+      "path": "src/bls/bls_ies.h",
+      "scope": "full",
+      "sha256": "0c617f295fe8a1a69fab3c652ba159e0fc6e930823c9ba6f5f7efb3231b23243"
+    },
+    {
+      "path": "src/bls/bls_worker.cpp",
+      "scope": "full",
+      "sha256": "2f282609b9e72ea5186896ce6a1f1602a5c1f1b4a84152604cf3afd20d625490"
+    },
+    {
+      "path": "src/bls/bls_worker.h",
+      "scope": "full",
+      "sha256": "6cf2929681e0cb5ed2af00d872822a8eeb5cd8a80b72f0297f29de0c1464d0dd"
+    },
+    {
+      "path": "src/chain.cpp",
+      "scope": "full",
+      "sha256": "e8457ef721fd3783b8773466c6b107d0b2e7ce3b0ca6f41b34eefc385bab21f9"
+    },
+    {
+      "path": "src/chain.h",
+      "scope": "full",
+      "sha256": "fb270ba56e6f67891b197af8edf689733928ada0e7a055fc366601d696bdb66e",
+      "original_sha256": "4ff139893c5bc64809bc583015943dc62b488f010ee730d07c41fc4c7cb3d8ac",
+      "approved_change": "Restore v.1.0.0 lvalue decoding of disk block height/file number. Serialized bytes unchanged; fixes temporary-cast regression that discards values on read."
+    },
+    {
+      "path": "src/chainparams.cpp",
+      "scope": "excluding-regtest",
+      "sha256": "7ac121aa8dacfeaa0ed3a42f45a550c807c0a9a8164e9b33ff86c55cf0dd3581"
+    },
+    {
+      "path": "src/chainparams.h",
+      "scope": "full",
+      "sha256": "735c1fc48968a9f59e0d1c4fb820552bf0c38cdd8b061d21f5a1fbfb1ab06c5d"
+    },
+    {
+      "path": "src/chainparamsbase.cpp",
+      "scope": "full",
+      "sha256": "0d0a6738d33af3130a977f6a5c45543630ccd42cee3eb23d60a898eee2d5317c"
+    },
+    {
+      "path": "src/chainparamsbase.h",
+      "scope": "full",
+      "sha256": "542c4f0e7a5bfc05bf874ac60afa76c5f977cd9b22b7e3b24d4d5e8ded7bf99b"
+    },
+    {
+      "path": "src/chainparamsseeds.h",
+      "scope": "full",
+      "sha256": "c63af542e7d5c57187d19972f4d35a738445df4ee48d8892f89f797a4321fed3"
+    },
+    {
+      "path": "src/consensus/consensus.h",
+      "scope": "full",
+      "sha256": "0dce0bba032cdd74ae5dfe1bdc9f1c448265de48030298cb2d91168e7f92540d"
+    },
+    {
+      "path": "src/consensus/merkle.cpp",
+      "scope": "full",
+      "sha256": "2f292c73533199b631569dac366a11d2bb499d47f0d180d8b718a91223397faa"
+    },
+    {
+      "path": "src/consensus/merkle.h",
+      "scope": "full",
+      "sha256": "498ba6bfd77a4d4d7f5890f8213bcaaf5e9be193926192bf0f6c1e8f53d27c6a"
+    },
+    {
+      "path": "src/consensus/params.h",
+      "scope": "full",
+      "sha256": "e2670c4eb4239b4c986f7b4bef9277d9fd6fbed831970bb73563d2521b992b8d"
+    },
+    {
+      "path": "src/consensus/tx_verify.cpp",
+      "scope": "full",
+      "sha256": "0a75dd04e1cd25b8cbd964af3fdc457326f2b3249cabfd425327d186b597bbe3"
+    },
+    {
+      "path": "src/consensus/tx_verify.h",
+      "scope": "full",
+      "sha256": "c3f5d94dd2e4ccb99301fa9be593650b21cc3693710688beb510221d07c18c6e"
+    },
+    {
+      "path": "src/consensus/validation.h",
+      "scope": "full",
+      "sha256": "0055d109d2ea9dd92214f83c422eb24f1ab6e7581ad6c265554b9914e04b7b67"
+    },
+    {
+      "path": "src/crypto/aes.cpp",
+      "scope": "full",
+      "sha256": "348e9f4299cfa3bfc510d228b44af873e59f98138c3f826d15e04499fe29a945"
+    },
+    {
+      "path": "src/crypto/aes.h",
+      "scope": "full",
+      "sha256": "78d7ab502f7cd0e3bf357d1f491f045d46bc1065a6a8e561579473bd7836e2fb"
+    },
+    {
+      "path": "src/crypto/aes_helper.c",
+      "scope": "full",
+      "sha256": "81bb8cef460b784112707d6efc2ea2f5a8abeeb54d4a5264019cf3e182875ed2"
+    },
+    {
+      "path": "src/crypto/blake.c",
+      "scope": "full",
+      "sha256": "5de8dd4c81f13ac62994d22e737e3c214edb4c52b072314705e5422c04ed412a"
+    },
+    {
+      "path": "src/crypto/bmw.c",
+      "scope": "full",
+      "sha256": "9a034709867e42e266d1682d54d4e791fb45038bac54a330558fb1715e352178"
+    },
+    {
+      "path": "src/crypto/chacha20.cpp",
+      "scope": "full",
+      "sha256": "882fc5d84f682ce9f3061f0ba1a6ed14789b3951fcc40b2c3f64f826586ec91f"
+    },
+    {
+      "path": "src/crypto/chacha20.h",
+      "scope": "full",
+      "sha256": "472b0d7a797c840046bf203cfe647f11a3b4f674966ebc1c13667a8927f1e112"
+    },
+    {
+      "path": "src/crypto/chacha_poly_aead.cpp",
+      "scope": "full",
+      "sha256": "739ac4c7f76113b5c163bc169e251c7cde97006a51c377819f839e3dd9472db1"
+    },
+    {
+      "path": "src/crypto/chacha_poly_aead.h",
+      "scope": "full",
+      "sha256": "68133c43f1abf5bd861a08f469a9d40e5f0134514896b4d38ea2192b43093896"
+    },
+    {
+      "path": "src/crypto/common.h",
+      "scope": "full",
+      "sha256": "660b865db8c7520353d5ce311c7fda8ee08cff215dde218045d85e37b36fb676"
+    },
+    {
+      "path": "src/crypto/ctaes/bench.c",
+      "scope": "full",
+      "sha256": "237677992b69e7dcc6d4fab66f74e8afa7c999dd3a16598e6acd3c9fdb13125b"
+    },
+    {
+      "path": "src/crypto/ctaes/ctaes.c",
+      "scope": "full",
+      "sha256": "2f8a63e6a9a00da3fcc9c38d53dfbbb650376191689864ed211a36d8184c287b"
+    },
+    {
+      "path": "src/crypto/ctaes/ctaes.h",
+      "scope": "full",
+      "sha256": "bf837cfa914ac30b11cea64d5267065614686d41586c886e84bd4e7e11112af2"
+    },
+    {
+      "path": "src/crypto/ctaes/test.c",
+      "scope": "full",
+      "sha256": "bf3e7afff97c271199d838648625f15478f4e048a39f70b5d79b142203584447"
+    },
+    {
+      "path": "src/crypto/cubehash.c",
+      "scope": "full",
+      "sha256": "09d84f13eccce1fd01f8412ed6b3ab6746b130de7115ed96c8c03edfa287db1a"
+    },
+    {
+      "path": "src/crypto/echo.c",
+      "scope": "full",
+      "sha256": "95f21d982179ddd26716a46a0cda6ad83df89c94431d05d77406df5368b0ff27"
+    },
+    {
+      "path": "src/crypto/groestl.c",
+      "scope": "full",
+      "sha256": "2afa37daaf1712991430c9cee4f1719bb891cdbfc9b1c1666b149471febce048"
+    },
+    {
+      "path": "src/crypto/hmac_sha256.cpp",
+      "scope": "full",
+      "sha256": "5f5e2abdadac3533bb38668f72997b2a60a06d1d7a0db1e9aa71dbe0461e24bd"
+    },
+    {
+      "path": "src/crypto/hmac_sha256.h",
+      "scope": "full",
+      "sha256": "c16fab05bb9d7a8d7e96291e0ba0caab9f31dff077aceb772c2fa5edaee1eb63"
+    },
+    {
+      "path": "src/crypto/hmac_sha512.cpp",
+      "scope": "full",
+      "sha256": "a070ca76f663e8c8fd8542c79c33abd53d122c2fa3bcb790349bbd16b81cb99b"
+    },
+    {
+      "path": "src/crypto/hmac_sha512.h",
+      "scope": "full",
+      "sha256": "7b482e904b66231a89b9ac4891815b623d2305dabc9ff64e72479b8cddbba18e"
+    },
+    {
+      "path": "src/crypto/jh.c",
+      "scope": "full",
+      "sha256": "4ab0bce68a0b924414e84c11e8656012b9ed8d24d0cf78f53032896354d233cc"
+    },
+    {
+      "path": "src/crypto/keccak.c",
+      "scope": "full",
+      "sha256": "de85e93b3126d929f6c27b2517577a8faaabd49402c6e286763b89fb52fd2233"
+    },
+    {
+      "path": "src/crypto/luffa.c",
+      "scope": "full",
+      "sha256": "0084b23381277ec5ddd2448e9659c60619b2a5b5636c38e2496afe502333d2c7"
+    },
+    {
+      "path": "src/crypto/md_helper.c",
+      "scope": "full",
+      "sha256": "61fab44b8cf4eb8aafedde1ff56473acfdaf9e656f838063eb97982ad8e62893"
+    },
+    {
+      "path": "src/crypto/poly1305.cpp",
+      "scope": "full",
+      "sha256": "f6433393125129a82941794df39c7ad5c7be911ea614faa3931fa9435a6d7be7"
+    },
+    {
+      "path": "src/crypto/poly1305.h",
+      "scope": "full",
+      "sha256": "53059a833061c5cdbcc5135d4e2b776eccec96a0f2514fc94d3c9f34e1fc4f6a"
+    },
+    {
+      "path": "src/crypto/ripemd160.cpp",
+      "scope": "full",
+      "sha256": "e83d196ce78ea612257db3ab36d99febd314d4181cea5df935fca876ddb6c330"
+    },
+    {
+      "path": "src/crypto/ripemd160.h",
+      "scope": "full",
+      "sha256": "a0790bf8c195efca79a9b68d48e3f0a05c47c1c38f67762b0363c2985a3b21bb"
+    },
+    {
+      "path": "src/crypto/sha1.cpp",
+      "scope": "full",
+      "sha256": "40e4b08cc8b8d7791972c459b33676559d003a5c108e67eddee96d3dfa4f7bd6"
+    },
+    {
+      "path": "src/crypto/sha1.h",
+      "scope": "full",
+      "sha256": "7623b6b617640537f350609e2a3d5725cf0db9da0feca00549185349cca61a40"
+    },
+    {
+      "path": "src/crypto/sha2.c",
+      "scope": "full",
+      "sha256": "1b909979f068bab18cf158c12c836f268507357d334d4508d88d7bf2f3528977"
+    },
+    {
+      "path": "src/crypto/sha256.cpp",
+      "scope": "full",
+      "sha256": "37acd2ba6d73acbe94852e7c1acb1abca55d0dad575f5ebe39bfe1207ea2ce19"
+    },
+    {
+      "path": "src/crypto/sha256.h",
+      "scope": "full",
+      "sha256": "20382754d03423b44b2df952594e9f369efca780b9ab7acbb4ce7501b026eaa8"
+    },
+    {
+      "path": "src/crypto/sha256_avx2.cpp",
+      "scope": "full",
+      "sha256": "0dd88e9c108e929fc17f6a81277b3e751747b78300614d691b17db9136be51a1"
+    },
+    {
+      "path": "src/crypto/sha256_shani.cpp",
+      "scope": "full",
+      "sha256": "a1947a55d3ae705741ef0921e53816b3cc5eae26b81eb2080d9c6d60a2ec05c2"
+    },
+    {
+      "path": "src/crypto/sha256_sse4.cpp",
+      "scope": "full",
+      "sha256": "37fef37484ecc53189e566535b44433f0a0edf4190bc698bfb8265d9ced9791e"
+    },
+    {
+      "path": "src/crypto/sha256_sse41.cpp",
+      "scope": "full",
+      "sha256": "3bb17102476e8ff7022f31f5d0cbad34f1aed11f88ed4d389eeca500afe69c2a"
+    },
+    {
+      "path": "src/crypto/sha512.cpp",
+      "scope": "full",
+      "sha256": "9f59c1f1f47c48ba9a0e79bb10ebbbc19a12544cb7591228e91771452c6a7534"
+    },
+    {
+      "path": "src/crypto/sha512.h",
+      "scope": "full",
+      "sha256": "dc1eebadecb77cc9bf73e85c93a4df6b1584856148136d0d1a33401b6c0623ce"
+    },
+    {
+      "path": "src/crypto/shavite.c",
+      "scope": "full",
+      "sha256": "137bace3d210ee53094cf3416727193da7671d68523329912f2754a1631a0a4e"
+    },
+    {
+      "path": "src/crypto/simd.c",
+      "scope": "full",
+      "sha256": "b44adaf26ee0f3090e9e11c868eddcaf43daed323d186de428983ae3ef9bdd5c"
+    },
+    {
+      "path": "src/crypto/skein.c",
+      "scope": "full",
+      "sha256": "a86bcee87ecd47ac324790c3110d2d6e1048a5816872424a638e71d33339afa8"
+    },
+    {
+      "path": "src/crypto/sph_blake.h",
+      "scope": "full",
+      "sha256": "93c0b8aeb0f78f8963789a7b5489cb53ed5147f1e82779d972037b8d90d7c53a"
+    },
+    {
+      "path": "src/crypto/sph_bmw.h",
+      "scope": "full",
+      "sha256": "28b92c86e1eb5a3748985d91e6a08824653bf2f9cca7363fa01ca90969863dd9"
+    },
+    {
+      "path": "src/crypto/sph_cubehash.h",
+      "scope": "full",
+      "sha256": "906db48ea16ead83b7c5fbb85180c6ecc0c5268f079c5ad1f8471c0cf87dff12"
+    },
+    {
+      "path": "src/crypto/sph_echo.h",
+      "scope": "full",
+      "sha256": "67b37fa0a7d6311f8f5837044a7824e3f0628a6f3e079a2c6d12fbe3fe17f164"
+    },
+    {
+      "path": "src/crypto/sph_fugue.c",
+      "scope": "full",
+      "sha256": "b009456bbcc0aacc92c309c851c964fbcf4fbae7a462ae5d686e155c9b21b720"
+    },
+    {
+      "path": "src/crypto/sph_fugue.h",
+      "scope": "full",
+      "sha256": "280fa85887e780295ebffef4702bf795abf9af6da950aaa6fa3107feddde22b8"
+    },
+    {
+      "path": "src/crypto/sph_groestl.h",
+      "scope": "full",
+      "sha256": "5eff6428099a84fd62ec6d04d6ba034badd0a8c36cb5f505b148b9f2054b30ee"
+    },
+    {
+      "path": "src/crypto/sph_hamsi.c",
+      "scope": "full",
+      "sha256": "40950686d4f1edd6411016a8139d3a0c4600622f8a3f9f3e624a7febc85015a3"
+    },
+    {
+      "path": "src/crypto/sph_hamsi.h",
+      "scope": "full",
+      "sha256": "b034e11d34af0fac5581b64333cb6e001f9c3f01568c258ea38c26a8a8e2426c"
+    },
+    {
+      "path": "src/crypto/sph_hamsi_helper.c",
+      "scope": "full",
+      "sha256": "e2448b4997e3f597c62e2754d0915d9b330660177ee87bbf9670a24ddb9a68a8"
+    },
+    {
+      "path": "src/crypto/sph_jh.h",
+      "scope": "full",
+      "sha256": "ec8853520ee71e33ed8462fb19f37f1f61f5720ab3038c937d7ba57da75bdaae"
+    },
+    {
+      "path": "src/crypto/sph_keccak.h",
+      "scope": "full",
+      "sha256": "1254b47249fa114572bfa876f734ce9910667641febe2be09baaab9a5410fe7c"
+    },
+    {
+      "path": "src/crypto/sph_luffa.h",
+      "scope": "full",
+      "sha256": "bf44d263278d1cb4211ce9337e1c1a0f4f5db1a9cc6e3177b32cd9126f6b2f4b"
+    },
+    {
+      "path": "src/crypto/sph_sha2.c",
+      "scope": "full",
+      "sha256": "43b65f70bbdd43fdbe710328dde3b6ae0051ed9e161369dbf60ec5d2647e2b53"
+    },
+    {
+      "path": "src/crypto/sph_sha2.h",
+      "scope": "full",
+      "sha256": "f433fee50e66c620553f1502bfe170185447f2f0b0adfb5491a10648d5c46a41"
+    },
+    {
+      "path": "src/crypto/sph_sha512.c",
+      "scope": "full",
+      "sha256": "2a4a5e153b65102d766ac838efc91d7ec281b1318cc19ae681cbed3865f1fb33"
+    },
+    {
+      "path": "src/crypto/sph_shabal.c",
+      "scope": "full",
+      "sha256": "6947c2bb5e6e9871700529077394a6a85f1bb1a969eb8b05ea4965d4f0250d42"
+    },
+    {
+      "path": "src/crypto/sph_shabal.h",
+      "scope": "full",
+      "sha256": "463f2f5f8631371e73c8d774575df70989029e04d996581081dc2e1ae42c6790"
+    },
+    {
+      "path": "src/crypto/sph_shavite.h",
+      "scope": "full",
+      "sha256": "89b8527032b7b9791af4fdd285773b1e41ef03d3b731bbad366942418ba05d1d"
+    },
+    {
+      "path": "src/crypto/sph_simd.h",
+      "scope": "full",
+      "sha256": "87d2ca6470ca6c8755b9d93d7b23a25a5819a6a2f8427c38b959f8b4fe037314"
+    },
+    {
+      "path": "src/crypto/sph_skein.h",
+      "scope": "full",
+      "sha256": "01fdedcc180c4df09e733323ead9a53c1c491d8e2b9cf88bd468a17a3c8479e2"
+    },
+    {
+      "path": "src/crypto/sph_types.h",
+      "scope": "full",
+      "sha256": "6171c92028d3d7518fb7350b216ba868b3fd3a58f33a4f0ab6708f8f51f88f1e"
+    },
+    {
+      "path": "src/crypto/sph_whirlpool.c",
+      "scope": "full",
+      "sha256": "ac08f20b65d4a501ff5bf7eb0cb81482ad5a1e7963c6f9170f37d077b80ff8ad"
+    },
+    {
+      "path": "src/crypto/sph_whirlpool.h",
+      "scope": "full",
+      "sha256": "c35fc8d02a6aa18bf708b15ef3b3ab58b7419f3e108a8ff277e5b607d3c3bde4"
+    },
+    {
+      "path": "src/crypto/whirlpool.c",
+      "scope": "full",
+      "sha256": "a8aa1ff3aa06561202a98ed43ebdd3878b91c503175ef03526dbd3e5f56157b6"
+    },
+    {
+      "path": "src/crypto/whirlpoolx.c",
+      "scope": "full",
+      "sha256": "7527a1e462ac6d53687fcbf90d11e550eb508bd64b33e50062344b6ae3c15378"
+    },
+    {
+      "path": "src/evo/cbtx.cpp",
+      "scope": "full",
+      "sha256": "84895eb428f5a044697e25561d353c9711f4df910db74fb8dc8ae0fc1d96bdc6"
+    },
+    {
+      "path": "src/evo/cbtx.h",
+      "scope": "full",
+      "sha256": "c42621689c18bf2109084edbdc49da9e3fe1b751f61154619ac9abedabe78335"
+    },
+    {
+      "path": "src/evo/deterministicmns.cpp",
+      "scope": "full",
+      "sha256": "49ec309d114247a6d3c031af253bbd6ab75f6b17a0c6f5b75e8f36769061e138"
+    },
+    {
+      "path": "src/evo/deterministicmns.h",
+      "scope": "full",
+      "sha256": "75fc653f7e1dade8fd132b559d9062a58ac78c83724e77689b7156c0a1e9f9a1"
+    },
+    {
+      "path": "src/evo/evodb.cpp",
+      "scope": "full",
+      "sha256": "ed39a76ee6768d8eac235e14180efe020f3a1c5dea0e728b1fdcf71ad7d38543"
+    },
+    {
+      "path": "src/evo/evodb.h",
+      "scope": "full",
+      "sha256": "9ef6ea56a72ba20d0cb8fa65b8131aee681706b8bc5ff77b34321f5218b39076"
+    },
+    {
+      "path": "src/evo/mnauth.cpp",
+      "scope": "full",
+      "sha256": "4565cb1de37a4e1b346eca06a7067ca629415cc184ba8228246f3939c73c1753"
+    },
+    {
+      "path": "src/evo/mnauth.h",
+      "scope": "full",
+      "sha256": "caef8256760f1e9784731e21bfb4c9f1ef020031d78c9ef2953a9e810814ace5"
+    },
+    {
+      "path": "src/evo/providertx.cpp",
+      "scope": "full",
+      "sha256": "58a04fbfdd6975b49c549bc66e03724d552b79f0cec395e2ed7a9ff75636e80c"
+    },
+    {
+      "path": "src/evo/providertx.h",
+      "scope": "full",
+      "sha256": "690bd23dbb717d0d14bfdcf05edac2264a89f28ca3687d54dd0e15cee38ae9e0"
+    },
+    {
+      "path": "src/evo/simplifiedmns.cpp",
+      "scope": "full",
+      "sha256": "53fad7d3e3b3499d9e5ed7c7778415efbf04f6ed9b35618fbe52161055171f23"
+    },
+    {
+      "path": "src/evo/simplifiedmns.h",
+      "scope": "full",
+      "sha256": "634663909ade8a10fd638b8926c31f189fcf32c672faef83d544722b13cc8589"
+    },
+    {
+      "path": "src/evo/specialtx.cpp",
+      "scope": "full",
+      "sha256": "8b51bc69fb9559d42f02ff5f5ff3c3aec4c1f88c6d71b98b18521e8ed19aa700"
+    },
+    {
+      "path": "src/evo/specialtx.h",
+      "scope": "full",
+      "sha256": "8e7484e7d6054f181ea959c3ad58921f5ac41ab38f8dfbe544677e6946ec488b"
+    },
+    {
+      "path": "src/founder_payment.cpp",
+      "scope": "full",
+      "sha256": "ea7574c4e0ab6c90352bf23ef98d3dbc75d89dab44e5ccf271fc8f5f08c5a880"
+    },
+    {
+      "path": "src/founder_payment.h",
+      "scope": "full",
+      "sha256": "ac6817bad258e68e42ff26b1ee4b6899395d8afec1974f5dcbfd3fc57755d148"
+    },
+    {
+      "path": "src/hash.cpp",
+      "scope": "full",
+      "sha256": "1e1ca4c9f855c9c6929d8f3018e8b6e263d677abcfb857535b98088f88d6fb9d"
+    },
+    {
+      "path": "src/hash.h",
+      "scope": "full",
+      "sha256": "bcd77b7fd43d573d7bbca1a0026e5877f7c751df8d6d36326f8209a90d81b182"
+    },
+    {
+      "path": "src/key.cpp",
+      "scope": "full",
+      "sha256": "6a12b8339eba915cef97591fba3acdc0aa23c4de2bc22d1261df43ceb27cfad3"
+    },
+    {
+      "path": "src/key.h",
+      "scope": "full",
+      "sha256": "17d4535ba1cb7961948e4af0b26314a711f6164d5c0d947a33d23b7ac0630444"
+    },
+    {
+      "path": "src/key_io.cpp",
+      "scope": "full",
+      "sha256": "7dcc0cbb7f9212e6f154788f779b0b34d5c2bd23a15862f373355c55f70961df"
+    },
+    {
+      "path": "src/key_io.h",
+      "scope": "full",
+      "sha256": "c73e7bcdd275c27a4be0f4c7a159bf7996076778821c59166c020a3e878124ba"
+    },
+    {
+      "path": "src/llmq/quorums.cpp",
+      "scope": "full",
+      "sha256": "3722826200643ca7acca52ce9db59a05ac7c051be78afaa29898d1eba176a800"
+    },
+    {
+      "path": "src/llmq/quorums.h",
+      "scope": "full",
+      "sha256": "8b8830fbf40a48b50d285e19252598d7478f6104cb17041dafdda12ac8954c53"
+    },
+    {
+      "path": "src/llmq/quorums_blockprocessor.cpp",
+      "scope": "full",
+      "sha256": "81e165b56e9f2ffc3adc807bc217bec1fd74e137aee500c30c5b365218ea023b"
+    },
+    {
+      "path": "src/llmq/quorums_blockprocessor.h",
+      "scope": "full",
+      "sha256": "9831fa2840c4768328530cd3c72c2c0cbd2cd282dedad0fa1b8b58477ef2a864"
+    },
+    {
+      "path": "src/llmq/quorums_chainlocks.cpp",
+      "scope": "full",
+      "sha256": "edb24955ce1d19b22b1cc0e510bce0068af3f10b94a46f6b517515c2dcd52d7c"
+    },
+    {
+      "path": "src/llmq/quorums_chainlocks.h",
+      "scope": "full",
+      "sha256": "52d3b1ce72d9c184236f1683446d8d72122e243f169a072fee5f6370207981ed"
+    },
+    {
+      "path": "src/llmq/quorums_commitment.cpp",
+      "scope": "full",
+      "sha256": "9b7fe2359cc40eb5cc8a034673b7f73a469ed39c197480c6e85b7ab82dde0723"
+    },
+    {
+      "path": "src/llmq/quorums_commitment.h",
+      "scope": "full",
+      "sha256": "0fc8d3beefed2b4afd591c55e48dc875e29bfd6960190cca1affb7c15a75dc8e"
+    },
+    {
+      "path": "src/llmq/quorums_debug.cpp",
+      "scope": "full",
+      "sha256": "5c0adcdbff1b04a13ff87a02c6376c1827f27da246370066580e3083175f8ae3"
+    },
+    {
+      "path": "src/llmq/quorums_debug.h",
+      "scope": "full",
+      "sha256": "adcca783c3b9e3a9be6a5cd8e1582b890d743b7278ec83113daf8d2e640e123d"
+    },
+    {
+      "path": "src/llmq/quorums_dkgsession.cpp",
+      "scope": "full",
+      "sha256": "4b0c5697b8d52246376f362676431f4ed573ea32b72b77e6752a69148ec9b057"
+    },
+    {
+      "path": "src/llmq/quorums_dkgsession.h",
+      "scope": "full",
+      "sha256": "a686d20e21ed853987b49548ee0badd5dd607c9929eb3114c8caeb3138884ee3"
+    },
+    {
+      "path": "src/llmq/quorums_dkgsessionhandler.cpp",
+      "scope": "full",
+      "sha256": "3999c870e302d409a534e051e1274ac36d79c5a4f4f3729c4d6c049519a87261",
+      "original_sha256": "1aae6b2a109dfbbbe77d2afb8299d3a22c91ef8edc0e7938fc529a29f41521ec",
+      "approved_change": "Correct DKG invalid-signature peer attribution: compare all sender IDs, initialize from nonempty batch. No block, signature, wire or wallet format changes. Controlled-signature regression executes the production function."
+    },
+    {
+      "path": "src/llmq/quorums_dkgsessionhandler.h",
+      "scope": "full",
+      "sha256": "d4de48c961a8219c978e09a6f7630b1515169d8bc5406a710fd6e1c243bcfb2d"
+    },
+    {
+      "path": "src/llmq/quorums_dkgsessionmgr.cpp",
+      "scope": "full",
+      "sha256": "e9253c69de5611bd2684671c2b2222695698bfaefae8a9c41cb84a5b88363ee0"
+    },
+    {
+      "path": "src/llmq/quorums_dkgsessionmgr.h",
+      "scope": "full",
+      "sha256": "75d00a09de3369cee90d651d2532ecf69e3091317db5ad895897fbf24d5a2840"
+    },
+    {
+      "path": "src/llmq/quorums_init.cpp",
+      "scope": "full",
+      "sha256": "2b817788abf42d00faf6dcf1503956e834073f0267cfd1cc3944b716424a1f6b"
+    },
+    {
+      "path": "src/llmq/quorums_init.h",
+      "scope": "full",
+      "sha256": "1cfae5028d95b0ae55e68404d47387a465c43d00beb8902deb70b65c5b4ce04c"
+    },
+    {
+      "path": "src/llmq/quorums_instantsend.cpp",
+      "scope": "full",
+      "sha256": "e07c424efaa1859b9cf1b72875f90f7b30b9da263d95d9746d137773db02d552"
+    },
+    {
+      "path": "src/llmq/quorums_instantsend.h",
+      "scope": "full",
+      "sha256": "1d803abd18c0d64bb4587a5f20ebe7bd7c815eccc13ba13aa3513be06b2f3362"
+    },
+    {
+      "path": "src/llmq/quorums_signing.cpp",
+      "scope": "full",
+      "sha256": "8b6d21d2ad138bc12f576db373ecb478e280662586394659c8c5d131615252b8"
+    },
+    {
+      "path": "src/llmq/quorums_signing.h",
+      "scope": "full",
+      "sha256": "1564dfda86556eb3010f31835418fcd6a2d648d5377e6e4ca677b599a264ce05"
+    },
+    {
+      "path": "src/llmq/quorums_signing_shares.cpp",
+      "scope": "full",
+      "sha256": "5683a736e08db379792d190f6b3d1c8779d9ffe7737ec6f3964f97747ab5f7d7"
+    },
+    {
+      "path": "src/llmq/quorums_signing_shares.h",
+      "scope": "full",
+      "sha256": "dbf89020ccdf4036087af9b06c66e3f2c027cb914827555d3d1bfd7b36828909"
+    },
+    {
+      "path": "src/llmq/quorums_utils.cpp",
+      "scope": "full",
+      "sha256": "66fc199479925c3f3d01eb5d5ed0907dfe05cac4acd04c9f0b5059f03e7e5923"
+    },
+    {
+      "path": "src/llmq/quorums_utils.h",
+      "scope": "full",
+      "sha256": "bc85e5703e754c33084f057b71ce94d3d2c4d499d41f3e6cb718f4923eca381d"
+    },
+    {
+      "path": "src/miner.cpp",
+      "scope": "full",
+      "sha256": "ca50e4b67f0a3e7d847feccf40f05f644e79c5432daf9b9819348771605dbb7c"
+    },
+    {
+      "path": "src/miner.h",
+      "scope": "full",
+      "sha256": "3eb3311fdfe5ade2b53e2196a7f583fffacaf615b7f3e3546a193718096d41c3"
+    },
+    {
+      "path": "src/net.cpp",
+      "scope": "full",
+      "sha256": "db03284c1788150718e91ab7cc6d204f47dde91c4425de58fe4493402600690a"
+    },
+    {
+      "path": "src/net.h",
+      "scope": "full",
+      "sha256": "e6a590e1cb1e3892baedc0134cebdba0b05cc21487eafe6e85360b8b25e37dc3"
+    },
+    {
+      "path": "src/net_processing.cpp",
+      "scope": "full",
+      "sha256": "54e9854cfa82c2356f84f54420cd836b5ac3b3ab2ca35525d6392690fb3b9728"
+    },
+    {
+      "path": "src/net_processing.h",
+      "scope": "full",
+      "sha256": "35fcdd0685ea7c066130e68e8eea65e31acbf51f12f11d617c6f25b1aef6ddae"
+    },
+    {
+      "path": "src/netaddress.cpp",
+      "scope": "full",
+      "sha256": "68f20dccda940133b40552cdfb3a70be78853e3e124b61ac7f0eacdb9c0a473c"
+    },
+    {
+      "path": "src/netaddress.h",
+      "scope": "full",
+      "sha256": "4050bc541fce4032c08bfd8ec2640dd238a3627650b7265db02685d0fba5801b"
+    },
+    {
+      "path": "src/netbase.cpp",
+      "scope": "full",
+      "sha256": "53f50d438fb24f69a3412344897357d5820f6b54e594af3c76b1f8e997fa8c76"
+    },
+    {
+      "path": "src/netbase.h",
+      "scope": "full",
+      "sha256": "1ab6fae8dce004c93960521161b0bd165f90fb46869e355ecbb3f93a73c4da7b"
+    },
+    {
+      "path": "src/pow.cpp",
+      "scope": "full",
+      "sha256": "87368b1d275521318ca50ada09a06154ef5bb99083f0aafd04ad882fa9a9dc84"
+    },
+    {
+      "path": "src/pow.h",
+      "scope": "full",
+      "sha256": "63ade3642a78ce4add878180eaec91592ecae958adf78633febf0946a5701943"
+    },
+    {
+      "path": "src/primitives/block.cpp",
+      "scope": "full",
+      "sha256": "17370c131c763e0db50c88b5b8da47110ae1cbdff4363c9851979df71b8f4bf0"
+    },
+    {
+      "path": "src/primitives/block.h",
+      "scope": "full",
+      "sha256": "132f725d7aaafd2bb29e7bdf8226ee1d7df9c24e813701bea55efccc1e75ee9c"
+    },
+    {
+      "path": "src/primitives/powcache.cpp",
+      "scope": "full",
+      "sha256": "f2c277cc81923ff48ea516522098baf6eb21b28dd2831e77219d185014f2b4a1"
+    },
+    {
+      "path": "src/primitives/powcache.h",
+      "scope": "full",
+      "sha256": "950738189cef95c45976013e2d97912e434960fcd5c62f56c2ec382222e07e05"
+    },
+    {
+      "path": "src/primitives/transaction.cpp",
+      "scope": "full",
+      "sha256": "8eb2757d28694b2ef7f01864e43da3b56f6095bed018d005580890a3de25e3bd"
+    },
+    {
+      "path": "src/primitives/transaction.h",
+      "scope": "full",
+      "sha256": "bb298bd28b11318eee0647327b1f3cceaaec49e8e43fdf3bad47fb490a1b3b79"
+    },
+    {
+      "path": "src/protocol.cpp",
+      "scope": "full",
+      "sha256": "80f060aa341ba5004d9cb3d18b0d571c1f785f9df403b1ce2522bffbf49ea24d"
+    },
+    {
+      "path": "src/protocol.h",
+      "scope": "full",
+      "sha256": "acfa931bf46503eebf1c4d7e819acad78ec2194171d2c4078151f157df60e8ab"
+    },
+    {
+      "path": "src/pubkey.cpp",
+      "scope": "full",
+      "sha256": "2e7bf65bbab35c4efc6932cca4809db10feef6a4d0dfe98283e2b23a4910431e"
+    },
+    {
+      "path": "src/pubkey.h",
+      "scope": "full",
+      "sha256": "c38718c92c9d7dae380400f3a87a820fdbd2dd7d9b17a5bbc94a602f4c92fd2e"
+    },
+    {
+      "path": "src/random.cpp",
+      "scope": "full",
+      "sha256": "0df9f673ffc6b3d91c6979d783d4e89e0f0da22030f3a77b52e2471ab9c12a4c"
+    },
+    {
+      "path": "src/random.h",
+      "scope": "full",
+      "sha256": "b1cc9fc71fb7cd6fd1b8a941e3c2aa3e6cd4fcd6ee5b3bbffe5eee5f2834cda5"
+    },
+    {
+      "path": "src/script/babacoinconsensus.cpp",
+      "scope": "full",
+      "sha256": "66541436e61ce7a3955fcbbd75db6e007592867ddb830df1b923f845e2d04efe"
+    },
+    {
+      "path": "src/script/babacoinconsensus.h",
+      "scope": "full",
+      "sha256": "fd825db6dd30c4ba20155c4ea64c56aebda634d6c6887b3680e40e496949d104"
+    },
+    {
+      "path": "src/script/interpreter.cpp",
+      "scope": "full",
+      "sha256": "7ae11967d85b31be4c079441fef9e125950a64e79b91a9e51a73f3fa69933440"
+    },
+    {
+      "path": "src/script/interpreter.h",
+      "scope": "full",
+      "sha256": "26f8c2389eddea3029bf35b133a016bb347bc30a84d53d8c1e368a7c67599afa"
+    },
+    {
+      "path": "src/script/ismine.cpp",
+      "scope": "full",
+      "sha256": "f62519e38b68d9ee2a7508a114a7d54a38a841d199da68617a3866f048ad3389"
+    },
+    {
+      "path": "src/script/ismine.h",
+      "scope": "full",
+      "sha256": "7d9b5614d9aee4099deba6f40c715ea05c7053c7f9808410d2ed156adec9ee17"
+    },
+    {
+      "path": "src/script/script.cpp",
+      "scope": "full",
+      "sha256": "57dc36c1f38b9deb59b8d1f9cbae04d4fc9f68661f144e25e296aadb536998be"
+    },
+    {
+      "path": "src/script/script.h",
+      "scope": "full",
+      "sha256": "d4127d5a8b3c7d02c50cb6e01e9911c6c36025456be52516732762e7cdf43272"
+    },
+    {
+      "path": "src/script/script_error.cpp",
+      "scope": "full",
+      "sha256": "7dd60983063bbd5803d60e34195120d3dede8243ac41f2a0185df8c21eb37a8c"
+    },
+    {
+      "path": "src/script/script_error.h",
+      "scope": "full",
+      "sha256": "bdec537ddc4604ffe8a5fa6646d3a2f878d305cdbfa6bcbedd51c6bcf74c28c2"
+    },
+    {
+      "path": "src/script/sigcache.cpp",
+      "scope": "full",
+      "sha256": "84ee08cc86ee43a78a8ff68830ff2f1f56af0a6a6d89a660809d57e2777acba7"
+    },
+    {
+      "path": "src/script/sigcache.h",
+      "scope": "full",
+      "sha256": "1a6b82d5f58196346b3d064855940bb7e5b1d48792d91347b6a91e143eff0791"
+    },
+    {
+      "path": "src/script/sign.cpp",
+      "scope": "full",
+      "sha256": "38fc6dbd99a58cc3a59be001fbb9a6b4218224718d63679f33a9d91dd919592f"
+    },
+    {
+      "path": "src/script/sign.h",
+      "scope": "full",
+      "sha256": "b358e4b2e07b8920bf2bc3e25daf9cdd988686d3050ce8a038dffbd41d710cd8"
+    },
+    {
+      "path": "src/script/standard.cpp",
+      "scope": "full",
+      "sha256": "9029a735622509c5575bea99224047ec6e7ad022f10ceb61390c508fef9ef61e"
+    },
+    {
+      "path": "src/script/standard.h",
+      "scope": "full",
+      "sha256": "c08779082003bf178b571df27de0c2690aca3d0bdf6245dde5983db9bdbafaee"
+    },
+    {
+      "path": "src/secp256k1/include/secp256k1.h",
+      "scope": "full",
+      "sha256": "3b0949371ae6b68849d808d8dead9fdf08d3a58d91fd985285ca6804b999bd90"
+    },
+    {
+      "path": "src/secp256k1/include/secp256k1_ecdh.h",
+      "scope": "full",
+      "sha256": "18e048b6e53f3f81cc5d0fd2038eca8efc131853d1f2dcdc0860c057892a1bf7"
+    },
+    {
+      "path": "src/secp256k1/include/secp256k1_recovery.h",
+      "scope": "full",
+      "sha256": "1e6f73748aecdcb57cf4f5fba40f9583a92efa9b6ed1f91340eaf651b8d6e90f"
+    },
+    {
+      "path": "src/secp256k1/src/basic-config.h",
+      "scope": "full",
+      "sha256": "ea2634b9bcacadf2ed2ce4192c3fc4d2ba83d565742f1105732e4983f8f3ddfc"
+    },
+    {
+      "path": "src/secp256k1/src/bench.h",
+      "scope": "full",
+      "sha256": "dccad6c9332ab40c7e19e838d941b5be91138c307a9c28d378a593c6e6bbfa1a"
+    },
+    {
+      "path": "src/secp256k1/src/bench_ecdh.c",
+      "scope": "full",
+      "sha256": "72f587969079015e55002cf00524193325b17adf7d807e77849d097635d3e26f"
+    },
+    {
+      "path": "src/secp256k1/src/bench_ecmult.c",
+      "scope": "full",
+      "sha256": "c28363a3f21674bcbe5faddbadb69cf69996d7eda74ea047b3e637a1977d1f02"
+    },
+    {
+      "path": "src/secp256k1/src/bench_internal.c",
+      "scope": "full",
+      "sha256": "9d95cbf7ee56fc161d263f7afcc711da6426f802b2b85e0ca02cdf4936ca811b"
+    },
+    {
+      "path": "src/secp256k1/src/bench_recover.c",
+      "scope": "full",
+      "sha256": "d5ce08182e76ce0e12f8fc7e59aa95b86b1a25547502b900731441d0348e3548"
+    },
+    {
+      "path": "src/secp256k1/src/bench_sign.c",
+      "scope": "full",
+      "sha256": "f2f43f746a2a3c92d77eb5438d0e49dfa06d7deb5c239005c96f72e5a7c69c10"
+    },
+    {
+      "path": "src/secp256k1/src/bench_verify.c",
+      "scope": "full",
+      "sha256": "1a047cdb4e847a793a25a8c89a3fd1ccd5c0350dc70e06f30425cc6e21841838"
+    },
+    {
+      "path": "src/secp256k1/src/ecdsa.h",
+      "scope": "full",
+      "sha256": "151f9f1a38c5051f1d06007a772909d356e5ec2e8a3d4b999ec25db9c163f925"
+    },
+    {
+      "path": "src/secp256k1/src/ecdsa_impl.h",
+      "scope": "full",
+      "sha256": "735a1de0636958293bada1f269669fa6b6f0717dfa5b5517f9b08213c36c5402"
+    },
+    {
+      "path": "src/secp256k1/src/eckey.h",
+      "scope": "full",
+      "sha256": "705ca275a9e6534b356c6d9da82e6bf2a2d4f4c79f2841f85be1c0faceea730e"
+    },
+    {
+      "path": "src/secp256k1/src/eckey_impl.h",
+      "scope": "full",
+      "sha256": "69c0a224a8afedfa01645b04cb2bf8e97a50e55ec1bbcad7875ef4ac2b3ea5ec"
+    },
+    {
+      "path": "src/secp256k1/src/ecmult.h",
+      "scope": "full",
+      "sha256": "7548cc2b43119d452dfb7271bfb33182de35e22bdc3fcd611721875caf4ebe03"
+    },
+    {
+      "path": "src/secp256k1/src/ecmult_const.h",
+      "scope": "full",
+      "sha256": "9d541941482b871a6fa193be1d39bc653ca193cf92346e33637962753f082a6f"
+    },
+    {
+      "path": "src/secp256k1/src/ecmult_const_impl.h",
+      "scope": "full",
+      "sha256": "265c482624f7142c55937c7d8e8264034977a50c928cead61058339a65a27570"
+    },
+    {
+      "path": "src/secp256k1/src/ecmult_gen.h",
+      "scope": "full",
+      "sha256": "80074e92391898d0e6d2ae328b673dfeb17502a6b971a3ff1ab6eadd9ead7341"
+    },
+    {
+      "path": "src/secp256k1/src/ecmult_gen_impl.h",
+      "scope": "full",
+      "sha256": "e17bc9374d1ebf770fe74921b0b9e0f5f86c96d5a99e8637dbdc07f5d5ef8df1"
+    },
+    {
+      "path": "src/secp256k1/src/ecmult_impl.h",
+      "scope": "full",
+      "sha256": "16378f5344117ce5f9959e97828ee39bf8e14202f3d2266426d68ae6adee41b3"
+    },
+    {
+      "path": "src/secp256k1/src/field.h",
+      "scope": "full",
+      "sha256": "c8dc29bfb55ffeda43c157191ff5c32abfabc2f81b38a7449c26149553852dbf"
+    },
+    {
+      "path": "src/secp256k1/src/field_10x26.h",
+      "scope": "full",
+      "sha256": "2d198a8504e1a83c2326733506c006da0aa23ed31cb37a9d4303841664e94ae1"
+    },
+    {
+      "path": "src/secp256k1/src/field_10x26_impl.h",
+      "scope": "full",
+      "sha256": "895ff177aece5f81ba07969bb31dc28404b3e003c932198d2720f5e794f70b5d"
+    },
+    {
+      "path": "src/secp256k1/src/field_5x52.h",
+      "scope": "full",
+      "sha256": "b68d72471d172ceddd151e69edae23e22241ae5b2cf51db54ddedb37a95c7362"
+    },
+    {
+      "path": "src/secp256k1/src/field_5x52_asm_impl.h",
+      "scope": "full",
+      "sha256": "9f09d09c14a0ac2570401ac7d2d9517b29a8880e64138b3cdb6d1a5aeaf0fbbf"
+    },
+    {
+      "path": "src/secp256k1/src/field_5x52_impl.h",
+      "scope": "full",
+      "sha256": "ebd64d34668718974288bdf460e64652355e3e4d293622406723d1613492a4c2"
+    },
+    {
+      "path": "src/secp256k1/src/field_5x52_int128_impl.h",
+      "scope": "full",
+      "sha256": "f52cc9398e475a0283e4f879a79a5f97f5deec98994b8f3d3809ddc795dc5da9"
+    },
+    {
+      "path": "src/secp256k1/src/field_impl.h",
+      "scope": "full",
+      "sha256": "d3c4900b1edaa2714ee3f63b1dafecb9731c629c349416115bfaae573b450632"
+    },
+    {
+      "path": "src/secp256k1/src/gen_context.c",
+      "scope": "full",
+      "sha256": "35c52545c34ef0670153e99daac19353d6dc3a6bb8ba2f62afe4bc780330cc47"
+    },
+    {
+      "path": "src/secp256k1/src/group.h",
+      "scope": "full",
+      "sha256": "c47c162542dd9f2a593a6ac3ed0a7203ffcaf0e0405700f969d8790e95776fd8"
+    },
+    {
+      "path": "src/secp256k1/src/group_impl.h",
+      "scope": "full",
+      "sha256": "ab816ab8ca4acfaa8a442116f8187cde8da1772d3a72ef74c1d0f021e323e127"
+    },
+    {
+      "path": "src/secp256k1/src/hash.h",
+      "scope": "full",
+      "sha256": "4961777743ffc65f2f7dfc6095073a64c53e84f4769aebe7238231d65490d1af"
+    },
+    {
+      "path": "src/secp256k1/src/hash_impl.h",
+      "scope": "full",
+      "sha256": "bb66c3daf92bc87bb4a9a7ea878b060882399dad015a4ca23d1c1a9a79309a3d"
+    },
+    {
+      "path": "src/secp256k1/src/java/org_bitcoin_NativeSecp256k1.c",
+      "scope": "full",
+      "sha256": "dec74c4bf11eea13c602eb9aeed816b98d5507e37a7110c26a8643676e9be9b2"
+    },
+    {
+      "path": "src/secp256k1/src/java/org_bitcoin_NativeSecp256k1.h",
+      "scope": "full",
+      "sha256": "b7f97adade72e1a87e5f8e1caa6b0c6bd08456ccd27074d5fe0d7930296e161e"
+    },
+    {
+      "path": "src/secp256k1/src/java/org_bitcoin_Secp256k1Context.c",
+      "scope": "full",
+      "sha256": "05bf610a3f3a7ccf8a4b066e83454dee40c2a33fe18d3e615bdbc636bba24309"
+    },
+    {
+      "path": "src/secp256k1/src/java/org_bitcoin_Secp256k1Context.h",
+      "scope": "full",
+      "sha256": "46286b5df55c15a8506adb3ae002a5d4f86e74f359f89dd2038588c7b7ae5b5c"
+    },
+    {
+      "path": "src/secp256k1/src/modules/ecdh/main_impl.h",
+      "scope": "full",
+      "sha256": "92751950f0949dcfc13da6facdd97b19364b70dc6f78bca3a734f8553c36ee48"
+    },
+    {
+      "path": "src/secp256k1/src/modules/ecdh/tests_impl.h",
+      "scope": "full",
+      "sha256": "6e0e2812d771e7c5885f45292af7e9d332a04bd33aa8acfe903b70eda0e8e1d1"
+    },
+    {
+      "path": "src/secp256k1/src/modules/recovery/main_impl.h",
+      "scope": "full",
+      "sha256": "fc5497be6cb412e17f5e64a96835e77b686c9d24addfc653eebd9d755154b7dd"
+    },
+    {
+      "path": "src/secp256k1/src/modules/recovery/tests_impl.h",
+      "scope": "full",
+      "sha256": "df42042901a3241870010620f9583d8c5e7fc088c90d6b4dc947d5e95cbd5791"
+    },
+    {
+      "path": "src/secp256k1/src/num.h",
+      "scope": "full",
+      "sha256": "ba2ea432aba6da9386ad8669e9f82ec494751a53439cf1c185aad932a6579a7d"
+    },
+    {
+      "path": "src/secp256k1/src/num_gmp.h",
+      "scope": "full",
+      "sha256": "af79122e2a2738fb2b044eaf4934e9443265c05672ffdf9d1aafda1b0fdacfb7"
+    },
+    {
+      "path": "src/secp256k1/src/num_gmp_impl.h",
+      "scope": "full",
+      "sha256": "41f2d8f30d0e44347be8ec39c80722d6b477c8f93c7cf38bf727570791d8c1c4"
+    },
+    {
+      "path": "src/secp256k1/src/num_impl.h",
+      "scope": "full",
+      "sha256": "85a042173a0e312cfa416d717b95ce6c69b6a49f12b5dd2c19e74dc65b654bf8"
+    },
+    {
+      "path": "src/secp256k1/src/scalar.h",
+      "scope": "full",
+      "sha256": "b7fe8d957ce3958aa09acf543fff00ab1f4ebf47696977c0a51d5942e1eaa1b2"
+    },
+    {
+      "path": "src/secp256k1/src/scalar_4x64.h",
+      "scope": "full",
+      "sha256": "0b54445ba25bc5e0893bc42f65784e5442a28d9a24aa8728134ff45c87629764"
+    },
+    {
+      "path": "src/secp256k1/src/scalar_4x64_impl.h",
+      "scope": "full",
+      "sha256": "adeb6a621d27e5b025cfecf9435969db3364499cd789b1b5abdba06798066f57"
+    },
+    {
+      "path": "src/secp256k1/src/scalar_8x32.h",
+      "scope": "full",
+      "sha256": "c89ea3b63eac13aa26bf2088914c0f2fd7df1c7eb775ba0ca2fcf854010985eb"
+    },
+    {
+      "path": "src/secp256k1/src/scalar_8x32_impl.h",
+      "scope": "full",
+      "sha256": "9ec6a7ef3347d1bed85b58ef59173d93fce5fd134063dc38bd46cb788d5463d2"
+    },
+    {
+      "path": "src/secp256k1/src/scalar_impl.h",
+      "scope": "full",
+      "sha256": "3c57c86f1615b4fdb9c76508a00cff35a7d607f9d73ba0d1900368bf90b84edc"
+    },
+    {
+      "path": "src/secp256k1/src/scalar_low.h",
+      "scope": "full",
+      "sha256": "c037d026f9dbb419a7e9399814e914d8eb9e19980cb23b89e17dc9349d4027e8"
+    },
+    {
+      "path": "src/secp256k1/src/scalar_low_impl.h",
+      "scope": "full",
+      "sha256": "11c4ca226674b877d1d56fd1a84eaffe1b8ba0999b9409de169331d0e2612c55"
+    },
+    {
+      "path": "src/secp256k1/src/scratch.h",
+      "scope": "full",
+      "sha256": "1fc228d92d345046d57f5360ac41c9255939dfb253a3ed48d0e409d89f486d87"
+    },
+    {
+      "path": "src/secp256k1/src/scratch_impl.h",
+      "scope": "full",
+      "sha256": "80822f92a0904c768a5b96a17c5f1cf0576a5e89092fa9b19b9eed25409cb446"
+    },
+    {
+      "path": "src/secp256k1/src/secp256k1.c",
+      "scope": "full",
+      "sha256": "99ef40720fd6e86d4eb5b81b8cd709d538585b6f33d65d7e2f0cdf88959ecba7"
+    },
+    {
+      "path": "src/secp256k1/src/testrand.h",
+      "scope": "full",
+      "sha256": "e321b2098a028a9857a3da8b2893d26613069a57321f10853ead42f639496447"
+    },
+    {
+      "path": "src/secp256k1/src/testrand_impl.h",
+      "scope": "full",
+      "sha256": "48f542d2422c05bbcf521dc52f80b14d874c81f34dd5fd434e04091aa09fd5da"
+    },
+    {
+      "path": "src/secp256k1/src/tests.c",
+      "scope": "full",
+      "sha256": "5737f112f2196e78e007b4318762c798af15dc17e7a31134daac3fd497d4efed",
+      "original_sha256": "a8ec27ec4284f72d5ae3d36f0269b9277ca0e77a3a86633dd8ddde5cdafb259d",
+      "approved_change": "Test only: require valid scalar pairs, rather than all DER encodings, to parse in OpenSSL 3; add a deterministic negative-scalar vector. All production secp256k1 sources remain unchanged."
+    },
+    {
+      "path": "src/secp256k1/src/tests_exhaustive.c",
+      "scope": "full",
+      "sha256": "48a7e91b691f330c4b194cc36fd3158557664e5a4889f9608b828d46cb33a92b"
+    },
+    {
+      "path": "src/secp256k1/src/util.h",
+      "scope": "full",
+      "sha256": "a9ccc344827ddd8b738846b45e83d1ee8cc7010886b8e7eea50c18e77413fb10"
+    },
+    {
+      "path": "src/serialize.h",
+      "scope": "full",
+      "sha256": "5da39028eb81fd917e663f932cdd4fac1fd4d0ffc9e232396503225e1229bdf2"
+    },
+    {
+      "path": "src/smartnode/activesmartnode.cpp",
+      "scope": "full",
+      "sha256": "29e8ed7fbe58c51ded0275cf395162d2541f4b80782b4c1047835346da15c868"
+    },
+    {
+      "path": "src/smartnode/activesmartnode.h",
+      "scope": "full",
+      "sha256": "2a5232d5c14c979db3ad01a1a2e6dda55adf9b92559f50dea2c8cb88c10b2b70"
+    },
+    {
+      "path": "src/smartnode/smartnode-collaterals.cpp",
+      "scope": "full",
+      "sha256": "ff2536c8d8791fc1bf2230c69190f3748d42ab4367ffc756f5831ebebfcfff54"
+    },
+    {
+      "path": "src/smartnode/smartnode-collaterals.h",
+      "scope": "full",
+      "sha256": "dc59e7c53c35dba4019d7eb26a60e63eb6dfb455a76b3ae4136c7173772dd9fa"
+    },
+    {
+      "path": "src/smartnode/smartnode-meta.cpp",
+      "scope": "full",
+      "sha256": "e5aa06af6abce1fc0aa058a928a1163fc3f8e38a28f73655c99dbeea5a607d9b"
+    },
+    {
+      "path": "src/smartnode/smartnode-meta.h",
+      "scope": "full",
+      "sha256": "b424b5457bcb2bac77567c73de0f5a42967bacab42cfda4c1b2aa6aa706bbd3e"
+    },
+    {
+      "path": "src/smartnode/smartnode-payments.cpp",
+      "scope": "full",
+      "sha256": "fcba9e0d8563c706fbe7f6c5047a2eda85ef329779503246a8ab85924d3d3225"
+    },
+    {
+      "path": "src/smartnode/smartnode-payments.h",
+      "scope": "full",
+      "sha256": "f5a63cf632f40896143a38b42bbed2b47269565f7ecb780a051a63ba77bf5055"
+    },
+    {
+      "path": "src/smartnode/smartnode-sync.cpp",
+      "scope": "full",
+      "sha256": "0194513500f48b690c9c43c54d74fcb61cde0498ba9267c32a176c16b33fe917"
+    },
+    {
+      "path": "src/smartnode/smartnode-sync.h",
+      "scope": "full",
+      "sha256": "b6139ed86a6665daecd23baff448b594b2cab73a16cfbc0a3fe5913865ffbb4e"
+    },
+    {
+      "path": "src/smartnode/smartnode-utils.cpp",
+      "scope": "full",
+      "sha256": "163902fa1d4501d7113d1a370b418bf0bb9740d39a39c32999103363608d93e6"
+    },
+    {
+      "path": "src/smartnode/smartnode-utils.h",
+      "scope": "full",
+      "sha256": "f7899e4017dc0f4312e51a378c4b3e7a8b54cb1e9c2340b4c3416c34f798c6d1"
+    },
+    {
+      "path": "src/spork.cpp",
+      "scope": "full",
+      "sha256": "a541fb4f63d94975010076e3ffdb5264f9492c7100ea71d8fbf127d8e379a334"
+    },
+    {
+      "path": "src/spork.h",
+      "scope": "full",
+      "sha256": "0f6888146c39fd09a3a04af918ec39f5e7b3c036fe82b6e98f0a81182a162b20"
+    },
+    {
+      "path": "src/streams.h",
+      "scope": "full",
+      "sha256": "5ce48b1e2276341df3a66678b2edeab4e4dfab3b923d116d239e2ba0f5a0f047"
+    },
+    {
+      "path": "src/uint256.cpp",
+      "scope": "full",
+      "sha256": "de124b5e0c45f3a0ecc94c62b61b9bbf55c84941f8c0f34f69ca3676d272689e"
+    },
+    {
+      "path": "src/uint256.h",
+      "scope": "full",
+      "sha256": "8af92ea1b2bb4f2c704d57b1e8178821d16aafe9e09af6ea45265f6d1664fc16"
+    },
+    {
+      "path": "src/util.cpp",
+      "scope": "full",
+      "sha256": "60bf364b1e9c5bc738ee597a45667c46f345a5bdcdbcc0ed8e76943f6a4800d6",
+      "original_sha256": "698b3ce1c03f9e20ff6932286568462f8f7322f7bd3aa44c83abe01ca6c5bf8b",
+      "approved_change": "Remove two diagnostic stdout lines from GetChainName. Returned network selection unchanged; restore machine-readable CLI/transaction JSON and hex output, validated by utility tests."
+    },
+    {
+      "path": "src/validation.cpp",
+      "scope": "full",
+      "sha256": "09ba72b5dc4a94bbd9a224b1b0b4f648527db2a848a9fccbc50088e7c8393789"
+    },
+    {
+      "path": "src/validation.h",
+      "scope": "full",
+      "sha256": "a60dfb0b65ebf271deb106a44ce1aa9a370cadda7f3b12f0ebb4b0cb800939b1"
+    },
+    {
+      "path": "src/version.h",
+      "scope": "full",
+      "sha256": "86bcfcd283f9bfc9e11ea57dee8f789dc83650c00488b3e60d3bcb326d058db5"
+    },
+    {
+      "path": "src/wallet/coincontrol.h",
+      "scope": "full",
+      "sha256": "0ee304637328c31ee7257485b371c8d3d226fcfca195ce84311428327c7226dc"
+    },
+    {
+      "path": "src/wallet/coinselection.cpp",
+      "scope": "full",
+      "sha256": "e43b14a9bac4efba6930411fe88914628c403a2a215440ac4a95f310346b58ce"
+    },
+    {
+      "path": "src/wallet/coinselection.h",
+      "scope": "full",
+      "sha256": "950cb5c93277aa5e14085de3890000f8e5f45a1a922bca66c21b0e5e4f7ad0e4"
+    },
+    {
+      "path": "src/wallet/crypter.cpp",
+      "scope": "full",
+      "sha256": "b992f06fbd78c73b60b3f905568dd51eea96e179467950c54d781a6405f6baa1"
+    },
+    {
+      "path": "src/wallet/crypter.h",
+      "scope": "full",
+      "sha256": "c114d621a8077ac23a0df12fefd2cd1f926773419d445f5773dd2d4849130bfb"
+    },
+    {
+      "path": "src/wallet/db.cpp",
+      "scope": "full",
+      "sha256": "2d2455fdf266fbbf3fa9386d46295b10c6111561ddcd88b98f283854f663285f"
+    },
+    {
+      "path": "src/wallet/db.h",
+      "scope": "full",
+      "sha256": "978425d189126f13805bc3d27a1e98d03ecf2fa6638b06256b68ef290af68399"
+    },
+    {
+      "path": "src/wallet/fees.cpp",
+      "scope": "full",
+      "sha256": "e72c9c33ea7e2e5199d632eab6a2baf69e273ff28590411fe691a221d363d19a"
+    },
+    {
+      "path": "src/wallet/fees.h",
+      "scope": "full",
+      "sha256": "10825094a2d195537c2e46b783528981a4711e6f163c671387c0a6e33465f89c"
+    },
+    {
+      "path": "src/wallet/init.cpp",
+      "scope": "full",
+      "sha256": "1813af42e8ed1f4c58b23b3954ddd848344b23682cd82b30dcc9bbe05f135d68"
+    },
+    {
+      "path": "src/wallet/rpcdump.cpp",
+      "scope": "full",
+      "sha256": "1151bebea049c0b3a7e9d55e8cfecb5c798c59b5c82d47967d4ed40ec08dc027"
+    },
+    {
+      "path": "src/wallet/rpcwallet.cpp",
+      "scope": "full",
+      "sha256": "0802b11887358ea9fa625cb4c4e3a8777909beccb332b84aed9c0e50f87851f5"
+    },
+    {
+      "path": "src/wallet/rpcwallet.h",
+      "scope": "full",
+      "sha256": "a8cebfec74f8e74ac035e92e949d77727d75ce5ada086e0d62507c61533d4775"
+    },
+    {
+      "path": "src/wallet/wallet.cpp",
+      "scope": "full",
+      "sha256": "d57632ebe8be3c64d6cc23bd3f15aef1b56645d97be736ca47dfc32d5c1728bf"
+    },
+    {
+      "path": "src/wallet/wallet.h",
+      "scope": "full",
+      "sha256": "2975605c253d0104484d9f4cb8adb4b0a91db749e466d4b6d0e4295bb0d3e3e2"
+    },
+    {
+      "path": "src/wallet/walletdb.cpp",
+      "scope": "full",
+      "sha256": "fb80e87c0c95f77dfa5852cf8c62d3506dfbde52d914d76c3cd5d1ee023db3d9"
+    },
+    {
+      "path": "src/wallet/walletdb.h",
+      "scope": "full",
+      "sha256": "4671e24d981819ed1feb6b0c89118e5788c55821b09ebf7ed17fd25555c329a3"
+    },
+    {
+      "path": "src/wallet/walletutil.cpp",
+      "scope": "full",
+      "sha256": "5ec44f6ef9239c4c7ccbef45f6f2471faee9d715d6e7a293d2b9a7005936d682"
+    },
+    {
+      "path": "src/wallet/walletutil.h",
+      "scope": "full",
+      "sha256": "79aafe987f349884d6ac63fdac5a07dd8d55976ab955505c00ce5e8f5a9dde0a"
+    }
+  ]
+}

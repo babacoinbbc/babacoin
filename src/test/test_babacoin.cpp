@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <test/test_babacoin.h>
+#include <cstdlib>
 
 #include <chainparams.h>
 #include <consensus/consensus.h>
@@ -64,6 +65,9 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
         InitScriptExecutionCache();
         CCoinJoin::InitStandardDenominations();
         fPrintToDebugLog = false; // don't want to write to debug.log file
+        if (std::getenv("BBC_TEST_DEBUG")) {
+            fPrintToConsole = true;
+        }
         fCheckBlockIndex = true;
         SelectParams(chainName);
         evoDb.reset(new CEvoDB(1 << 20, true, true));

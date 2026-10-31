@@ -1,0 +1,14 @@
+{
+  "old_sha256": "46af06dff6c2190ceeeb6eec2ee19463a55b69d006e6cf62c16f825e78942e24",
+  "new_sha256": "b722ae7631938e394735ed8534df612b13bfa0e376cc50b21c10dd4edbfd2fbc",
+  "encrypted": false,
+  "checks": [
+    "new binary opens a fresh legacy wallet and preserves ownership",
+    "legacy binary reopens the wallet after new binary shutdown",
+    "both binaries sign and verify with the same disposable private key",
+    "old-backup restores address ownership in the other binary",
+    "new-backup restores address ownership in the other binary",
+    "old/new P2P handshake succeeds using localhost only"
+  ],
+  "local_paths_redacted": true
+}

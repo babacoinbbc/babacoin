@@ -124,27 +124,20 @@ cmd_create() {
 cmd_backup() {
     title "Backup Wallet"
 
-    local wallet_file="$DATA_DIR/wallets/wallet.dat"
-    # BabaCoin may use either new (~/.babacoin/wallets/wallet.dat) or legacy (~/.babacoin/wallet.dat)
-    [ ! -f "$wallet_file" ] && wallet_file="$DATA_DIR/wallet.dat"
-
-    [ -f "$wallet_file" ] || die "wallet.dat not found in $DATA_DIR or $DATA_DIR/wallets"
+    require_running
 
     mkdir -p "$BACKUP_DIR"
     chmod 700 "$BACKUP_DIR"
 
     local timestamp
-    timestamp=$(date +%Y%m%d-%H%M%S)
+    timestamp=$(date +%Y%m%d-%H%M%S)-$$
     local backup_file="$BACKUP_DIR/wallet-$(hostname)-${timestamp}.dat"
 
     # Use babacoin-cli backupwallet (safer - flushes in-memory state first)
-    if babacoin-cli backupwallet "$backup_file" 2>/dev/null; then
+    if (umask 077; babacoin-cli backupwallet "$backup_file"); then
         ok "Wallet backed up via RPC to: $backup_file"
     else
-        # Fallback: direct file copy (only if daemon is not running)
-        log "RPC backup failed, trying file copy..."
-        cp -a "$wallet_file" "$backup_file"
-        ok "Wallet file copied to: $backup_file"
+        die "RPC backup failed. No file-copy fallback was attempted: copying a live wallet can produce an inconsistent backup. Resolve the RPC error and retry."
     fi
 
     chmod 400 "$backup_file"

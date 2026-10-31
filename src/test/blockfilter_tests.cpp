@@ -92,6 +92,8 @@ BOOST_AUTO_TEST_CASE(blockfilter_basic_test)
 
 BOOST_AUTO_TEST_CASE(blockfilters_json_test)
 {
+    // Official BIP158 vectors. Bitcoin witness records are stripped solely
+    // for BBC decoding; transaction IDs, headers and expected filters stay intact.
     UniValue json;
     std::string json_data(json_tests::blockfilters,
                           json_tests::blockfilters + sizeof(json_tests::blockfilters));
@@ -114,10 +116,11 @@ BOOST_AUTO_TEST_CASE(blockfilters_json_test)
 
         unsigned int pos = 0;
         /*int block_height =*/ test[pos++].get_int();
-        /*uint256 block_hash =*/ ParseHashStr(test[pos++].get_str(), "block_hash");
+        uint256 block_hash = ParseHashStr(test[pos++].get_str(), "block_hash");
 
         CBlock block;
         BOOST_REQUIRE(DecodeHexBlk(block, test[pos++].get_str()));
+        BOOST_CHECK(block.GetHash() == block_hash);
 
         CBlockUndo block_undo;
         block_undo.vtxundo.emplace_back();
