@@ -45,11 +45,15 @@ subprocess.run([sys.executable, str(root / "test/util/isolated_smoke.py"),
 for name in ("src/secp256k1/tests.exe", "src/secp256k1/exhaustive_tests.exe",
              "src/univalue/test/object.exe", "src/univalue/test/unitester.exe", "src/univalue/test/no_nul.exe"):
     with (output / (name.replace("/", "_") + ".log")).open("wb") as stream:
-        subprocess.run([str(build / name)], check=True, stdout=stream, stderr=subprocess.STDOUT, timeout=1800)
+        # UniValue's compiled JSON_TEST_SRC is relative to its source directory.
+        directory = root / "src/univalue" if "univalue" in name else root
+        subprocess.run([str(build / name)], check=True, stdout=stream, stderr=subprocess.STDOUT,
+                       cwd=directory, timeout=1800)
 assert subprocess.check_output([str(build / "src/bdb-version.exe")], text=True).strip() == "4.8.30"
-report = {"core_cases": 343, "qt_suites": 6, "transaction_utility_cases": 49,
+report = {"source_commit": (build / "SOURCE_COMMIT").read_text(encoding="utf-8-sig").strip(),
+          "core_cases": 343, "qt_suites": 6, "transaction_utility_cases": 49,
           "rpcauth_cases": 3, "secp256k1_suites": 2, "univalue_suites": 3, "result": "PASS", "binaries_sha256": {}}
-for binary in sorted((build / "src").glob("*.exe")):
-    report["binaries_sha256"][binary.name] = hashlib.sha256(binary.read_bytes()).hexdigest()
+for binary in sorted((build / "src").rglob("*.exe")):
+    report["binaries_sha256"][binary.relative_to(build / "src").as_posix()] = hashlib.sha256(binary.read_bytes()).hexdigest()
 (output / "native-windows-tests.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 print("Native Windows core, Qt, utility, RPCAuth and isolated wallet tests passed.")
