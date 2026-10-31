@@ -1,0 +1,56 @@
+{
+  "run": "https://github.com/babacoinbbc/babacoin/actions/runs/41169081059",
+  "head_commit": "169a70c495427a069045f281ee433f74386063c4",
+  "results": [
+    {
+      "artifact": "babacoin-tested-ubuntu-18.04-arm64",
+      "elf_machine": "AArch64 (183)",
+      "binaries_sha256": {
+        "babacoin-cli": "4441240a44dfb91402ef5d5606886494e9f8dab8130e31e6ae3cf683dce7da6b",
+        "babacoin-qt": "2d430452efbd049fe28aedfa17195d0adf8927ebcd77f0c90b1b6c3cc7214c3a",
+        "babacoin-tx": "2a2fe479abe3d01183c4e100375b2332cfb542002fbb38b3f4330d6e2b5a3c8f",
+        "babacoind": "80f1fe9034d253e32ac9833025a7fb15dcdd6b3850883f5e318fbc031dea9904"
+      }
+    },
+    {
+      "artifact": "babacoin-tested-ubuntu-20.04-arm64",
+      "elf_machine": "AArch64 (183)",
+      "binaries_sha256": {
+        "babacoin-cli": "77a4511eccce5b6c6f412785bcb41773927f2696f58bddfdde46be187c7b8d54",
+        "babacoin-qt": "7a53927aef5586edc01a188765a303927692836bf5dbe39ebf58dfffad348dab",
+        "babacoin-tx": "80f61a2499469770ad3feb55bbe52d42fc5de73d34f1eaad390c84da16dd6478",
+        "babacoind": "6bb70b5d66b2440912e89c0f99a5f126d9c32b411c04a35834a56f2afe4dc99c"
+      }
+    },
+    {
+      "artifact": "babacoin-tested-ubuntu-22.04-arm64",
+      "elf_machine": "AArch64 (183)",
+      "binaries_sha256": {
+        "babacoin-cli": "3ec79d9a935ea49096d021c1dea7ea4efb73b997d27c11273d299e0a1a3b041e",
+        "babacoin-qt": "eac41680fc09fc4c2a51f70ca061055b67b25c74ec7b16e997130c82dedd8df6",
+        "babacoin-tx": "e552d02854b0ba3f3431976f58e222f4e3ce2a05f8f98ac975af6cd933e3816b",
+        "babacoind": "1d141fd0cef3dc6d21ed4b6704060296c23c75ec9cdfcac4811a60e45afcf7a9"
+      }
+    },
+    {
+      "artifact": "babacoin-tested-ubuntu-24.04-arm64",
+      "elf_machine": "AArch64 (183)",
+      "binaries_sha256": {
+        "babacoin-cli": "221b905d6eaeea667c6ee51811779c47a62e981b8fafebc5e87d9797a122c545",
+        "babacoin-qt": "935d8bc848febde2cd4450529ad536511be0bf12675641be9567955db585785b",
+        "babacoin-tx": "72eac7eb93a5c4df6772c4a65f2c7c3031446335c538070b5bf7a976b2efb241",
+        "babacoind": "4f4efa430f38caf91f298121a39aedd2a0269c0af95e509af2c7a0c83eb351d8"
+      }
+    },
+    {
+      "artifact": "babacoin-tested-ubuntu-26.04-arm64",
+      "elf_machine": "AArch64 (183)",
+      "binaries_sha256": {
+        "babacoin-cli": "bef7e0811962b007d3b41f209de9055c76a0dfc8cb6c07945217a1358cc5831b",
+        "babacoin-qt": "b1cc6696c578c0ebef9d383ad6ea685b70c222e1f33958e6616ee9f5a6c5698f",
+        "babacoin-tx": "f39d5f584ee17ac54a0d7807d810fde286ab57f28b9fcde54af69730ef0abef8",
+        "babacoind": "87b1fafda315322a5a070125191b1f7e321a7db27e12c2b344fe5963069eeac8"
+      }
+    }
+  ]
+}

@@ -18,7 +18,7 @@ bash contrib/build-db4.sh "$deps"
 bash ci/build-bls.sh "$deps"
 ./autogen.sh
 trap 'result=$?; test ! -f config.log || cp config.log "$output/"; exit "$result"' EXIT
-./configure --host="$(gcc -dumpmachine)" --with-gui=qt5 --enable-tests \
+./configure --host="$(gcc -dumpmachine)" --with-gui=qt5 --with-qt-bindir="$MINGW_PREFIX/bin" --enable-tests \
     --disable-bench --disable-stacktraces --disable-shared \
     --with-boost="$MINGW_PREFIX" \
     BDB_CFLAGS="-I$deps/include" BDB_LIBS="-L$deps/lib -ldb_cxx-4.8" \

@@ -13,6 +13,8 @@ export PATH="$p/opt/coreutils/libexec/gnubin:$p/opt/gnu-sed/libexec/gnubin:$p/op
 export CMAKE_PREFIX_PATH="$p/opt/gmp:$p"
 export PKG_CONFIG_PATH="$p/opt/openssl@3/lib/pkgconfig:$p/opt/qt@5/lib/pkgconfig:$p/lib/pkgconfig"
 export JOBS=2
+# Native Cocoa style requires a Cocoa window; the unit runner uses Qt minimal.
+export QT_STYLE_OVERRIDE=Fusion
 deps=$PWD/local-deps
 bash contrib/build-db4.sh "$deps"
 bash ci/build-bls.sh "$deps"
