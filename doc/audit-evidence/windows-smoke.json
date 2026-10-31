@@ -1,0 +1,17 @@
+{
+  "binary_sha256": "2691873beccfc29d24baea1b7a50a09323fb741699e422962dd62139ab99cb63",
+  "workdir": "redacted-local-test-path",
+  "wallet_network": "regtest",
+  "checks": [
+    "offline mainnet identity and zero P2P connections",
+    "one isolated regtest block is mined and accepted",
+    "fresh isolated wallet, owned address, RPC backup, zero P2P connections",
+    "wallet ownership survives clean daemon restart",
+    "original regtest block replays after wallet restore",
+    "RPC backup restores ownership in a separate data directory"
+  ],
+  "version": 2000000,
+  "subversion": "/Babacoin Core:2.0.0.0/",
+  "protocolversion": 70219,
+  "genesis_powhash": "000c5a0b4720b28e4e86a15a50f5358a9eee5f72127bf450eb479dd38ae6bcde"
+}
