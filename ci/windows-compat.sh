@@ -1,28 +1,30 @@
 #!/usr/bin/env bash
-# Native UCRT64 build in a disposable GitHub Windows runner.
+# Native UCRT64 build in a disposable CI runner or explicitly isolated tree.
 set -euo pipefail
-test "${GITHUB_ACTIONS:-false}" = true
+test "${GITHUB_ACTIONS:-false}" = true || test "${BBC_DISPOSABLE_BUILD:-0}" = 1
 test "${MSYSTEM:-}" = UCRT64
 output=$PWD/desktop-output
 mkdir -p "$output"
-printf '%s\n' "$GITHUB_SHA" > "$output/SOURCE_COMMIT"
+printf '%s\n' "${BBC_SOURCE_COMMIT:-${GITHUB_SHA:-local-uncommitted}}" > "$output/SOURCE_COMMIT"
 pacman -Q > "$output/packages.txt"
 gcc --version > "$output/build-environment.txt"
 export JOBS=2
 export CMAKE_GENERATOR="MSYS Makefiles"
 export CMAKE_PREFIX_PATH=$MINGW_PREFIX
+export PKG_CONFIG="$MINGW_PREFIX/bin/pkg-config"
+export PKG_CONFIG_PATH="$MINGW_PREFIX/lib/pkgconfig:$MINGW_PREFIX/share/pkgconfig"
 deps=$PWD/local-deps
 bash contrib/build-db4.sh "$deps"
 bash ci/build-bls.sh "$deps"
 ./autogen.sh
+trap 'result=$?; test ! -f config.log || cp config.log "$output/"; exit "$result"' EXIT
 ./configure --host="$(gcc -dumpmachine)" --with-gui=qt5 --enable-tests \
     --disable-bench --disable-stacktraces --disable-shared \
     --with-boost="$MINGW_PREFIX" \
     BDB_CFLAGS="-I$deps/include" BDB_LIBS="-L$deps/lib -ldb_cxx-4.8" \
     CPPFLAGS="-I$deps/include" LDFLAGS="-L$deps/lib"
-trap 'result=$?; test ! -f config.log || cp config.log "$output/"; exit "$result"' EXIT
-make -j"$JOBS"
-make -C src -j"$JOBS" test/test_babacoin.exe qt/test/test_babacoin-qt.exe
+make -j"$JOBS" LIBTOOL_APP_LDFLAGS=
+make -C src -j"$JOBS" LIBTOOL_APP_LDFLAGS= test/test_babacoin.exe qt/test/test_babacoin-qt.exe
 make -C src/secp256k1 -j"$JOBS" tests.exe exhaustive_tests.exe
 make -C src/univalue -j"$JOBS" test/object.exe test/unitester.exe test/no_nul.exe
 cat > "$output/bdb-version.c" <<'EOF'
