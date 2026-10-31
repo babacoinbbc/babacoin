@@ -266,6 +266,11 @@ BOOST_FIXTURE_TEST_CASE(collateral_upgrade_boundary, TestChainDIP3Setup)
     consensus.nCollaterals = SmartnodeCollaterals(
         {{expiry - 1, 10 * COIN}, {INT_MAX, 20 * COIN}}, {{INT_MAX, 20}});
     consensus.nSmartnodeCollateralUpgradeHeight = expiry;
+    auto mine = [&](const std::vector<CMutableTransaction>& txs) {
+        auto block = CreateAndProcessBlock(txs, coinbaseKey);
+        deterministicMNManager->UpdatedBlockTip(chainActive.Tip());
+        return block;
+    };
     auto utxos = BuildSimpleUtxoMap(coinbaseTxns, coinbaseKey);
     CKey collateralKey, payoutKey, oldOwner, newOwner, externalOwner;
     CBLSSecretKey oldOperator, newOperator, externalOperator;
@@ -275,9 +280,17 @@ BOOST_FIXTURE_TEST_CASE(collateral_upgrade_boundary, TestChainDIP3Setup)
     CMutableTransaction funding;
     FundTransaction(funding, utxos, GetScriptForDestination(collateralKey.GetPubKey().GetID()), 20 * COIN, coinbaseKey);
     SignTransaction(funding, coinbaseKey);
-    CreateAndProcessBlock({funding}, coinbaseKey);
+    mine({funding});
     auto oldTx = CreateProRegTx(utxos, 1001, payout, coinbaseKey, oldOwner, oldOperator, 10 * COIN);
-    CreateAndProcessBlock({oldTx}, coinbaseKey);
+    std::vector<CMutableTransaction> oldRegistrations{oldTx};
+    // BBC pays no Smartnode reward below its existing network-size threshold.
+    // Exercise actual nonzero payment outputs, without relaxing that rule.
+    for (int i = 1; i < 11; ++i) {
+        CKey owner;
+        CBLSSecretKey op;
+        oldRegistrations.emplace_back(CreateProRegTx(utxos, 1100 + i, payout, coinbaseKey, owner, op, 10 * COIN));
+    }
+    mine(oldRegistrations);
     BOOST_REQUIRE_EQUAL(chainActive.Height(), expiry - 2);
     auto newTx = CreateProRegTx(utxos, 1002, GenerateRandomAddress(), coinbaseKey, newOwner, newOperator, 20 * COIN);
     auto externalTx = CreateProRegTx(utxos, 1003, GenerateRandomAddress(), coinbaseKey, externalOwner, externalOperator, 20 * COIN);
@@ -294,11 +307,11 @@ BOOST_FIXTURE_TEST_CASE(collateral_upgrade_boundary, TestChainDIP3Setup)
     }
     auto list = deterministicMNManager->GetListAtChainTip();
     BOOST_REQUIRE(list.GetMNPayeeForBlock(expiry - 1));
-    BOOST_CHECK(list.GetMNPayeeForBlock(expiry - 1)->proTxHash == oldTx.GetHash());
+    BOOST_CHECK(list.GetMNPayeeForBlock(expiry - 1)->pdmnState->scriptPayout == payout);
     // Even with the active tip before expiry, the expired tier cannot be selected
     // for the candidate expiry block. This checks the original one-block lag.
     BOOST_CHECK(!list.GetMNPayeeForBlock(expiry));
-    auto beforeExpiry = CreateAndProcessBlock({newTx, externalTx}, coinbaseKey);
+    auto beforeExpiry = mine({newTx, externalTx});
     BOOST_REQUIRE_EQUAL(chainActive.Height(), expiry - 1);
     list = deterministicMNManager->GetListAtChainTip();
     BOOST_REQUIRE(list.HasMN(newTx.GetHash()));
@@ -306,13 +319,13 @@ BOOST_FIXTURE_TEST_CASE(collateral_upgrade_boundary, TestChainDIP3Setup)
     BOOST_CHECK(list.IsMNValid(oldTx.GetHash()));
     const auto nextPayee = list.GetMNPayeeForBlock(expiry);
     BOOST_REQUIRE(nextPayee);
-    BOOST_CHECK(nextPayee->proTxHash != oldTx.GetHash());
+    BOOST_CHECK(nextPayee->proTxHash == newTx.GetHash() || nextPayee->proTxHash == externalTx.GetHash());
     std::vector<CTxOut> payments;
     BOOST_REQUIRE(CSmartnodePayments::GetBlockTxOuts(expiry, 4 * COIN, payments, 0));
     BOOST_REQUIRE_EQUAL(payments.size(), 1);
     BOOST_CHECK(payments[0].scriptPubKey == nextPayee->pdmnState->scriptPayout);
     BOOST_CHECK(payments[0].scriptPubKey != payout);
-    CreateAndProcessBlock({}, coinbaseKey);
+    mine({});
     BOOST_REQUIRE_EQUAL(chainActive.Height(), expiry);
     list = deterministicMNManager->GetListAtChainTip();
     BOOST_REQUIRE(list.GetMN(nextPayee->proTxHash));
@@ -327,6 +340,7 @@ BOOST_FIXTURE_TEST_CASE(collateral_upgrade_boundary, TestChainDIP3Setup)
         CValidationState state;
         BOOST_REQUIRE(InvalidateBlock(state, Params(), chainActive.Tip()));
     }
+    deterministicMNManager->UpdatedBlockTip(chainActive.Tip());
     BOOST_REQUIRE_EQUAL(chainActive.Height(), expiry - 1);
     BOOST_CHECK(chainActive.Tip()->GetBlockHash() == beforeExpiry.GetHash());
     list = deterministicMNManager->GetListAtChainTip();
