@@ -84,5 +84,7 @@
   },
   "local_harness_exclusions": {
     "ci/ubuntu-compat.sh": "The VM used a disposable incremental resume harness after initial dependency builds; this clean-container CI entry is reviewed/linted and will be exercised by GitHub CI. All modified compiled sources and test data are fingerprinted."
-  }
+  },
+  "tested_source_commit": "169a70c",
+  "revision_note": "Hashes describe the initial Ubuntu audit revision 169a70c, before the later native desktop workflow and non-root BDB permission changes. See local-matrix-final.json and separate GitHub CI commits for their validation."
 }
