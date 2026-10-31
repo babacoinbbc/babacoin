@@ -1,0 +1,130 @@
+{
+  "application_source_commit": "dd3136bd6c31f34da6669238e3c4956199fbe1a5",
+  "result": "PASS",
+  "platforms": {
+    "macos": {
+      "run_id": 41194071095,
+      "source_commit": "f49950d1440e8f0848031f620fc71cd1dadcf9a8",
+      "jobs": [
+        {
+          "name": "macOS arm64 native tests",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194071095/job/124516580916",
+          "startedAt": "2026-10-31T10:46:01Z",
+          "completedAt": "2026-10-31T11:12:03Z"
+        },
+        {
+          "name": "macOS x86_64 native tests",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194071095/job/124516581001",
+          "startedAt": "2026-10-31T10:45:59Z",
+          "completedAt": "2026-10-31T11:15:30Z"
+        }
+      ]
+    },
+    "windows": {
+      "run_id": 41194248656,
+      "source_commit": "dd3136bd6c31f34da6669238e3c4956199fbe1a5",
+      "jobs": [
+        {
+          "name": "Windows x64 UCRT native build",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194248656/job/124517096474",
+          "startedAt": "2026-10-31T10:48:37Z",
+          "completedAt": "2026-10-31T11:22:23Z"
+        },
+        {
+          "name": "Windows x64 native tests",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194248656/job/124523867613",
+          "startedAt": "2026-10-31T11:22:25Z",
+          "completedAt": "2026-10-31T11:26:18Z"
+        }
+      ]
+    },
+    "ubuntu": {
+      "run_id": 41194251854,
+      "source_commit": "dd3136bd6c31f34da6669238e3c4956199fbe1a5",
+      "jobs": [
+        {
+          "name": "source-safety",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517103622",
+          "startedAt": "2026-10-31T10:48:39Z",
+          "completedAt": "2026-10-31T10:48:44Z"
+        },
+        {
+          "name": "Ubuntu 20.04 x86_64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127791",
+          "startedAt": "2026-10-31T10:48:46Z",
+          "completedAt": "2026-10-31T11:10:42Z"
+        },
+        {
+          "name": "Ubuntu 18.04 x86_64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127797",
+          "startedAt": "2026-10-31T10:48:46Z",
+          "completedAt": "2026-10-31T11:07:25Z"
+        },
+        {
+          "name": "Ubuntu 24.04 arm64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127799",
+          "startedAt": "2026-10-31T10:48:48Z",
+          "completedAt": "2026-10-31T11:12:00Z"
+        },
+        {
+          "name": "Ubuntu 18.04 arm64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127802",
+          "startedAt": "2026-10-31T10:48:48Z",
+          "completedAt": "2026-10-31T11:08:59Z"
+        },
+        {
+          "name": "Ubuntu 20.04 arm64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127843",
+          "startedAt": "2026-10-31T10:48:48Z",
+          "completedAt": "2026-10-31T11:11:57Z"
+        },
+        {
+          "name": "Ubuntu 22.04 arm64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127847",
+          "startedAt": "2026-10-31T10:48:48Z",
+          "completedAt": "2026-10-31T11:12:35Z"
+        },
+        {
+          "name": "Ubuntu 22.04 x86_64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127853",
+          "startedAt": "2026-10-31T10:55:27Z",
+          "completedAt": "2026-10-31T11:11:01Z"
+        },
+        {
+          "name": "Ubuntu 26.04 x86_64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127855",
+          "startedAt": "2026-10-31T10:55:18Z",
+          "completedAt": "2026-10-31T11:17:48Z"
+        },
+        {
+          "name": "Ubuntu 24.04 x86_64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127878",
+          "startedAt": "2026-10-31T10:55:18Z",
+          "completedAt": "2026-10-31T11:11:06Z"
+        },
+        {
+          "name": "Ubuntu 26.04 arm64",
+          "conclusion": "success",
+          "url": "https://github.com/babacoinbbc/babacoin/actions/runs/41194251854/job/124517127879",
+          "startedAt": "2026-10-31T10:55:20Z",
+          "completedAt": "2026-10-31T11:15:35Z"
+        }
+      ]
+    }
+  },
+  "note": "The macOS run includes an obsolete Windows job; only its two successful macOS jobs are counted. Windows validation uses the separate successful dd3136b run. Application sources are identical between f49950d and dd3136b; their difference is the Windows test driver. Later evidence-only commits do not change compiled code."
+}
