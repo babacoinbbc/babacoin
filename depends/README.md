@@ -1,3 +1,11 @@
+### Legacy recipe status
+
+This directory retains historical dependency recipes, including OpenSSL 1.0.1k
+and Qt 5.9.6. They are not the supported path for new release artifacts. Use
+`doc/ubuntu-compatibility.md` and the native Windows/macOS compatibility
+workflow for current build dependencies and wallet-compatible Berkeley DB 4.8.
+Do not describe an untested legacy-depends build as a validated release.
+
 ### Usage
 
 To build dependencies for the current arch+OS:

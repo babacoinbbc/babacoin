@@ -153,7 +153,7 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
                qDebug() << "PaymentRequestPlus::getMerchant: Allowing self signed root certificate, because -allowselfsignedrootcertificates is true.";
             }
         }
-        X509_NAME *certname = X509_get_subject_name(signing_cert);
+        auto* certname = X509_get_subject_name(signing_cert);
 
         // Valid cert; check signature:
         payments::PaymentRequest rcopy(paymentRequest); // Copy
