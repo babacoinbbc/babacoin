@@ -11,7 +11,7 @@
 
 V2 combines a redesigned day/night desktop wallet, safer wallet handling and a
 larger, test-gated platform matrix. Download the matching package from the
-[V2.0.0-rc.4 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0).
+[V2.0.0 mainnet release page](https://github.com/babacoinbbc/babacoin/releases/latest).
 Read its release status, checksums, source manifest and migration notes first.
 Release assets are assembled only after every required platform job passes.
 
@@ -279,6 +279,8 @@ promised by this roadmap.
 - [Ubuntu build guide](doc/ubuntu-compatibility.md)
 - [Desktop validation](doc/wallet-desktop-validation.md)
 - [V2 release notes](doc/release/v2.0.0.md)
+- [Short upgrade announcement](doc/release/v2-announcement.md)
+- [Discord coin information](doc/community/discord-coin-information.md)
 - [Contribution guide](CONTRIBUTING.md)
 
 Use disposable build environments and `make check`. Do not disable tests to

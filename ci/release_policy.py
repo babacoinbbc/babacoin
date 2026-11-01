@@ -4,7 +4,7 @@ import re
 
 
 def require_release_identity(tag, config):
-    stable = tag == 'v2.0.0'
+    stable = tag in ('v2.0.0', 'v2.0.0-mainnet')
     candidate = re.fullmatch(r'v2\.0\.0-rc\.[1-9][0-9]*', tag) is not None
     if not stable and not candidate:
         raise ValueError('Only V2.0.0 or an explicit V2.0.0 release candidate is supported')

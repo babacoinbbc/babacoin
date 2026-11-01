@@ -37,7 +37,7 @@ jobs:
       with:
         script: |
           const tag = process.env.RELEASE_TAG;
-          if (!/^v2\.0\.0$/.test(tag)) {
+          if (!/^v2\.0\.0(?:-mainnet)?$/.test(tag)) {
             core.setFailed('This source builds the final V2.0.0 release only.');
             return;
           }
@@ -49,6 +49,23 @@ jobs:
             core.setFailed('A release already exists for this tag. Refusing to replace it.');
           } catch (error) {
             if (error.status !== 404) throw error;
+          }
+          // A pre-existing annotated or lightweight tag must name this source.
+          let existingRef;
+          try {
+            existingRef = (await github.rest.git.getRef({ ...context.repo, ref: `tags/${tag}` })).data;
+          } catch (error) {
+            if (error.status !== 404) throw error;
+          }
+          if (existingRef) {
+            let object = existingRef.object;
+            for (let depth = 0; object.type === 'tag' && depth < 8; depth++) {
+              object = (await github.rest.git.getTag({ ...context.repo, tag_sha: object.sha })).data.object;
+            }
+            if (object.type !== 'commit' || object.sha !== context.sha) {
+              core.setFailed('Existing Git tag refers to a different source commit. Choose a new tag.');
+              return;
+            }
           }
     - name: Verify the complete same-source release payload
       env:
