@@ -12,9 +12,27 @@ permissions:
   contents: read
   actions: read
 jobs:
+  preflight:
+    name: Verify release identity before building
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Match the tag to the compiled version and release flag
+      env:
+        RELEASE_TAG: ${{ inputs.release_tag }}
+      run: python3 ci/release_policy.py --tag "$RELEASE_TAG"
+    - name: Preserve existing releases and source tags
+      uses: actions/github-script@v7
+      env:
+        RELEASE_TAG: ${{ inputs.release_tag }}
+      with:
+        script: |
+          await require(process.env.GITHUB_WORKSPACE + '/ci/check-release-tag.js')({github, context, tag: process.env.RELEASE_TAG});
   ubuntu-compatibility:
+    needs: preflight
     uses: ./.github/workflows/ubuntu-compatibility.yml
   debian-compatibility:
+    needs: preflight
     uses: ./.github/workflows/debian-compatibility.yml
   upload-release:
     name: Assemble tested draft release
@@ -30,43 +48,13 @@ jobs:
     - uses: actions/download-artifact@v4
       with:
         path: artifacts
-    - name: Preserve existing releases
+    - name: Preserve existing releases and source tags
       uses: actions/github-script@v7
       env:
         RELEASE_TAG: ${{ inputs.release_tag }}
       with:
         script: |
-          const tag = process.env.RELEASE_TAG;
-          if (!/^v2\.0\.0(?:-mainnet)?$/.test(tag)) {
-            core.setFailed('This source builds the final V2.0.0 release only.');
-            return;
-          }
-          try {
-            await github.rest.repos.getReleaseByTag({
-              ...context.repo,
-              tag
-            });
-            core.setFailed('A release already exists for this tag. Refusing to replace it.');
-          } catch (error) {
-            if (error.status !== 404) throw error;
-          }
-          // A pre-existing annotated or lightweight tag must name this source.
-          let existingRef;
-          try {
-            existingRef = (await github.rest.git.getRef({ ...context.repo, ref: `tags/${tag}` })).data;
-          } catch (error) {
-            if (error.status !== 404) throw error;
-          }
-          if (existingRef) {
-            let object = existingRef.object;
-            for (let depth = 0; object.type === 'tag' && depth < 8; depth++) {
-              object = (await github.rest.git.getTag({ ...context.repo, tag_sha: object.sha })).data.object;
-            }
-            if (object.type !== 'commit' || object.sha !== context.sha) {
-              core.setFailed('Existing Git tag refers to a different source commit. Choose a new tag.');
-              return;
-            }
-          }
+          await require(process.env.GITHUB_WORKSPACE + '/ci/check-release-tag.js')({github, context, tag: process.env.RELEASE_TAG});
     - name: Verify the complete same-source release payload
       env:
         RELEASE_TAG: ${{ inputs.release_tag }}
@@ -95,4 +83,5 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   desktop-compatibility:
+    needs: preflight
     uses: ./.github/workflows/build-missing.yml

@@ -26,6 +26,7 @@
 #include <QSettings>
 
 #include <openssl/ssl.h>
+#include <cstdlib>
 
 #if defined(QT_STATICPLUGIN)
 #include <QtPlugin>
@@ -46,6 +47,11 @@ extern void noui_connect();
 // This is all you need to run all the tests
 int main(int argc, char *argv[])
 {
+#if defined(WIN32)
+    // Keep assertions fatal, but report test failures to the captured log
+    // instead of opening a CRT dialog on the developer's desktop.
+    _set_error_mode(_OUT_TO_STDERR);
+#endif
     Q_INIT_RESOURCE(babacoin);
     SetupEnvironment();
     SetupNetworking();

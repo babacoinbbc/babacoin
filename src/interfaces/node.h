@@ -29,6 +29,7 @@ class proxyType;
 enum class FeeReason;
 struct CNodeStateStats;
 struct WalletScanProgress;
+struct BlockImportProgress;
 
 namespace interfaces {
 
@@ -287,6 +288,9 @@ public:
     virtual std::unique_ptr<Handler> handleShowProgress(ShowProgressFn fn) = 0;
     using WalletScanProgressFn = std::function<void(const WalletScanProgress&)>;
     virtual std::unique_ptr<Handler> handleWalletScanProgress(WalletScanProgressFn fn) = 0;
+    using BlockImportProgressFn = std::function<void(const BlockImportProgress&)>;
+    virtual std::unique_ptr<Handler> handleBlockImportProgress(BlockImportProgressFn fn) = 0;
+    virtual BlockImportProgress getBlockImportProgress() = 0;
 
     //! Register handler for load wallet messages.
     using LoadWalletFn = std::function<void(std::unique_ptr<Wallet> wallet)>;

@@ -23,7 +23,32 @@ The pinned last block is 1,062,893:
 `9657b4c12c44fef7210ea8cbadce24d47ef58d97abbd7595fd5e74b9962ae209`.
 The node downloads newer blocks normally after importing this snapshot.
 
-## Import without replacing wallet data
+## Automatic import from the active data directory
+
+The startup importer already exists in RC4 and is retained in V2.0.1. After
+backing up the wallet and closing Babacoin cleanly, verify and extract the full
+archive. Place its raw `bootstrap.dat` directly in the **active mainnet data
+directory**, next to `blocks` and `chainstate`, then start your normal mainnet
+shortcut. A ZIP left unopened or a file in another data directory is not loaded.
+Use the wallet's Information screen or diagnostics to confirm the active path.
+Keep the archive outside that directory as a separate copy.
+
+The debug log entry `Importing bootstrap.dat...` proves automatic detection and
+import start. It does not prove completion. V2.0.1 displays file-read bytes and
+percentage, then block validation separately. Header synchronization is another
+phase and its percentage is an estimate. Normal validation can be CPU-intensive
+and take much longer than downloading, depending on storage and hardware.
+
+The importer renames its automatic input to `bootstrap.dat.old` after the read
+attempt. That name alone is **not** a successful-validation receipt. Confirm
+the validated height/hash below and allow validation/rescanning to finish.
+After interruption, use the preserved extracted file (or `.old` file) through
+an explicit `-loadblock` argument. Do not delete chain data or wallet files.
+
+The update archive's `bootstrap-update-762578-1062893.dat` filename is not
+automatically detected. Use the explicit method below after checking its base.
+
+## Explicit import without replacing wallet data
 
 1. Back up the wallet using its backup command. Exit Babacoin cleanly.
 2. Verify the downloaded ZIP against `SHA256SUMS-BOOTSTRAP`. On Windows,
@@ -51,9 +76,8 @@ The node downloads newer blocks normally after importing this snapshot.
 
 After an interruption, the same `-loadblock` file can be imported again. Do not
 delete chain data or replace `wallet.dat` to restart an import. Keep the original
-archive outside the data directory. These instructions intentionally use an
-explicit load file instead of the automatically renamed `bootstrap.dat` startup
-file in the data directory.
+archive outside the data directory. The explicit method keeps the input in a
+separate location and makes retries straightforward.
 
 Use V2 for current network rules. A bootstrap does not upgrade V1 or make older
 clients accept the new 2,000,000 BBC Smartnode registration rules.

@@ -7,6 +7,7 @@
 #define BITCOIN_UI_INTERFACE_H
 
 #include <memory>
+#include <mutex>
 #include <stdint.h>
 #include <string>
 #include <algorithm>
@@ -17,6 +18,19 @@
 class CWallet;
 class CBlockIndex;
 class CDeterministicMNList;
+
+/** Observer-only import status. Reading a file is not chain validation. */
+struct BlockImportProgress
+{
+    enum Phase { IDLE = 0, READING = 1, VALIDATING = 2 };
+    Phase phase;
+    uint64_t processed_bytes;
+    uint64_t total_bytes;
+    int new_blocks;
+    uint64_t sequence{0};
+    BlockImportProgress(Phase phaseIn, uint64_t processed = 0, uint64_t total = 0, int blocks = 0)
+        : phase(phaseIn), processed_bytes(processed), total_bytes(total), new_blocks(blocks) {}
+};
 
 /** Read-only block-position progress. Completion never implies wallet readiness. */
 struct WalletScanProgress
@@ -101,6 +115,9 @@ public:
     /** Progress message during initialization. */
     boost::signals2::signal<void (const std::string &message)> InitMessage;
     boost::signals2::signal<void (const WalletScanProgress&)> NotifyWalletScanProgress;
+    boost::signals2::signal<void (const BlockImportProgress&)> NotifyBlockImportProgress;
+    void ShowBlockImportProgress(const BlockImportProgress& progress);
+    BlockImportProgress GetBlockImportProgress() const;
 
     /** Number of network connections changed. */
     boost::signals2::signal<void (int newNumConnections)> NotifyNumConnectionsChanged;
@@ -136,6 +153,9 @@ public:
 
     /** Banlist did change. */
     boost::signals2::signal<void (void)> BannedListChanged;
+private:
+    mutable std::mutex m_import_mutex;
+    BlockImportProgress m_import_progress{BlockImportProgress::IDLE};
 };
 
 /** Show warning message **/

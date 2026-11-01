@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -266,7 +267,9 @@ FILE* OpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly = false);
 /** Translation to a filesystem path */
 fs::path GetBlockPosFilename(const CDiskBlockPos &pos, const char *prefix);
 /** Import blocks from an external file */
-bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskBlockPos *dbp = nullptr);
+using BlockFileProgressFn = std::function<void(uint64_t processed_bytes, int new_blocks)>;
+bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskBlockPos *dbp = nullptr,
+                          const BlockFileProgressFn& progress = {});
 /** Ensures we have a genesis block in the block tree, possibly writing one to disk. */
 bool LoadGenesisBlock(const CChainParams& chainparams);
 /** Load the block tree and coins database from disk,

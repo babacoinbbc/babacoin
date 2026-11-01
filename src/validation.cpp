@@ -6,6 +6,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <validation.h>
+#include <chrono>
 
 #include <arith_uint256.h>
 #include <chain.h>
@@ -4820,13 +4821,28 @@ bool LoadGenesisBlock(const CChainParams& chainparams)
     return g_chainstate.LoadGenesisBlock(chainparams);
 }
 
-bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskBlockPos *dbp)
+bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskBlockPos *dbp,
+                          const BlockFileProgressFn& progress)
 {
     // Map of disk positions for blocks with unknown parent (only used for reindex)
     static std::multimap<uint256, CDiskBlockPos> mapBlocksUnknownParent;
     int64_t nStart = GetTimeMillis();
 
     int nLoaded = 0;
+    uint64_t progressOffset = 0;
+    auto lastProgressReport = std::chrono::steady_clock::now() - std::chrono::milliseconds(250);
+    bool reportProgress = bool(progress);
+    auto notifyProgress = [&](uint64_t offset) {
+        if (!reportProgress) return;
+        try {
+            progress(offset, nLoaded);
+        } catch (const std::exception& e) {
+            // A display observer must never decide block validity or abort an
+            // otherwise valid import. Thread interruptions still propagate.
+            reportProgress = false;
+            LogPrintf("Block import progress observer failed: %s\n", e.what());
+        }
+    };
     try {
         unsigned int nMaxBlockSize = MaxBlockSize();
         // This takes over fileIn and calls fclose() on it in the CBufferedFile destructor
@@ -4834,6 +4850,10 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
         uint64_t nRewind = blkdat.GetPos();
         while (!blkdat.eof()) {
             boost::this_thread::interruption_point();
+            if (reportProgress && std::chrono::steady_clock::now() - lastProgressReport >= std::chrono::milliseconds(250)) {
+                notifyProgress(nRewind);
+                lastProgressReport = std::chrono::steady_clock::now();
+            }
 
             blkdat.SetPos(nRewind);
             nRewind++; // start one byte further next time, in case of failure
@@ -4866,6 +4886,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                 CBlock& block = *pblock;
                 blkdat >> block;
                 nRewind = blkdat.GetPos();
+                progressOffset = nRewind;
 
                 uint256 hash = block.GetHash();
                 {
@@ -4938,6 +4959,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
     } catch (const std::runtime_error& e) {
         AbortNode(std::string("System error: ") + e.what());
     }
+    notifyProgress(progressOffset);
     if (nLoaded > 0)
         LogPrintf("Loaded %i blocks from external file in %dms\n", nLoaded, GetTimeMillis() - nStart);
     return nLoaded > 0;

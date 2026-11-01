@@ -12,6 +12,7 @@
 #include <sync.h>
 
 #include <QObject>
+#include <QString>
 #include <QDateTime>
 
 #include <atomic>
@@ -25,6 +26,7 @@ class CBlockIndex;
 
 QT_BEGIN_NAMESPACE
 class QTimer;
+class QThread;
 QT_END_NAMESPACE
 
 enum class BlockSource {
@@ -64,6 +66,23 @@ public:
     int getHeaderTipHeight() const;
     int64_t getHeaderTipTime() const;
 
+    // GUI-thread snapshot only. Never acquire a validation lock while painting
+    // or handling a connection/status update.
+    struct BlockTip {
+        int height{-1};
+        QDateTime date;
+        QString hash;
+        double verificationProgress{0};
+    };
+    const BlockTip& getCachedBlockTip() const { return cachedBlockTip; }
+    struct ImportStatus {
+        int phase{0};
+        qulonglong processed{0};
+        qulonglong total{0};
+        int newBlocks{0};
+    };
+    const ImportStatus& getCachedImportProgress() const { return cachedImportProgress; }
+
     void setSmartnodeList(const CDeterministicMNList& mnList);
     CDeterministicMNList getSmartnodeList() const;
     void refreshSmartnodeList();
@@ -86,6 +105,7 @@ public:
 private:
     interfaces::Node& m_node;
     std::unique_ptr<interfaces::Handler> m_handler_show_progress;
+    std::unique_ptr<interfaces::Handler> m_handler_block_import_progress;
     std::unique_ptr<interfaces::Handler> m_handler_notify_num_connections_changed;
     std::unique_ptr<interfaces::Handler> m_handler_notify_network_active_changed;
     std::unique_ptr<interfaces::Handler> m_handler_notify_alert_changed;
@@ -99,6 +119,16 @@ private:
     BanTableModel *banTableModel;
 
     QTimer *pollTimer;
+    QThread* pollThread{nullptr};
+    QObject* pollWorker{nullptr};
+    std::atomic<bool> stopping{false};
+    std::atomic<bool> smartnodeRefreshRequested{true};
+    int64_t lastLockCountPoll{0}; // worker thread only
+    bool backgroundInitialSync{true}; // worker thread only
+    BlockTip cachedBlockTip; // GUI thread only
+    ImportStatus cachedImportProgress; // GUI thread only
+    qulonglong lastImportSequence{0};
+    void pollCore();
 
     // The cache for mn list is not technically needed because CDeterministicMNManager
     // caches it internally for recent blocks but it's not enough to get consistent
@@ -110,6 +140,8 @@ private:
     void unsubscribeFromCoreSignals();
 
 Q_SIGNALS:
+    void requestedPoll();
+    void blockImportProgress(int phase, qulonglong processed, qulonglong total, int newBlocks);
     void numConnectionsChanged(int count);
     void smartnodeListChanged() const;
     void numBlocksChanged(int count, const QDateTime& blockDate, const QString& blockHash, double nVerificationProgress, bool header);
@@ -126,6 +158,10 @@ Q_SIGNALS:
     void showProgress(const QString &title, int nProgress);
 
 public Q_SLOTS:
+    void updateTip(int count, const QDateTime& date, const QString& hash, double progress, bool header);
+    void updateMempoolStats(qulonglong count, qulonglong bytes);
+    void updateInstantLockCount(qulonglong count);
+    void updateBlockImportProgress(int phase, qulonglong processed, qulonglong total, int newBlocks, qulonglong sequence);
     void updateTimer();
     void updateNumConnections(int numConnections);
     void updateNetworkActive(bool networkActive);

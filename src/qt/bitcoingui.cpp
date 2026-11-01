@@ -993,8 +993,11 @@ void BitcoinGUI::setClientModel(ClientModel *_clientModel)
         connect(_clientModel, SIGNAL(networkActiveChanged(bool)), this, SLOT(setNetworkActive(bool)));
 
         modalOverlay->setKnownBestHeight(_clientModel->getHeaderTipHeight(), QDateTime::fromTime_t(_clientModel->getHeaderTipTime()));
-        setNumBlocks(m_node.getNumBlocks(), QDateTime::fromTime_t(m_node.getLastBlockTime()), QString::fromStdString(m_node.getLastBlockHash()), m_node.getVerificationProgress(), false);
+        updateCachedBlockTip();
         connect(_clientModel, SIGNAL(numBlocksChanged(int,QDateTime,QString,double,bool)), this, SLOT(setNumBlocks(int,QDateTime,QString,double,bool)));
+        connect(_clientModel, &ClientModel::blockImportProgress, this, &BitcoinGUI::setBlockImportProgress);
+        const auto& importState = _clientModel->getCachedImportProgress();
+        setBlockImportProgress(importState.phase, importState.processed, importState.total, importState.newBlocks);
 
         connect(_clientModel, SIGNAL(additionalDataSyncProgressChanged(double)), this, SLOT(setAdditionalDataSyncProgress(double)));
 
@@ -1416,7 +1419,7 @@ void BitcoinGUI::updateNetworkState()
     }
 
     if (fNetworkBecameActive || fNetworkBecameInactive) {
-        setNumBlocks(m_node.getNumBlocks(), QDateTime::fromTime_t(m_node.getLastBlockTime()), QString::fromStdString(m_node.getLastBlockHash()), m_node.getVerificationProgress(), false);
+        updateCachedBlockTip();
     }
 
     nCountPrev = count;
@@ -1453,9 +1456,18 @@ void BitcoinGUI::updateHeadersSyncProgressLabel()
 {
     int64_t headersTipTime = clientModel->getHeaderTipTime();
     int headersTipHeight = clientModel->getHeaderTipHeight();
+    if (headersTipHeight < 0 || headersTipTime <= 0) {
+        progressBarLabel->setText(tr("Waiting for headers..."));
+        return;
+    }
     int estHeadersLeft = (GetTime() - headersTipTime) / Params().GetConsensus().nPowTargetSpacing;
-    if (estHeadersLeft > HEADER_HEIGHT_DELTA_SYNC)
-        progressBarLabel->setText(tr("Syncing Headers (%1%)...").arg(QString::number(100.0 / (headersTipHeight+estHeadersLeft)*headersTipHeight, 'f', 1)));
+    if (estHeadersLeft > HEADER_HEIGHT_DELTA_SYNC) {
+        const double percentage = std::max(0.0, std::min(99.99,
+            100.0 * headersTipHeight / (headersTipHeight + double(estHeadersLeft))));
+        progressBarLabel->setText(tr("Syncing Headers (%1%)...").arg(QString::number(percentage, 'f', 2)));
+    } else {
+        progressBarLabel->setText(tr("Downloading and verifying blocks..."));
+    }
 }
 
 void BitcoinGUI::updateProgressBarVisibility()
@@ -1464,11 +1476,12 @@ void BitcoinGUI::updateProgressBarVisibility()
         return;
     }
     // Show the progress bar label if the network is active + we are out of sync or we have no connections.
-    bool fShowProgressBarLabel = m_node.getNetworkActive() && (!m_node.smartnodeSync().isSynced() || clientModel->getNumConnections() == 0);
+    const bool importing = clientModel->getCachedImportProgress().phase != BlockImportProgress::IDLE || m_node.getImporting();
+    bool fShowProgressBarLabel = importing || (m_node.getNetworkActive() && (!m_node.smartnodeSync().isSynced() || clientModel->getNumConnections() == 0));
     // Show the progress bar only if the the network active + we are not synced + we have any connection. Unlike with the label
     // which gives an info text about the connecting phase there is no reason to show the progress bar if we don't have connections
     // since it will not get any updates in this case.
-    bool fShowProgressBar = m_node.getNetworkActive() && !m_node.smartnodeSync().isSynced() && clientModel->getNumConnections() > 0;
+    bool fShowProgressBar = importing || (m_node.getNetworkActive() && !m_node.smartnodeSync().isSynced() && clientModel->getNumConnections() > 0);
     progressBarLabel->setVisible(fShowProgressBarLabel);
     progressBar->setVisible(fShowProgressBar);
 }
@@ -1511,6 +1524,50 @@ void BitcoinGUI::updateWidth()
     if (width() < minimumWidth()) resize(minimumWidth(), height());
 }
 
+void BitcoinGUI::updateCachedBlockTip()
+{
+    if (!clientModel) return;
+    const auto& tip = clientModel->getCachedBlockTip();
+    if (tip.height >= 0) {
+        setNumBlocks(tip.height, tip.date, tip.hash, tip.verificationProgress, false);
+    }
+}
+
+bool BitcoinGUI::displayFileImportProgress()
+{
+    if (!clientModel) return false;
+    const auto& state = clientModel->getCachedImportProgress();
+    if (state.phase != BlockImportProgress::READING) return false;
+    if (state.total > 0) {
+        const double progress = double(std::min(state.processed, state.total)) / state.total;
+        progressBar->setRange(0, 10000);
+        progressBar->setValue(int(progress * 10000 + 0.5));
+        progressBarLabel->setText(tr("Reading blockchain file (%1%)...").arg(QString::number(progress * 100, 'f', 2)));
+    } else {
+        progressBar->setRange(0, 0);
+        progressBarLabel->setText(tr("Reading blockchain file..."));
+    }
+#ifdef ENABLE_WALLET
+    if (walletFrame) walletFrame->showOutOfSyncWarning(true);
+#endif
+    return true;
+}
+
+void BitcoinGUI::setBlockImportProgress(int phase, qulonglong processed, qulonglong total, int newBlocks)
+{
+    modalOverlay->setImportProgress(phase, processed, total, newBlocks);
+    if (!clientModel) return;
+    updateProgressBarVisibility();
+    if (!displayFileImportProgress()) {
+        if (phase == BlockImportProgress::VALIDATING && clientModel->getCachedBlockTip().height < 0) {
+            progressBar->setRange(0, 0);
+            progressBarLabel->setText(tr("Validating imported blocks..."));
+        } else {
+            updateCachedBlockTip();
+        }
+    }
+}
+
 void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, const QString& blockHash, double nVerificationProgress, bool header)
 {
 #ifdef Q_OS_MAC
@@ -1530,6 +1587,7 @@ void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, const QStri
 
     if (modalOverlay)
     {
+        modalOverlay->setImporting(m_node.getImporting());
         if (header)
             modalOverlay->setKnownBestHeight(count, blockDate);
         else
@@ -1540,8 +1598,11 @@ void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, const QStri
 
     updateProgressBarVisibility();
 
-    // Prevent orphan statusbar messages (e.g. hover Quit in main menu, wait until chain-sync starts -> garbled text)
+    // Clear transient menu hints before drawing any sync/import phase.
     statusBar()->clearMessage();
+    // This progress describes actual input bytes; header estimates must not
+    // overwrite it even when network header notifications arrive concurrently.
+    if (displayFileImportProgress()) return;
 
     // Acquire current block source
     enum BlockSource blockSource = clientModel->getBlockSource();
@@ -1572,6 +1633,15 @@ void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, const QStri
             break;
     }
 
+    // A recent header is not a validated block. In particular, network headers
+    // arriving during a disk import must not hide its progress or mark it done.
+    if (header) return;
+    const int knownHeaderHeight = clientModel->getHeaderTipHeight();
+    if (knownHeaderHeight > count && knownHeaderHeight > 0) {
+        nVerificationProgress = std::max(0.0, std::min(0.9999,
+            std::min(nVerificationProgress, std::max(0, count) / double(knownHeaderHeight))));
+    }
+
     QString tooltip;
 
     QDateTime currentDate = QDateTime::currentDateTime();
@@ -1583,11 +1653,9 @@ void BitcoinGUI::setNumBlocks(int count, const QDateTime& blockDate, const QStri
 #ifdef ENABLE_WALLET
     if (walletFrame)
     {
-        if(secs < 25*60) // 90*60 in bitcoin
+        if(secs < 25*60 && count >= clientModel->getHeaderTipHeight() && !m_node.getImporting())
         {
             modalOverlay->showHide(true, true);
-            // TODO instead of hiding it forever, we should add meaningful information about MN sync to the overlay
-            modalOverlay->hideForever();
         }
         else
         {
@@ -1636,7 +1704,7 @@ void BitcoinGUI::setAdditionalDataSyncProgress(double nSyncProgress)
 
     // If smartnodeSync.Reset() has been called make sure status bar shows the correct information.
     if (nSyncProgress == -1) {
-        setNumBlocks(m_node.getNumBlocks(), QDateTime::fromTime_t(m_node.getLastBlockTime()), QString::fromStdString(m_node.getLastBlockHash()), m_node.getVerificationProgress(), false);
+        updateCachedBlockTip();
         if (clientModel->getNumConnections()) {
             labelBlocksIcon->show();
             startSpinner();

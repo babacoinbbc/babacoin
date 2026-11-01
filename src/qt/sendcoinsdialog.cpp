@@ -176,8 +176,12 @@ void SendCoinsDialog::setModel(WalletModel *_model)
             }
         }
 
-        interfaces::WalletBalances balances = _model->wallet().getBalances();
-        setBalance(balances);
+        if (_model->hasBalanceSnapshot()) {
+            setBalance(_model->getCachedBalances());
+        } else {
+            ui->labelBalance->setText(tr("Checking balance..."));
+            ui->sendButton->setEnabled(false);
+        }
         connect(_model, SIGNAL(balanceChanged(interfaces::WalletBalances)), this, SLOT(setBalance(interfaces::WalletBalances)));
         connect(_model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
         updateDisplayUnit();
@@ -244,7 +248,7 @@ void SendCoinsDialog::OnDisplay() {
 
 void SendCoinsDialog::on_sendButton_clicked()
 {
-    if(!model || !model->getOptionsModel())
+    if(!model || !model->getOptionsModel() || !model->hasBalanceSnapshot())
         return;
 
     QList<SendCoinsRecipient> recipients;
@@ -628,6 +632,7 @@ bool SendCoinsDialog::handlePaymentRequest(const SendCoinsRecipient &rv)
 
 void SendCoinsDialog::setBalance(const interfaces::WalletBalances& balances)
 {
+    ui->sendButton->setEnabled(model && model->hasBalanceSnapshot());
     if(model && model->getOptionsModel())
     {
         CAmount bal = 0;
@@ -643,7 +648,8 @@ void SendCoinsDialog::setBalance(const interfaces::WalletBalances& balances)
 
 void SendCoinsDialog::updateDisplayUnit()
 {
-    setBalance(model->wallet().getBalances());
+    if (model->hasBalanceSnapshot()) setBalance(model->getCachedBalances());
+    else ui->labelBalance->setText(tr("Checking balance..."));
     coinControlUpdateLabels();
     ui->customFee->setDisplayUnit(model->getOptionsModel()->getDisplayUnit());
     updateMinFeeLabel();

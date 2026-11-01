@@ -32,6 +32,7 @@ using namespace boost::placeholders;
 
 #include <QDebug>
 #include <QTimer>
+#include <QThread>
 
 static int64_t nLastHeaderTipUpdateNotification = 0;
 static int64_t nLastBlockTipUpdateNotification = 0;
@@ -48,16 +49,39 @@ ClientModel::ClientModel(interfaces::Node& node, OptionsModel *_optionsModel, QO
     cachedBestHeaderTime = -1;
     peerTableModel = new PeerTableModel(m_node, this);
     banTableModel = new BanTableModel(m_node, this);
-    pollTimer = new QTimer(this);
-    connect(pollTimer, SIGNAL(timeout()), this, SLOT(updateTimer()));
-    pollTimer->start(MODEL_UPDATE_DELAY);
-
+    qRegisterMetaType<size_t>("size_t");
     subscribeToCoreSignals();
+    const auto progress = m_node.getBlockImportProgress();
+    updateBlockImportProgress(int(progress.phase), progress.processed_bytes, progress.total_bytes,
+                             progress.new_blocks, progress.sequence);
+    // InstantSend counting iterates a database. Mempool and chain queries can
+    // wait for validation locks. None of these belong on the GUI thread.
+    pollThread = new QThread(this);
+    pollThread->setObjectName("clientModelPollThread");
+    pollWorker = new QObject;
+    pollWorker->moveToThread(pollThread);
+    connect(pollThread, &QThread::finished, pollWorker, &QObject::deleteLater);
+    connect(this, &ClientModel::requestedPoll, pollWorker, [this] { pollCore(); }, Qt::QueuedConnection);
+    connect(pollThread, &QThread::started, pollWorker, [this] {
+        if (stopping.load()) return;
+        pollTimer = new QTimer(pollWorker);
+        connect(pollTimer, &QTimer::timeout, pollWorker, [this] { pollCore(); });
+        pollTimer->start(1000);
+        pollCore();
+    });
+    pollThread->start();
 }
 
 ClientModel::~ClientModel()
 {
+    stopping.store(true);
     unsubscribeFromCoreSignals();
+    pollThread->requestInterruption();
+    pollThread->quit();
+    // The application deletes ClientModel before shutting down the node/DBs.
+    // Join here so no statistics task can outlive those resources.
+    pollThread->wait();
+    pollTimer = nullptr;
 }
 
 int ClientModel::getNumConnections(unsigned int flags) const
@@ -76,11 +100,11 @@ int ClientModel::getNumConnections(unsigned int flags) const
 
 void ClientModel::setSmartnodeList(const CDeterministicMNList& mnList)
 {
-    LOCK(cs_mnlinst);
-    if (mnListCached.GetBlockHash() == mnList.GetBlockHash()) {
-        return;
+    {
+        LOCK(cs_mnlinst);
+        if (mnListCached.GetBlockHash() == mnList.GetBlockHash()) return;
+        mnListCached = mnList;
     }
-    mnListCached = mnList;
     Q_EMIT smartnodeListChanged();
 }
 
@@ -92,44 +116,113 @@ CDeterministicMNList ClientModel::getSmartnodeList() const
 
 void ClientModel::refreshSmartnodeList()
 {
-    LOCK(cs_mnlinst);
-    setSmartnodeList(m_node.evo().getListAtChainTip());
+    // Do not hold the GUI cache mutex while asking the core for a list: core
+    // callbacks can hold cs_main and need this cache mutex in the opposite order.
+    smartnodeRefreshRequested.store(true);
 }
 
 int ClientModel::getHeaderTipHeight() const
 {
-    if (cachedBestHeaderHeight == -1) {
-        // make sure we initially populate the cache via a cs_main lock
-        // otherwise we need to wait for a tip update
-        int height;
-        int64_t blockTime;
-        if (m_node.getHeaderTip(height, blockTime)) {
-            cachedBestHeaderHeight = height;
-            cachedBestHeaderTime = blockTime;
-        }
-    }
     return cachedBestHeaderHeight;
 }
 
 int64_t ClientModel::getHeaderTipTime() const
 {
-    if (cachedBestHeaderTime == -1) {
-        int height;
-        int64_t blockTime;
-        if (m_node.getHeaderTip(height, blockTime)) {
-            cachedBestHeaderHeight = height;
-            cachedBestHeaderTime = blockTime;
-        }
-    }
     return cachedBestHeaderTime;
 }
 
 void ClientModel::updateTimer()
 {
-    // no locking required at this point
-    // the following calls will acquire the required lock
-    Q_EMIT mempoolSizeChanged(m_node.getMempoolSize(), m_node.getMempoolDynamicUsage());
-    Q_EMIT islockCountChanged(m_node.llmq().getInstantSentLockCount());
+    Q_EMIT requestedPoll();
+}
+
+void ClientModel::pollCore()
+{
+    if (stopping.load()) return;
+    const auto progress = m_node.getBlockImportProgress();
+    QMetaObject::invokeMethod(this, "updateBlockImportProgress", Qt::QueuedConnection,
+        Q_ARG(int, int(progress.phase)), Q_ARG(qulonglong, qulonglong(progress.processed_bytes)),
+        Q_ARG(qulonglong, qulonglong(progress.total_bytes)), Q_ARG(int, progress.new_blocks),
+        Q_ARG(qulonglong, qulonglong(progress.sequence)));
+    {
+        // A header batch or bootstrap import may hold cs_main for a long time.
+        // Keep the last complete snapshot and retry rather than waiting.
+        TRY_LOCK(cs_main, locked);
+        if (locked) {
+            int headerHeight;
+            int64_t headerTime;
+            if (m_node.getHeaderTip(headerHeight, headerTime)) {
+                QMetaObject::invokeMethod(this, "updateTip", Qt::QueuedConnection,
+                    Q_ARG(int, headerHeight), Q_ARG(QDateTime, QDateTime::fromTime_t(headerTime)),
+                    Q_ARG(QString, QString()), Q_ARG(double, 0.0), Q_ARG(bool, true));
+            }
+            QMetaObject::invokeMethod(this, "updateTip", Qt::QueuedConnection,
+                Q_ARG(int, m_node.getNumBlocks()), Q_ARG(QDateTime, QDateTime::fromTime_t(m_node.getLastBlockTime())),
+                Q_ARG(QString, QString::fromStdString(m_node.getLastBlockHash())),
+                Q_ARG(double, m_node.getVerificationProgress()), Q_ARG(bool, false));
+            backgroundInitialSync = m_node.isInitialBlockDownload();
+            if (!backgroundInitialSync && smartnodeRefreshRequested.exchange(false)) {
+                setSmartnodeList(m_node.evo().getListAtChainTip());
+            }
+        }
+    }
+    if (stopping.load()) return;
+    {
+        TRY_LOCK(::mempool.cs, locked_mempool);
+        if (locked_mempool) {
+            QMetaObject::invokeMethod(this, "updateMempoolStats", Qt::QueuedConnection,
+                Q_ARG(qulonglong, qulonglong(m_node.getMempoolSize())),
+                Q_ARG(qulonglong, qulonglong(m_node.getMempoolDynamicUsage())));
+        }
+    }
+    const int64_t now = GetTimeMillis();
+    if (!stopping.load() && !backgroundInitialSync && now - lastLockCountPoll >= 5000) {
+        const auto count = m_node.llmq().getInstantSentLockCount();
+        QMetaObject::invokeMethod(this, "updateInstantLockCount", Qt::QueuedConnection,
+            Q_ARG(qulonglong, qulonglong(count)));
+        lastLockCountPoll = now;
+    }
+}
+
+void ClientModel::updateMempoolStats(qulonglong count, qulonglong bytes)
+{
+    Q_EMIT mempoolSizeChanged(long(count), size_t(bytes));
+}
+
+void ClientModel::updateInstantLockCount(qulonglong count)
+{
+    Q_EMIT islockCountChanged(size_t(count));
+}
+
+void ClientModel::updateBlockImportProgress(int phase, qulonglong processed, qulonglong total, int newBlocks, qulonglong sequence)
+{
+    if (sequence < lastImportSequence) return;
+    if (sequence == lastImportSequence && cachedImportProgress.phase == phase &&
+        cachedImportProgress.processed == processed && cachedImportProgress.total == total &&
+        cachedImportProgress.newBlocks == newBlocks) return;
+    lastImportSequence = sequence;
+    cachedImportProgress.phase = phase;
+    cachedImportProgress.processed = processed;
+    cachedImportProgress.total = total;
+    cachedImportProgress.newBlocks = newBlocks;
+    Q_EMIT blockImportProgress(phase, processed, total, newBlocks);
+}
+
+void ClientModel::updateTip(int count, const QDateTime& date, const QString& hash, double progress, bool header)
+{
+    if (header) {
+        if (cachedBestHeaderHeight == count && cachedBestHeaderTime == date.toTime_t()) return;
+        cachedBestHeaderHeight = count;
+        cachedBestHeaderTime = date.toTime_t();
+    } else {
+        if (cachedBlockTip.height == count && cachedBlockTip.date == date &&
+            cachedBlockTip.hash == hash && cachedBlockTip.verificationProgress == progress) return;
+        cachedBlockTip.height = count;
+        cachedBlockTip.date = date;
+        cachedBlockTip.hash = hash;
+        cachedBlockTip.verificationProgress = progress;
+    }
+    Q_EMIT numBlocksChanged(count, date, hash, progress, header);
 }
 
 void ClientModel::updateNumConnections(int numConnections)
@@ -254,15 +347,10 @@ static void BlockTipChanged(ClientModel *clientmodel, bool initialSync, int heig
 
     int64_t& nLastUpdateNotification = fHeader ? nLastHeaderTipUpdateNotification : nLastBlockTipUpdateNotification;
 
-    if (fHeader) {
-        // cache best headers time and height to reduce future cs_main locks
-        clientmodel->cachedBestHeaderHeight = height;
-        clientmodel->cachedBestHeaderTime = blockTime;
-    }
     // if we are in-sync, update the UI regardless of last update time
     if (!initialSync || now - nLastUpdateNotification > MODEL_UPDATE_DELAY) {
         //pass an async signal to the UI thread
-        QMetaObject::invokeMethod(clientmodel, "numBlocksChanged", Qt::QueuedConnection,
+        QMetaObject::invokeMethod(clientmodel, "updateTip", Qt::QueuedConnection,
                                   Q_ARG(int, height),
                                   Q_ARG(QDateTime, QDateTime::fromTime_t(blockTime)),
                                   Q_ARG(QString, QString::fromStdString(strBlockHash)),
@@ -287,6 +375,12 @@ void ClientModel::subscribeToCoreSignals()
 {
     // Connect signals to client
     m_handler_show_progress = m_node.handleShowProgress(boost::bind(ShowProgress, this, _1, _2));
+    m_handler_block_import_progress = m_node.handleBlockImportProgress([this](const BlockImportProgress& progress) {
+        QMetaObject::invokeMethod(this, "updateBlockImportProgress", Qt::QueuedConnection,
+            Q_ARG(int, int(progress.phase)), Q_ARG(qulonglong, qulonglong(progress.processed_bytes)),
+            Q_ARG(qulonglong, qulonglong(progress.total_bytes)), Q_ARG(int, progress.new_blocks),
+            Q_ARG(qulonglong, qulonglong(progress.sequence)));
+    });
     m_handler_notify_num_connections_changed = m_node.handleNotifyNumConnectionsChanged(boost::bind(NotifyNumConnectionsChanged, this, _1));
     m_handler_notify_network_active_changed = m_node.handleNotifyNetworkActiveChanged(boost::bind(NotifyNetworkActiveChanged, this, _1));
     m_handler_notify_alert_changed = m_node.handleNotifyAlertChanged(boost::bind(NotifyAlertChanged, this));
@@ -301,6 +395,7 @@ void ClientModel::unsubscribeFromCoreSignals()
 {
     // Disconnect signals from client
     m_handler_show_progress->disconnect();
+    m_handler_block_import_progress->disconnect();
     m_handler_notify_num_connections_changed->disconnect();
     m_handler_notify_network_active_changed->disconnect();
     m_handler_notify_alert_changed->disconnect();

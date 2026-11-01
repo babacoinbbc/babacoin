@@ -7,11 +7,11 @@
 [Migration and settings](doc/v2-migration.md) ·
 [Platform support](doc/platform-support.md)
 
-## V2.0.0 Mainnet Release
+## V2.0.1 Mainnet Release
 
 V2 combines a redesigned day/night desktop wallet, safer wallet handling and a
 larger, test-gated platform matrix. Download the matching package from the
-[V2.0.0 mainnet release page](https://github.com/babacoinbbc/babacoin/releases/latest).
+[V2.0.1 mainnet release page](https://github.com/babacoinbbc/babacoin/releases/latest).
 Read its release status, checksums, source manifest and migration notes first.
 Release assets are assembled only after every required platform job passes.
 
@@ -64,6 +64,10 @@ display density. The final V2 build does not display the old RC prerelease notic
 - **Readable amounts:** balances and transaction lists use the operating system's
   decimal and thousands separators, including `1.234.567,89 BBC` in Turkish and
   `1,234,567.89 BBC` in US English. Amount calculations retain integer precision.
+- **Responsive synchronization:** header and block display uses cached snapshots;
+  background polling retries busy validation locks. File imports show actual byte
+  progress followed by a separate validation stage. Header progress is labelled
+  as an estimate and cannot stand in for validated blocks.
 - **Responsive history:** large transaction lists load in bounded batches with
   visible progress; export waits until history is complete. Splash artwork uses
   a fixed logical rectangle so high-DPI scaling cannot overlap the title.
@@ -110,7 +114,7 @@ systems still require appropriate vendor security maintenance.
 ## Windows package and DLL files
 
 For the guided installation, download the release's
-`babacoin-v2.0.0-windows-x86_64-setup.exe` and verify its `.sha256` file.
+`babacoin-v2.0.1-windows-x86_64-setup.exe` and verify its `.sha256` file.
 It installs for the current user without an administrator account. Leave the
 normal data settings selected, or choose an existing data folder deliberately;
 the program folder and wallet data folder must be separate. Close Babacoin
@@ -217,7 +221,7 @@ The verified Linux download helper is optional and **fresh-install only**:
 
 ```sh
 # Review the tagged source and select the release explicitly.
-BBC_VERSION=v2.0.0 bash contrib/install.sh
+BBC_VERSION=v2.0.1 bash contrib/install.sh
 ```
 
 It verifies the exact distribution/architecture package and SHA256, rejects
@@ -278,7 +282,7 @@ promised by this roadmap.
 - [Full and incremental blockchain bootstrap](doc/bootstrap.md)
 - [Ubuntu build guide](doc/ubuntu-compatibility.md)
 - [Desktop validation](doc/wallet-desktop-validation.md)
-- [V2 release notes](doc/release/v2.0.0.md)
+- [V2 release notes](doc/release/v2.0.1.md)
 - [Short upgrade announcement](doc/release/v2-announcement.md)
 - [Discord coin information](doc/community/discord-coin-information.md)
 - [Contribution guide](CONTRIBUTING.md)

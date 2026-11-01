@@ -27,6 +27,8 @@ public:
 public Q_SLOTS:
     void tipUpdate(int count, const QDateTime& blockDate, double nVerificationProgress);
     void setKnownBestHeight(int count, const QDateTime& blockDate);
+    void setImporting(bool importing);
+    void setImportProgress(int phase, qulonglong processed, qulonglong total, int newBlocks);
 
     void toggleVisibility();
     // will show or hide the modal layer
@@ -47,6 +49,18 @@ private:
     bool layerIsVisible;
     bool userClosed;
     bool foreverHidden;
+    int lastTipHeight{-1};
+    QDateTime lastTipDate;
+    double lastVerificationProgress{0};
+    bool lastProgressWasHeaders{false};
+    bool haveProgressStage{false};
+    bool importingFromDisk{false};
+    int importPhase{0};
+    qulonglong importProcessedBytes{0};
+    qulonglong importTotalBytes{0};
+    int importNewBlocks{0};
+    QString normalInfoText;
+    void updateProgress();
 };
 
 #endif // BITCOIN_QT_MODALOVERLAY_H

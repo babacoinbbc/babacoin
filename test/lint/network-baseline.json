@@ -1,6 +1,6 @@
 {
   "baseline_commit": "7cdd64b4435d5fef4f63accfaa1706f2425a3324",
-  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately. Explicit V2 wallet exception: fail closed on incomplete startup rescan before advancing the persisted checkpoint. Explicit owner-selected V2 consensus exception: candidate-height payment selection at 1,250,000, with immediate early 2M registration retained. Original hashes are preserved in the five affected entries. This is not a claim of V1 consensus compatibility. Historical founder correction: mainnet uses the actual published V1 destination and original enforcement start; original hashes retained for chainparams.cpp and consensus/tx_verify.cpp. Five public coinbase fixtures document the observed mismatch. Existing wallet test data is never published.",
+  "note": "Preserve audited main-branch network/crypto/wallet source. Regtest constructor excluded. Explicitly recorded fixes: BLS initialization/copy, disk index decoding, DKG sender attribution, and CLI diagnostic stdout removal; all other entries match the baseline after EOL normalization. Vendored secp256k1 test-only OpenSSL 3 expectation is also recorded separately. Explicit V2 wallet exception: fail closed on incomplete startup rescan before advancing the persisted checkpoint. Explicit owner-selected V2 consensus exception: candidate-height payment selection at 1,250,000, with immediate early 2M registration retained. Original hashes are preserved in the five affected entries. This is not a claim of V1 consensus compatibility. Historical founder correction: mainnet uses the actual published V1 destination and original enforcement start; original hashes retained for chainparams.cpp and consensus/tx_verify.cpp. Five public coinbase fixtures document the observed mismatch. Existing wallet test data is never published. Explicit import-observer exceptions retain original hashes for validation.cpp/h; see doc/audit-evidence/v2-sync-responsiveness.md. All remaining entries are unchanged.",
   "files": [
     {
       "path": "src/amount.h",
@@ -1337,12 +1337,16 @@
     {
       "path": "src/validation.cpp",
       "scope": "full",
-      "sha256": "09ba72b5dc4a94bbd9a224b1b0b4f648527db2a848a9fccbc50088e7c8393789"
+      "sha256": "ff011dc5dad767d236b0e1888fcfcf26747e04dccb570a340a1a0b53cb685163",
+      "original_sha256": "09ba72b5dc4a94bbd9a224b1b0b4f648527db2a848a9fccbc50088e7c8393789",
+      "approved_change": "Observer-only external-block import progress: optional byte-position/loaded-count callback, bounded by a monotonic clock outside validation locks. Observer exceptions disable display reporting; no block acceptance, PoW, script, chain selection or return-condition change. Full diff reviewed in doc/audit-evidence/v2-sync-responsiveness.md."
     },
     {
       "path": "src/validation.h",
       "scope": "full",
-      "sha256": "a60dfb0b65ebf271deb106a44ce1aa9a370cadda7f3b12f0ebb4b0cb800939b1"
+      "sha256": "25d6758a2820d4de21aa02a82acd18c863461d4b33d755b94f7d7f78899a6466",
+      "original_sha256": "a60dfb0b65ebf271deb106a44ce1aa9a370cadda7f3b12f0ebb4b0cb800939b1",
+      "approved_change": "Observer-only external-block import progress: optional byte-position/loaded-count callback, bounded by a monotonic clock outside validation locks. Observer exceptions disable display reporting; no block acceptance, PoW, script, chain selection or return-condition change. Full diff reviewed in doc/audit-evidence/v2-sync-responsiveness.md."
     },
     {
       "path": "src/version.h",
