@@ -11,7 +11,7 @@
 
 V2 combines a redesigned day/night desktop wallet, safer wallet handling and a
 larger, test-gated platform matrix. Download the matching package from the
-[V2.0.0-rc.3 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.4).
+[V2.0.0-rc.4 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.4).
 Read its release status, checksums, source manifest and migration notes first.
 Release assets are assembled only after every required platform job passes.
 
@@ -22,8 +22,7 @@ The 1,800,000 BBC tier stops qualifying for rewards at block 1,250,000.
 Read the [exchange, pool and wallet upgrade notice](doc/release/mandatory-network-upgrade.md).
 
 This is a **release candidate**, not a claim that all historical node versions
-agree or that software is free of defects. V1 and the earlier V2 test release
-remain preserved. Publishing a candidate does not remotely upgrade nodes or
+agree or that software is free of defects. The Releases page retains V1 and the current V2 release. Publishing a candidate does not remotely upgrade nodes or
 activate a new blockchain. Production adoption and network-rule changes require
 separate operator coordination and review.
 
@@ -276,6 +275,7 @@ promised by this roadmap.
 
 ## Build, contribute and review
 
+- [Full and incremental blockchain bootstrap](doc/bootstrap.md)
 - [Ubuntu build guide](doc/ubuntu-compatibility.md)
 - [Desktop validation](doc/wallet-desktop-validation.md)
 - [V2 release notes](doc/release/v2.0.0-rc.4.md)
@@ -283,8 +283,9 @@ promised by this roadmap.
 
 Use disposable build environments and `make check`. Do not disable tests to
 obtain release artifacts or run source-build experiments on a production node.
-The protected `main` branch requires an independent approving review. That
-protection is retained; passing CI does not replace human review.
+The protected `main` branch requests independent approving review. Its existing
+administrator exception remains enabled; owner-authorized main integration used
+that exception. Passing CI does not establish independent human review.
 
 Babacoin Core is distributed under the [MIT license](COPYING). Project resources:
 [website](https://babacoin.network), [explorer](https://explorer.babacoin.network),

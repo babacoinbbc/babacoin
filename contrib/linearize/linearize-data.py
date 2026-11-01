@@ -14,7 +14,6 @@ import os
 import os.path
 import sys
 import hashlib
-import babacoin_hash
 import datetime
 import time
 from collections import namedtuple
@@ -49,22 +48,8 @@ def wordreverse(in_buf):
     return b''.join(out_words)
 
 def calc_hdr_hash(blk_hdr):
-    #hash1 = hashlib.sha256()
-    #hash1.update(blk_hdr)
-    #hash1_o = hash1.digest()
-
-    #hash2 = hashlib.sha256()
-    #hash2.update(hash1_o)
-    #hash2_o = hash2.digest()
-
-
-	#hash2 = hashlib.sha256()
-	#hash2.update(hash1_o)
-	#hash2_o = hash2.digest()
-
-	#return hash2_o
-        pow_hash = babacoin_hash.getPoWHash(blk_hdr)
-        return pow_hash
+    # Block IDs use CBlockHeader::GetHash (SHA256d), not GhostRider PoW.
+    return hashlib.sha256(hashlib.sha256(blk_hdr).digest()).digest()
 
 def calc_hash_str(blk_hdr):
     hash = calc_hdr_hash(blk_hdr)
@@ -272,12 +257,12 @@ if __name__ == '__main__':
     f = open(sys.argv[1], encoding="utf8")
     for line in f:
         # skip comment lines
-        m = re.search('^\s*#', line)
+        m = re.search(r'^\s*#', line)
         if m:
             continue
 
         # parse key=value lines
-        m = re.search('^(\w+)\s*=\s*(\S.*)$', line)
+        m = re.search(r'^(\w+)\s*=\s*(\S.*)$', line)
         if m is None:
             continue
         settings[m.group(1)] = m.group(2)
@@ -290,9 +275,9 @@ if __name__ == '__main__':
     settings['rev_hash_bytes'] = settings['rev_hash_bytes'].lower()
 
     if 'netmagic' not in settings:
-        settings['netmagic'] = 'bf0c6bbd'
+        settings['netmagic'] = '035dd72f'
     if 'genesis' not in settings:
-        settings['genesis'] = '00000ffd590b1485b3caadc19b22e6379c733355108f107a430458cdf3407ab6'
+        settings['genesis'] = '84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854'
     if 'input' not in settings:
         settings['input'] = 'input'
     if 'hashlist' not in settings:

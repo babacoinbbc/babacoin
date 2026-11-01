@@ -1,0 +1,34 @@
+name: Bootstrap tools
+
+on:
+  pull_request:
+    paths:
+      - 'contrib/bootstrap/**'
+      - 'contrib/linearize/**'
+      - 'test/util/bootstrap_export_test.py'
+      - '.github/workflows/bootstrap-tools.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'contrib/bootstrap/**'
+      - 'contrib/linearize/**'
+      - 'test/util/bootstrap_export_test.py'
+      - '.github/workflows/bootstrap-tools.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python test/util/bootstrap_export_test.py
