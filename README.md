@@ -91,6 +91,21 @@ universal binary for every operating system. Android/iOS, 32-bit Windows/ARM,
 FreeBSD and other systems are roadmap work, not shipped support. Old operating
 systems still require appropriate vendor security maintenance.
 
+## Windows package and DLL files
+
+Download the complete Windows ZIP and extract **all** its contents into a new
+application folder before starting `babacoin-qt.exe`. Keep the included DLLs and
+the `platforms` folder beside the executable. The Windows wallet uses dynamic
+Qt, Boost and other libraries; its EXE is not a standalone single-file package.
+Moving only the EXE can produce missing-DLL errors, including `libabsl_*` or
+`libboost_*` files. Create a shortcut to the EXE in its extracted folder instead
+of copying the EXE to the desktop or an older installation.
+
+Use the libraries from that exact verified release package. Do not download
+individual DLLs from unrelated websites or mix files from different builds.
+Application files belong in the application folder; keep wallet backups private
+and follow the migration guide when selecting an existing data directory.
+
 ## Try the interface without touching a production wallet
 
 Extract the package into a **new directory** and run:
