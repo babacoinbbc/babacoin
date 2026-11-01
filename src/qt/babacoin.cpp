@@ -12,6 +12,7 @@
 
 #include <chainparams.h>
 #include <qt/clientmodel.h>
+#include <qt/explorerpeers.h>
 #include <fs.h>
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
@@ -46,6 +47,10 @@
 #include <boost/thread.hpp>
 
 #include <QApplication>
+#include <QPointer>
+#include <QDir>
+#include <QElapsedTimer>
+#include <QEventLoop>
 #include <QDebug>
 #include <QLibraryInfo>
 #include <QLocale>
@@ -227,7 +232,9 @@ private:
     interfaces::Node& m_node;
     OptionsModel *optionsModel;
     ClientModel *clientModel;
+    ExplorerPeers* explorerPeers;
     BitcoinGUI *window;
+    QPointer<SplashScreen> startupSplash;
     QTimer *pollShutdownTimer;
 #ifdef ENABLE_WALLET
     PaymentServer* paymentServer;
@@ -308,6 +315,7 @@ BitcoinApplication::BitcoinApplication(interfaces::Node& node, int &argc, char *
     m_node(node),
     optionsModel(0),
     clientModel(0),
+    explorerPeers(nullptr),
     window(0),
     pollShutdownTimer(0),
 #ifdef ENABLE_WALLET
@@ -321,6 +329,8 @@ BitcoinApplication::BitcoinApplication(interfaces::Node& node, int &argc, char *
 
 BitcoinApplication::~BitcoinApplication()
 {
+    delete explorerPeers;
+    explorerPeers = nullptr;
     if(coreThread)
     {
         qDebug() << __func__ << ": Stopping thread";
@@ -329,6 +339,7 @@ BitcoinApplication::~BitcoinApplication()
         qDebug() << __func__ << ": Stopped thread";
     }
 
+    delete startupSplash.data();
     delete window;
     window = 0;
 #ifdef ENABLE_WALLET
@@ -360,6 +371,18 @@ void BitcoinApplication::createOptionsModel(bool resetSettings)
 void BitcoinApplication::createWindow(const NetworkStyle *networkStyle)
 {
     window = new BitcoinGUI(m_node, networkStyle, 0);
+    window->beginStartup();
+    connect(window, &BitcoinGUI::startupShutdownRequested, this, [this] { m_node.startShutdown(); });
+    if (!startupSplash) {
+        startupSplash = new SplashScreen(m_node, 0, networkStyle);
+        connect(this, SIGNAL(splashFinished(QWidget*)), startupSplash.data(), SLOT(slotFinish(QWidget*)));
+    }
+    connect(startupSplash.data(), &SplashScreen::startupMessage, window, &BitcoinGUI::setStartupMessage);
+    connect(startupSplash.data(), &SplashScreen::startupProgress, window, &BitcoinGUI::setStartupProgress);
+    connect(startupSplash.data(), &SplashScreen::startupWalletScanProgress, window, &BitcoinGUI::setStartupWalletScanProgress);
+    startupSplash->hide();
+    if (gArgs.GetBoolArg("-min", false)) window->showMinimized();
+    else window->show();
     pollShutdownTimer = new QTimer(window);
     connect(pollShutdownTimer, SIGNAL(timeout()), window, SLOT(detectShutdown()));
 }
@@ -367,8 +390,10 @@ void BitcoinApplication::createWindow(const NetworkStyle *networkStyle)
 void BitcoinApplication::createSplashScreen(const NetworkStyle *networkStyle)
 {
     SplashScreen *splash = new SplashScreen(m_node, 0, networkStyle);
+    startupSplash = splash;
     // We don't hold a direct pointer to the splash screen after creation, but the splash
     // screen will take care of deleting itself when slotFinish happens.
+    splash->showMessage(tr("Preparing the wallet interface..."), Qt::AlignBottom | Qt::AlignLeft, QColor("#dfe9ed"));
     splash->show();
     connect(this, SIGNAL(splashFinished(QWidget*)), splash, SLOT(slotFinish(QWidget*)));
     connect(this, SIGNAL(requestedShutdown()), splash, SLOT(close()));
@@ -415,6 +440,8 @@ void BitcoinApplication::requestInitialize()
 
 void BitcoinApplication::requestShutdown()
 {
+    delete explorerPeers;
+    explorerPeers = nullptr;
     // Show a simple window indicating shutdown status
     // Do this first as some of the steps may take some time below,
     // for example the RPC console may still be executing a command.
@@ -456,6 +483,8 @@ void BitcoinApplication::addWallet(WalletModel* walletModel)
     connect(walletModel, SIGNAL(unload()), this, SLOT(removeWallet()));
 
     m_wallet_models.push_back(walletModel);
+    // Apply registered fonts after newly added wallet widgets are polished.
+    QTimer::singleShot(0, window, []() { GUIUtil::updateFonts(); });
 #endif
 }
 
@@ -474,6 +503,11 @@ void BitcoinApplication::initializeResult(bool success)
     qDebug() << __func__ << ": Initialization result: " << success;
     // Set exit result.
     returnValue = success ? EXIT_SUCCESS : EXIT_FAILURE;
+    if (success && m_node.shutdownRequested()) {
+        Q_EMIT splashFinished(window);
+        quit();
+        return;
+    }
     if(success)
     {
         // Log this only after AppInitMain finishes, as then logging setup is guaranteed complete
@@ -485,6 +519,9 @@ void BitcoinApplication::initializeResult(bool success)
 
         clientModel = new ClientModel(m_node, optionsModel);
         window->setClientModel(clientModel);
+        explorerPeers = new ExplorerPeers(m_node, this);
+        connect(optionsModel, &OptionsModel::explorerPeersChanged, explorerPeers, &ExplorerPeers::setEnabled);
+        explorerPeers->setEnabled(optionsModel->getExplorerPeers());
 
 #ifdef ENABLE_WALLET
         m_handler_load_wallet = m_node.handleLoadWallet([this](std::unique_ptr<interfaces::Wallet> wallet) {
@@ -499,6 +536,9 @@ void BitcoinApplication::initializeResult(bool success)
         }
 #endif
 
+        // Only expose wallet controls after core initialization and required
+        // wallet rescans completed successfully. The window was already visible.
+        window->finishStartup();
         // If -min option passed, start window minimized.
         if(gArgs.GetBoolArg("-min", false))
         {
@@ -508,6 +548,7 @@ void BitcoinApplication::initializeResult(bool success)
         {
             window->show();
         }
+        GUIUtil::updateFonts();
         Q_EMIT splashFinished(window);
 
         // Let the users setup their prefered appearance if there are no settings for it defined yet.
@@ -556,6 +597,7 @@ static void SetupUIArgs()
     gArgs.AddArg("-allowselfsignedrootcertificates", strprintf("Allow self signed root certificates (default: %u)", DEFAULT_SELFSIGNED_ROOTCERTS), true, OptionsCategory::GUI);
 #endif
     gArgs.AddArg("-choosedatadir", strprintf(QObject::tr("Choose data directory on startup (default: %u)").toStdString(), DEFAULT_CHOOSE_DATADIR), false, OptionsCategory::GUI);
+    gArgs.AddArg("-uiconfigdir=<dir>", "Use an existing absolute directory for isolated GUI settings only. Does not change the network or wallet data directory.", true, OptionsCategory::GUI);
     gArgs.AddArg("-custom-css-dir", "Set a directory which contains custom css files. Those will be used as stylesheets for the UI.", false, OptionsCategory::GUI);
     gArgs.AddArg("-font-family", QObject::tr("Set the font family. Possible values: %1. (default: %2)").arg("SystemDefault, Montserrat").arg(GUIUtil::fontFamilyToString(GUIUtil::getFontFamilyDefault())).toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-font-scale", QObject::tr("Set a scale factor which gets applied to the base font size. Possible range %1 (smallest fonts) to %2 (largest fonts). (default: %3)").arg(-100).arg(100).arg(GUIUtil::getFontScaleDefault()).toStdString(), false, OptionsCategory::GUI);
@@ -563,6 +605,7 @@ static void SetupUIArgs()
     gArgs.AddArg("-font-weight-normal", QObject::tr("Set the font weight for normal texts. Possible range %1 to %2 (default: %3)").arg(0).arg(8).arg(GUIUtil::weightToArg(GUIUtil::getFontWeightNormalDefault())).toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-lang=<lang>", QObject::tr("Set language, for example \"de_DE\" (default: system locale)").toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-min", QObject::tr("Start minimized").toStdString(), false, OptionsCategory::GUI);
+    gArgs.AddArg("-explorerpeers", "Use HTTPS Babacoin Explorer peer hints in the desktop wallet (default: 0; suspended with proxy or explicit network restrictions)", false, OptionsCategory::GUI);
     gArgs.AddArg("-resetguisettings", QObject::tr("Reset all settings changed in the GUI").toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-rootcertificates=<file>", QObject::tr("Set SSL root certificates for payment request (default: -system-)").toStdString(), false, OptionsCategory::GUI);
     gArgs.AddArg("-splash", strprintf(QObject::tr("Show splash screen on startup (default: %u)").toStdString(), DEFAULT_SPLASHSCREEN), false, OptionsCategory::GUI);
@@ -620,6 +663,17 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(QAPP_ORG_NAME);
     QApplication::setOrganizationDomain(QAPP_ORG_DOMAIN);
     QApplication::setApplicationName(QAPP_APP_NAME_DEFAULT);
+    // Permit visual QA without reading or changing the user's GUI registry settings.
+    if (gArgs.IsArgSet("-uiconfigdir")) {
+        QDir directory(QString::fromStdString(gArgs.GetArg("-uiconfigdir", "")));
+        if (!directory.isAbsolute() || !directory.exists()) {
+            QMessageBox::critical(nullptr, QObject::tr(PACKAGE_NAME), QObject::tr("The isolated GUI settings directory must already exist and be absolute."));
+            return EXIT_FAILURE;
+        }
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, directory.absolutePath());
+        QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope, directory.absolutePath());
+    }
 
     /// 4. Initialization of translations, so that intro dialog is in user's language
     // Now that QSettings are accessible, initialize translations
@@ -715,12 +769,21 @@ int main(int argc, char *argv[])
     qInstallMessageHandler(DebugMessageHandler);
     // Allow parameter interaction before we create the options model
     app.parameterSetup();
+    // Paint startup feedback before font discovery and interface setup. Core
+    // verification remains unchanged and still runs before the wallet is usable.
+    if (gArgs.GetBoolArg("-splash", DEFAULT_SPLASHSCREEN) && !gArgs.GetBoolArg("-min", false)) {
+        app.createSplashScreen(networkStyle.data());
+        app.processEvents(QEventLoop::ExcludeUserInputEvents);
+    }
+    QElapsedTimer fontTimer;
+    fontTimer.start();
     // Load custom application fonts and setup font management
     if (!GUIUtil::loadFonts()) {
         QMessageBox::critical(0, QObject::tr(PACKAGE_NAME),
                               QObject::tr("Error: Failed to load application fonts."));
         return EXIT_FAILURE;
     }
+    LogPrintf("GUI startup: font setup completed in %d ms\n", fontTimer.elapsed());
     // Load GUI settings from QSettings
     app.createOptionsModel(gArgs.GetBoolArg("-resetguisettings", false));
     // Validate/set font family
@@ -811,8 +874,6 @@ int main(int argc, char *argv[])
     // Subscribe to global signals from core
     std::unique_ptr<interfaces::Handler> handler = node->handleInitMessage(InitMessage);
 
-    if (gArgs.GetBoolArg("-splash", DEFAULT_SPLASHSCREEN) && !gArgs.GetBoolArg("-min", false))
-        app.createSplashScreen(networkStyle.data());
 
     int rv = EXIT_SUCCESS;
     try

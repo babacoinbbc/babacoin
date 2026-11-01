@@ -1,0 +1,39 @@
+name: Debian and Raspberry Pi OS compatibility targets
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  debian:
+    name: Debian ${{ matrix.debian }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        debian: ['12', '13']
+        arch: [x86_64, arm64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run full native tests in Debian userspace
+        env:
+          TARGET_DEBIAN: ${{ matrix.debian }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/bbc-output"
+          docker run --rm --init -e JOBS=2 -e BBC_DISPOSABLE_BUILD=1 \
+            -e "BBC_SOURCE_COMMIT=$GITHUB_SHA" \
+            --mount "type=bind,source=$PWD,target=/src,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/bbc-output,target=/output" \
+            "debian:$TARGET_DEBIAN" bash /src/ci/ubuntu-compat.sh /output
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: babacoin-tested-debian-${{ matrix.debian }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/bbc-output
+          if-no-files-found: error

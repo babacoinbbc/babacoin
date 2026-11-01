@@ -15,6 +15,7 @@
 #include <script/standard.h>
 #include <util.h>
 #include <utilstrencodings.h>
+#include <utiltime.h>
 
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
@@ -66,11 +67,23 @@ static SendCoinsRecipient handleRequest(PaymentServer* server, std::vector<unsig
 
 void PaymentServerTests::paymentServerTests()
 {
+    // The historical positive/expired certificate fixtures are evaluated at a
+    // fixed date; never disable expiry verification to make a test pass.
+    const int64_t certificateTestTime = 1664582400; // 2022-10-01 UTC
+    struct RestoreMockTime {
+        int64_t previous;
+        ~RestoreMockTime() { SetMockTime(previous); }
+    } restoreTime{GetMockTime()};
+    SetMockTime(certificateTestTime);
     SelectParams(CBaseChainParams::MAIN);
     auto node = interfaces::MakeNode();
     OptionsModel optionsModel(*node);
     PaymentServer* server = new PaymentServer(nullptr, false);
     X509_STORE* caStore = X509_STORE_new();
+    X509_VERIFY_PARAM* verifyParams = X509_VERIFY_PARAM_new();
+    X509_VERIFY_PARAM_set_time(verifyParams, certificateTestTime);
+    X509_STORE_set1_param(caStore, verifyParams);
+    X509_VERIFY_PARAM_free(verifyParams);
     X509_STORE_add_cert(caStore, parse_b64der_cert(caCert1_BASE64));
     PaymentServer::LoadRootCAs(caStore);
     server->setOptionsModel(&optionsModel);

@@ -1,0 +1,8 @@
+{
+  "result": "PASS",
+  "repetitions": 100,
+  "callbacks_per_repetition": 200,
+  "seconds": 6.094,
+  "binary_sha256": "4e2f54ee8c42f0f75bd1d585d10505bba08dc86538c2afff685ac10505103790",
+  "scope": "Scheduler ordering test only; assertions on the test thread after worker join. Production scheduler unchanged."
+}

@@ -1,0 +1,80 @@
+{
+  "archive_tip": "6b2458b914be35c9ce2bc475f8564a748ac1748f6b74eeff3598c1a25be50a89",
+  "archive_height": 762577,
+  "unique_archive_headers": 762648,
+  "raw_sha256": {
+    "blk00000.dat": "85d16a02a15cccc8b355d3d5e091b0c4817b3d65cd877a9e5d6c0f64a379159a",
+    "blk00001.dat": "6570c4ea632f72604214e0fc2d9cc9ded1b7762818ca945a8444cbf2cfebb789",
+    "blk00002.dat": "502d4f4ef2df2aa50ee9903dba3f7c9ce653aae91e132d2ac2cbb2784e7eb45b",
+    "blk00003.dat": "91e0cfd5aa43dbeb301f7cadb20976883f4a7247434edb8c7e571478b6635793",
+    "blk00004.dat": "13a4751add3f3c2bd949ec847746ada86a9e81a96d7401a11d6b921df56b1c62",
+    "blk00005.dat": "d7a25d3e913e6a375eba6bce34707f52402f1f9fd562f842e1393aff11c71c76",
+    "blk00006.dat": "89068f47da194f391f922bdb0b8c5cabc828299fcae3bd4ed4ab859e4a6e9cd1"
+  },
+  "sample_only": true,
+  "expected_tip": "5169ee165fb3f391eafe13bbdfb0f7eb136b92303e738410368b1e8c68958a02",
+  "expected_height": 100,
+  "workdir": "redacted-local-test-path",
+  "old": {
+    "binary_sha256": "54c9a3d0514edf2ce0d5620c7271e98f85d59917d28e0e12979567d6f7d50aa4",
+    "seconds": 14.3,
+    "blockchain": {
+      "chain": "main",
+      "blocks": 100,
+      "headers": 100,
+      "bestblockhash": "5169ee165fb3f391eafe13bbdfb0f7eb136b92303e738410368b1e8c68958a02",
+      "difficulty": 6.171118731118017e-07,
+      "mediantime": 1663365813,
+      "verificationprogress": 1,
+      "initialblockdownload": true,
+      "chainwork": "000000000000000000000000000000000000000000000000000000000003bd82",
+      "size_on_disk": 55678,
+      "pruned": false,
+      "softforks": [],
+      "bip9_softforks": {},
+      "warnings": ""
+    },
+    "utxo": {
+      "height": 100,
+      "bestblock": "5169ee165fb3f391eafe13bbdfb0f7eb136b92303e738410368b1e8c68958a02",
+      "transactions": 100,
+      "txouts": 200,
+      "bogosize": 15960,
+      "hash_serialized_2": "498d639195b76a450af40a47489ca668cd7bf8bdc74d70885bd62ad0bc5c9ca4",
+      "disk_size": 8245,
+      "total_amount": 400.0
+    }
+  },
+  "new": {
+    "binary_sha256": "2691873beccfc29d24baea1b7a50a09323fb741699e422962dd62139ab99cb63",
+    "seconds": 9.6,
+    "blockchain": {
+      "chain": "main",
+      "blocks": 100,
+      "headers": 100,
+      "bestblockhash": "5169ee165fb3f391eafe13bbdfb0f7eb136b92303e738410368b1e8c68958a02",
+      "difficulty": 6.171118731118017e-07,
+      "mediantime": 1663365813,
+      "verificationprogress": 1,
+      "initialblockdownload": true,
+      "chainwork": "000000000000000000000000000000000000000000000000000000000003bd82",
+      "size_on_disk": 55678,
+      "pruned": false,
+      "softforks": [],
+      "bip9_softforks": {},
+      "warnings": ""
+    },
+    "utxo": {
+      "height": 100,
+      "bestblock": "5169ee165fb3f391eafe13bbdfb0f7eb136b92303e738410368b1e8c68958a02",
+      "transactions": 100,
+      "txouts": 200,
+      "bogosize": 15960,
+      "hash_serialized_2": "498d639195b76a450af40a47489ca668cd7bf8bdc74d70885bd62ad0bc5c9ca4",
+      "disk_size": 8245,
+      "total_amount": 400.0
+    }
+  },
+  "matching_utxo": true,
+  "performance_note": "One bounded warm-system sample, not a real-wallet startup or cold-cache benchmark."
+}

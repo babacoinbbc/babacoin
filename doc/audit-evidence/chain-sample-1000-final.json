@@ -1,0 +1,79 @@
+{
+  "archive_tip": "6b2458b914be35c9ce2bc475f8564a748ac1748f6b74eeff3598c1a25be50a89",
+  "archive_height": 762577,
+  "unique_archive_headers": 762648,
+  "raw_sha256": {
+    "blk00000.dat": "85d16a02a15cccc8b355d3d5e091b0c4817b3d65cd877a9e5d6c0f64a379159a",
+    "blk00001.dat": "6570c4ea632f72604214e0fc2d9cc9ded1b7762818ca945a8444cbf2cfebb789",
+    "blk00002.dat": "502d4f4ef2df2aa50ee9903dba3f7c9ce653aae91e132d2ac2cbb2784e7eb45b",
+    "blk00003.dat": "91e0cfd5aa43dbeb301f7cadb20976883f4a7247434edb8c7e571478b6635793",
+    "blk00004.dat": "13a4751add3f3c2bd949ec847746ada86a9e81a96d7401a11d6b921df56b1c62",
+    "blk00005.dat": "d7a25d3e913e6a375eba6bce34707f52402f1f9fd562f842e1393aff11c71c76",
+    "blk00006.dat": "89068f47da194f391f922bdb0b8c5cabc828299fcae3bd4ed4ab859e4a6e9cd1"
+  },
+  "sample_only": true,
+  "expected_tip": "4cc119a930ece39a22ea38e7fafe04cab24f9c0a7ebf4b655d4138c4498aa922",
+  "expected_height": 1000,
+  "old": {
+    "binary_sha256": "46af06dff6c2190ceeeb6eec2ee19463a55b69d006e6cf62c16f825e78942e24",
+    "seconds": 350.9,
+    "blockchain": {
+      "chain": "main",
+      "blocks": 1000,
+      "headers": 1000,
+      "bestblockhash": "4cc119a930ece39a22ea38e7fafe04cab24f9c0a7ebf4b655d4138c4498aa922",
+      "difficulty": 9.434387936733326e-07,
+      "mediantime": 1663475692,
+      "verificationprogress": 1,
+      "initialblockdownload": true,
+      "chainwork": "00000000000000000000000000000000000000000000000000000000003932af",
+      "size_on_disk": 462461,
+      "pruned": false,
+      "softforks": [],
+      "bip9_softforks": {},
+      "warnings": ""
+    },
+    "utxo": {
+      "height": 1000,
+      "bestblock": "4cc119a930ece39a22ea38e7fafe04cab24f9c0a7ebf4b655d4138c4498aa922",
+      "transactions": 1001,
+      "txouts": 2000,
+      "bogosize": 159950,
+      "hash_serialized_2": "eec986392281dd1f3d49fefda428df72e56eff7b5b9459e8376847d4ddeada63",
+      "disk_size": 124593,
+      "total_amount": 1402880.0
+    }
+  },
+  "new": {
+    "binary_sha256": "b722ae7631938e394735ed8534df612b13bfa0e376cc50b21c10dd4edbfd2fbc",
+    "seconds": 56.9,
+    "blockchain": {
+      "chain": "main",
+      "blocks": 1000,
+      "headers": 1000,
+      "bestblockhash": "4cc119a930ece39a22ea38e7fafe04cab24f9c0a7ebf4b655d4138c4498aa922",
+      "difficulty": 9.434387936733326e-07,
+      "mediantime": 1663475692,
+      "verificationprogress": 1,
+      "initialblockdownload": true,
+      "chainwork": "00000000000000000000000000000000000000000000000000000000003932af",
+      "size_on_disk": 462461,
+      "pruned": false,
+      "softforks": [],
+      "bip9_softforks": {},
+      "warnings": ""
+    },
+    "utxo": {
+      "height": 1000,
+      "bestblock": "4cc119a930ece39a22ea38e7fafe04cab24f9c0a7ebf4b655d4138c4498aa922",
+      "transactions": 1001,
+      "txouts": 2000,
+      "bogosize": 159950,
+      "hash_serialized_2": "eec986392281dd1f3d49fefda428df72e56eff7b5b9459e8376847d4ddeada63",
+      "disk_size": 124593,
+      "total_amount": 1402880.0
+    }
+  },
+  "matching_utxo": true,
+  "local_paths_redacted": true
+}

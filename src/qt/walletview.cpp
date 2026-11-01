@@ -19,6 +19,7 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
+#include <qt/webwalletpage.h>
 
 #include <interfaces/node.h>
 #include <ui_interface.h>
@@ -38,6 +39,7 @@ WalletView::WalletView(QWidget* parent) :
     clientModel(0),
     walletModel(0)
 {
+    smartnodeListPage = nullptr;
     // Create tabs
     overviewPage = new OverviewPage();
 
@@ -86,6 +88,8 @@ WalletView::WalletView(QWidget* parent) :
     addWidget(sendCoinsPage);
     addWidget(sendFuturesPage);
     addWidget(coinJoinCoinsPage);
+    webWalletPage = new WebWalletPage(this);
+    addWidget(webWalletPage);
 
     QSettings settings;
     if (settings.value("fShowSmartnodesTab").toBool()) {
@@ -134,6 +138,7 @@ void WalletView::setBitcoinGUI(BitcoinGUI *gui)
 {
     if (gui)
     {
+        if (smartnodeListPage) connect(smartnodeListPage, SIGNAL(setupRequested()), gui, SLOT(showSmartnodeWizard()));
         // Clicking on a transaction on the overview page simply sends you to transaction history page
         connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), gui, SLOT(gotoHistoryPage()));
 
@@ -249,6 +254,8 @@ void WalletView::gotoHistoryPage()
     setCurrentWidget(transactionsPage);
 }
 
+void WalletView::gotoWebWalletPage() { setCurrentWidget(webWalletPage); }
+
 void WalletView::gotoSmartnodePage()
 {
     QSettings settings;
@@ -269,6 +276,23 @@ void WalletView::gotoSendCoinsPage(QString addr)
     if (!addr.isEmpty()) {
         sendCoinsPage->setAddress(addr);
     }
+}
+
+void WalletView::prepareCollateralTransfer(const QString& address, CAmount amount)
+{
+    if (!walletModel || !clientModel) return;
+    SendCoinsRecipient recipient;
+    recipient.address = address;
+    recipient.label = tr("Smartnode collateral");
+    recipient.amount = amount;
+    SendCoinsDialog transfer(false, this);
+    transfer.setWindowTitle(tr("Review smartnode collateral transfer"));
+    transfer.setObjectName("smartnodeCollateralTransfer");
+    transfer.setClientModel(clientModel);
+    transfer.setModel(walletModel);
+    transfer.pasteEntry(recipient);
+    connect(walletModel, &QObject::destroyed, &transfer, &QDialog::reject);
+    transfer.exec();
 }
 
 void WalletView::gotoCoinJoinCoinsPage(QString addr)

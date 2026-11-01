@@ -5,6 +5,7 @@
 #include <serialize.h>
 #include <streams.h>
 #include <hash.h>
+#include <chain.h>
 #include <test/test_babacoin.h>
 
 #include <stdint.h>
@@ -12,6 +13,55 @@
 #include <boost/test/unit_test.hpp>
 
 BOOST_FIXTURE_TEST_SUITE(serialize_tests, BasicTestingSetup)
+
+BOOST_AUTO_TEST_CASE(disk_block_position_roundtrip)
+{
+    const CDiskBlockPos original(7, 123456);
+    CDataStream stream(SER_DISK, CLIENT_VERSION);
+    stream << original;
+    // The existing wire encoding is unchanged by removing the temporary casts.
+    CDataStream expected(SER_DISK, CLIENT_VERSION);
+    int file = original.nFile;
+    expected << VARINT(file, VarIntMode::NONNEGATIVE_SIGNED) << VARINT(original.nPos);
+    BOOST_CHECK_EQUAL_COLLECTIONS(stream.begin(), stream.end(), expected.begin(), expected.end());
+    CDiskBlockPos decoded;
+    stream >> decoded;
+    BOOST_CHECK(decoded == original);
+    BOOST_CHECK(stream.empty());
+}
+
+BOOST_AUTO_TEST_CASE(disk_block_index_roundtrip)
+{
+    CDiskBlockIndex original;
+    original.nHeight = 1250001;
+    original.nFile = 7;
+    original.nStatus = BLOCK_VALID_SCRIPTS | BLOCK_HAVE_DATA | BLOCK_HAVE_UNDO;
+    original.nTx = 19;
+    original.nDataPos = 123456;
+    original.nUndoPos = 654321;
+    original.hash = uint256S("1234");
+    original.hashPrev = uint256S("5678");
+    original.hashMerkleRoot = uint256S("9012");
+    original.nVersion = 4;
+    original.nTime = 1650614402;
+    original.nBits = 0x1e0ffff0;
+    original.nNonce = 685;
+    CDataStream stream(SER_DISK, CLIENT_VERSION);
+    stream << original;
+    const std::vector<char> bytes(stream.begin(), stream.end());
+    CDiskBlockIndex decoded;
+    stream >> decoded;
+    BOOST_CHECK_EQUAL(decoded.nHeight, original.nHeight);
+    BOOST_CHECK_EQUAL(decoded.nFile, original.nFile);
+    BOOST_CHECK_EQUAL(decoded.nDataPos, original.nDataPos);
+    BOOST_CHECK_EQUAL(decoded.nUndoPos, original.nUndoPos);
+    BOOST_CHECK(decoded.hash == original.hash);
+    BOOST_CHECK(decoded.hashPrev == original.hashPrev);
+    CDataStream rewritten(SER_DISK, CLIENT_VERSION);
+    rewritten << decoded;
+    BOOST_CHECK_EQUAL_COLLECTIONS(bytes.begin(), bytes.end(), rewritten.begin(), rewritten.end());
+    BOOST_CHECK(stream.empty());
+}
 
 class CSerializeMethodsTestSingle
 {

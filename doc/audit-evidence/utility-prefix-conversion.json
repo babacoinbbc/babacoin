@@ -1,0 +1,24 @@
+{
+  "method": "Base58Check decode, replace network version only, recompute checksum. Payload bytes preserved; serialized transaction hex unchanged.",
+  "conversions": {
+    "76->25": 31,
+    "204->205": 4,
+    "16->102": 2
+  },
+  "files": [
+    "test\\util\\data\\bitcoin-util-test.json",
+    "test\\util\\data\\tt-delin1-out.json",
+    "test\\util\\data\\tt-delout1-out.json",
+    "test\\util\\data\\tt-locktime317000-out.json",
+    "test\\util\\data\\txcreate1.json",
+    "test\\util\\data\\txcreatedata1.json",
+    "test\\util\\data\\txcreatedata2.json",
+    "test\\util\\data\\txcreatedata_seq0.json",
+    "test\\util\\data\\txcreatedata_seq1.json",
+    "test\\util\\data\\txcreatemultisig1.json",
+    "test\\util\\data\\txcreatemultisig2.json",
+    "test\\util\\data\\txcreateoutpubkey1.json",
+    "test\\util\\data\\txcreatescript2.json",
+    "test\\util\\data\\txcreatesignv1.json"
+  ]
+}

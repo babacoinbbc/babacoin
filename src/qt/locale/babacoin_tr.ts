@@ -739,6 +739,48 @@
         <source>Wallet is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;locked&lt;/b&gt;</source>
         <translation>Cüzdan &lt;b&gt;şifrelenmiştir&lt;/b&gt; ve şu anda &lt;b&gt;kilitlidir&lt;/b&gt;</translation>
     </message>
+    <message>
+        <source>Babacoin</source>
+        <translation>Babacoin</translation>
+    </message>
+    <message>
+        <source>BBC WALLET</source>
+        <translation>BBC CÜZDAN</translation>
+    </message>
+    <message>
+        <source>Day / Night</source>
+        <translation>Gündüz / Gece</translation>
+    </message>
+    <message>
+        <source>Switch between day and night mode (Ctrl+Shift+L)</source>
+        <translation>Gündüz ve gece modu arasında geçiş yap (Ctrl+Shift+L)</translation>
+    </message>
+    <message>
+        <source>Switch between day and night mode</source>
+        <translation>Gündüz ve gece modu arasında geçiş yap</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Ayarlar</translation>
+    </message>
+    <message>
+        <source>Overview</source>
+        <translation>Genel bakış</translation>
+    </message>
+    <message>
+        <source>Babacoin · BBC</source>
+        <translation>Babacoin · BBC</translation>
+    </message>
+    <message>
+        <source>Receive</source>
+        <translation>Al</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gönder</translation>
+    </message>
+    <message><source>Main network</source><translation>Ana ağ</translation></message>
+    <message><source>Selected network. Connection and synchronization status are shown below.</source><translation>Seçili ağ. Bağlantı ve eşitleme durumu aşağıda gösterilir.</translation></message>
 </context>
 <context>
     <name>CoinControlDialog</name>
@@ -1827,6 +1869,42 @@ https://www.transifex.com/projects/p/babacoin/</translation>
         <source>WARNING! Failed to replenish keypool, please unlock your wallet to do so.</source>
         <translation>UYARI! Anahtar havuzu yenilenemedi, lütfen devam etmek için cüzdanınızın kilidini açın.</translation>
     </message>
+    <message>
+        <source>Balance details</source>
+        <translation>Bakiye ayrıntıları</translation>
+    </message>
+    <message>
+        <source>Total balance</source>
+        <translation>Toplam bakiye</translation>
+    </message>
+    <message>
+        <source>See spendable and pending amounts below.</source>
+        <translation>Kullanılabilir ve bekleyen tutarlar aşağıda gösterilir.</translation>
+    </message>
+    <message>
+        <source>Recent movements</source>
+        <translation>Son hareketler</translation>
+    </message>
+    <message>
+        <source>Relative sizes of the entries shown here</source>
+        <translation>Burada gösterilen kayıtların göreli büyüklükleri</translation>
+    </message>
+    <message>
+        <source>Credits appear above the line; debits below. Exact amounts are shown in recent transactions.</source>
+        <translation>Alacaklar çizginin üstünde, borçlar altında gösterilir. Kesin tutarlar son işlemlerde yer alır.</translation>
+    </message>
+    <message>
+        <source>No recent transactions</source>
+        <translation>Son işlem bulunmuyor</translation>
+    </message>
+    <message>
+        <source>Your wallet activity will appear here.</source>
+        <translation>Cüzdan hareketleriniz burada görünecek.</translation>
+    </message>
+    <message>
+        <source>No recent activity</source>
+        <translation>Son hareket bulunmuyor</translation>
+    </message>
 </context>
 <context>
     <name>PaymentServer</name>
@@ -2091,6 +2169,10 @@ https://www.transifex.com/projects/p/babacoin/</translation>
     <message>
         <source>unknown</source>
         <translation>bilinmiyor</translation>
+    </message>
+    <message>
+        <source>The isolated GUI settings directory must already exist and be absolute.</source>
+        <translation>Ayrı arayüz ayarları klasörü mevcut ve mutlak bir yol olmalıdır.</translation>
     </message>
 </context>
 <context>
@@ -3353,6 +3435,14 @@ https://www.transifex.com/projects/p/babacoin/</translation>
     <message>
         <source>[testnet]</source>
         <translation>[testnet]</translation>
+    </message>
+    <message>
+        <source>Babacoin is starting</source>
+        <translation>Babacoin başlatılıyor</translation>
+    </message>
+    <message>
+        <source>BBC CORE</source>
+        <translation>BBC CORE</translation>
     </message>
 </context>
 <context>
@@ -4867,6 +4957,13 @@ https://www.transifex.com/projects/p/babacoin/</translation>
     <message>
         <source>Zapping all transactions from wallet...</source>
         <translation>Cüzdandaki tüm muameleler kaldırılıyor...</translation>
+    </message>
+</context>
+<context>
+    <name>BitcoinApplication</name>
+    <message>
+        <source>Preparing the wallet interface...</source>
+        <translation>Cüzdan arayüzü hazırlanıyor...</translation>
     </message>
 </context>
 </TS>

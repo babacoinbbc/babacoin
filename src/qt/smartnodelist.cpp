@@ -12,6 +12,7 @@
 #include <univalue.h>
 
 #include <QMessageBox>
+#include <QPushButton>
 #include <QTableWidgetItem>
 #include <QtGui/QClipboard>
 
@@ -53,6 +54,9 @@ SmartnodeList::SmartnodeList(QWidget* parent) :
     mnListChanged(true)
 {
     ui->setupUi(this);
+    auto* setup = new QPushButton(tr("Create a smartnode — setup wizard"), this);
+    ui->topLayout->insertWidget(0, setup);
+    connect(setup, &QPushButton::clicked, this, [this] { Q_EMIT setupRequested(); });
 
     GUIUtil::setFont({ui->label_count_2,
                       ui->countLabelDIP3

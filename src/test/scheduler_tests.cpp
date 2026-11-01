@@ -9,6 +9,8 @@
 
 #include <boost/thread.hpp>
 #include <boost/test/unit_test.hpp>
+#include <array>
+#include <atomic>
 
 BOOST_AUTO_TEST_SUITE(scheduler_tests)
 
@@ -128,20 +130,20 @@ BOOST_AUTO_TEST_CASE(singlethreadedscheduler_ordered)
         threads.create_thread(std::bind(&CScheduler::serviceQueue, &scheduler));
     }
 
-    // these are not atomic, if SinglethreadedSchedulerClient prevents
-    // parallel execution at the queue level no synchronization should be required here
-    int counter1 = 0;
-    int counter2 = 0;
+    // Boost.Test assertions are not thread safe. Record observations here and
+    // check them on the test thread after join, preserving every ordering check.
+    std::atomic<int> counter1{0}, counter2{0};
+    std::array<int, 100> observed1{}, observed2{};
 
     // just simply count up on each queue - if execution is properly ordered then
     // the callbacks should run in exactly the order in which they were enqueued
     for (int i = 0; i < 100; ++i) {
-        queue1.AddToProcessQueue([i, &counter1]() {
-            BOOST_CHECK_EQUAL(i, counter1++);
+        queue1.AddToProcessQueue([i, &counter1, &observed1]() {
+            observed1[i] = counter1.fetch_add(1, std::memory_order_relaxed);
         });
 
-        queue2.AddToProcessQueue([i, &counter2]() {
-            BOOST_CHECK_EQUAL(i, counter2++);
+        queue2.AddToProcessQueue([i, &counter2, &observed2]() {
+            observed2[i] = counter2.fetch_add(1, std::memory_order_relaxed);
         });
     }
 
@@ -149,8 +151,12 @@ BOOST_AUTO_TEST_CASE(singlethreadedscheduler_ordered)
     scheduler.stop(true);
     threads.join_all();
 
-    BOOST_CHECK_EQUAL(counter1, 100);
-    BOOST_CHECK_EQUAL(counter2, 100);
+    for (int i = 0; i < 100; ++i) {
+        BOOST_CHECK_EQUAL(observed1[i], i);
+        BOOST_CHECK_EQUAL(observed2[i], i);
+    }
+    BOOST_CHECK_EQUAL(counter1.load(), 100);
+    BOOST_CHECK_EQUAL(counter2.load(), 100);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

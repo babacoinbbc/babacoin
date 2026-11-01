@@ -190,6 +190,49 @@ QString BitcoinUnits::floorHtmlWithUnit(int unit, const CAmount& amount, bool pl
     return QString("<span style='white-space: nowrap;'>%1</span>").arg(str);
 }
 
+namespace {
+QString LocalizedAmount(const QString& canonical, BitcoinUnits::SeparatorStyle separators, const QLocale& locale)
+{
+    const int decimal = canonical.indexOf('.');
+    QString whole = decimal < 0 ? canonical : canonical.left(decimal);
+    const int sign = whole.startsWith('-') || whole.startsWith('+') ? 1 : 0;
+    const int digits = whole.size() - sign;
+    if (separators == BitcoinUnits::separatorAlways ||
+        (separators == BitcoinUnits::separatorStandard && digits > 4)) {
+        for (int pos = whole.size() - 3; pos > sign; pos -= 3) whole.insert(pos, locale.groupSeparator());
+    }
+    if (decimal >= 0 && decimal + 1 < canonical.size()) whole += locale.decimalPoint() + canonical.mid(decimal + 1);
+    return whole;
+}
+}
+
+QString BitcoinUnits::formatLocalizedWithUnit(int unit, const CAmount& amount, bool plus, SeparatorStyle separators, const QLocale& locale)
+{
+    if (!valid(unit)) return QString();
+    return formatLocalized(unit, amount, plus, separators, locale) + " " + name(unit);
+}
+
+QString BitcoinUnits::formatLocalized(int unit, const CAmount& amount, bool plus, SeparatorStyle separators, const QLocale& locale)
+{
+    if (!valid(unit)) return QString();
+    return LocalizedAmount(format(unit, amount, plus, separatorNever), separators, locale);
+}
+
+QString BitcoinUnits::floorLocalizedWithUnit(int unit, const CAmount& amount, bool plus, SeparatorStyle separators, const QLocale& locale)
+{
+    if (!valid(unit)) return QString();
+    QString number = format(unit, amount, plus, separatorNever);
+    const int precision = qBound(0, QSettings().value("digits", 2).toInt(), decimals(unit));
+    number.chop(decimals(unit) - precision);
+    if (number.endsWith('.')) number.chop(1);
+    return LocalizedAmount(number, separators, locale) + " " + name(unit);
+}
+
+QString BitcoinUnits::floorLocalizedHtmlWithUnit(int unit, const CAmount& amount, bool plus, SeparatorStyle separators, const QLocale& locale)
+{
+    return QString("<span style='white-space: nowrap;'>%1</span>").arg(floorLocalizedWithUnit(unit, amount, plus, separators, locale).toHtmlEscaped());
+}
+
 bool BitcoinUnits::parse(int unit, const QString &value, CAmount *val_out)
 {
     if(!valid(unit) || value.isEmpty())

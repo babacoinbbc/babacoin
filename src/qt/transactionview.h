@@ -21,6 +21,7 @@ class QDateTimeEdit;
 class QFrame;
 class QItemSelectionModel;
 class QLineEdit;
+class QLabel;
 class QMenu;
 class QModelIndex;
 class QSignalMapper;
@@ -54,9 +55,9 @@ public:
     enum ColumnWidths {
         STATUS_COLUMN_WIDTH = 30,
         WATCHONLY_COLUMN_WIDTH = 23,
-        DATE_COLUMN_WIDTH = 120,
-        TYPE_COLUMN_WIDTH = 240,
-        AMOUNT_MINIMUM_COLUMN_WIDTH = 120,
+        DATE_COLUMN_WIDTH = 170,
+        TYPE_COLUMN_WIDTH = 200,
+        AMOUNT_MINIMUM_COLUMN_WIDTH = 200,
         MINIMUM_COLUMN_WIDTH = 23
     };
 
@@ -64,6 +65,7 @@ private:
     WalletModel *model;
     TransactionFilterProxy *transactionProxyModel;
     QTableView *transactionView;
+    QLabel *historyLoadingNotice;
     QComboBox *dateWidget;
     QComboBox *typeWidget;
     QComboBox *watchOnlyWidget;
@@ -89,6 +91,7 @@ private:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private Q_SLOTS:
+    void updateHistoryLoading();
     void contextualMenu(const QPoint &);
     void dateRangeChanged();
     void showDetails();

@@ -82,7 +82,10 @@ public:
     QVariant data(const QModelIndex &index, int role) const;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     QModelIndex index(int row, int column, const QModelIndex & parent = QModelIndex()) const;
-    bool processingQueuedTransactions() const { return fProcessingQueuedTransactions; }
+    bool processingQueuedTransactions() const;
+    bool isLoadingHistory() const;
+    int loadedHistoryTransactions() const;
+    int totalHistoryTransactions() const;
     void updateChainLockHeight(int chainLockHeight);
     int getChainLockHeight() const;
 
@@ -105,12 +108,16 @@ private:
     QString formatTxDate(const TransactionRecord *wtx) const;
     QString formatTxType(const TransactionRecord *wtx) const;
     QString formatTxToAddress(const TransactionRecord *wtx, bool tooltip) const;
-    QString formatTxAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, BitcoinUnits::SeparatorStyle separators=BitcoinUnits::separatorStandard) const;
+    QString formatTxAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, BitcoinUnits::SeparatorStyle separators=BitcoinUnits::separatorStandard, bool localized=false) const;
     QVariant amountColor(const TransactionRecord *rec) const;
     QString formatTooltip(const TransactionRecord *rec) const;
     QVariant txStatusDecoration(const TransactionRecord *wtx) const;
     QVariant txWatchonlyDecoration(const TransactionRecord *wtx) const;
     QVariant txAddressDecoration(const TransactionRecord *wtx) const;
+
+Q_SIGNALS:
+    void historyLoadProgress(int processed, int total);
+    void historyLoadFinished();
 
 public Q_SLOTS:
     /* New transaction, or transaction changed status */

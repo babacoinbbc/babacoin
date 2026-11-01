@@ -1,0 +1,19 @@
+{
+  "scope": "Short wallet-disabled mainnet peer/discovery test; no mining, signing, spending or real wallet access",
+  "binary_sha256": "219b2ce0c4e747b6e2965bc13794c85fade2fa3599b6f7d31c8bccc01d371c2a",
+  "main_genesis": "84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854",
+  "explorer_message": "2026-10-31T20:09:14Z GUI: Explorer peers: offered 12 validated public mainnet peer hints to ordinary discovery.",
+  "remote_peers": [
+    {
+      "address": "seed02.babacoin.network",
+      "protocol": 70219,
+      "subversion": "/Babacoin Core:1.0.0.0/",
+      "reported_start_height": 1062382
+    }
+  ],
+  "wallet_files_created": false,
+  "external_networking_disabled_after_check": true,
+  "result": "PASS",
+  "limitation": "A handshake and peer hints do not certify full-chain compatibility or network-wide agreement",
+  "source_context": "Cached Windows development build with the ad1ebbf peer-discovery implementation; exact release validation is separate."
+}

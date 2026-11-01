@@ -11,6 +11,7 @@
 #include <utilstrencodings.h>
 #include <test/test_babacoin.h>
 #include <bip39.h>
+#include <base58.h>
 
 #include <boost/test/unit_test.hpp>
 
@@ -60,7 +61,16 @@ BOOST_AUTO_TEST_CASE(bip39_vectors)
         pubkey = key.Neuter();
 
         // printf("CBitcoinExtKey: %s\n", EncodeExtKey(key).c_str());
-        BOOST_CHECK(EncodeExtKey(key) == test[3].get_str());
+        // The published vectors use Bitcoin's xprv version. Compare the
+        // complete 74-byte key payload without changing BBC's legacy prefix.
+        std::vector<unsigned char> expected;
+        BOOST_REQUIRE(DecodeBase58Check(test[3].get_str(), expected));
+        BOOST_REQUIRE_EQUAL(expected.size(), 78U);
+        BOOST_CHECK_EQUAL(HexStr(expected.begin(), expected.begin() + 4), "0488ade4");
+        unsigned char encoded[BIP32_EXTKEY_SIZE];
+        key.Encode(encoded);
+        BOOST_CHECK_EQUAL_COLLECTIONS(encoded, encoded + BIP32_EXTKEY_SIZE,
+                                     expected.begin() + 4, expected.end());
     }
 }
 

@@ -112,7 +112,7 @@ void SendFuturesEntry::setModel(WalletModel *_model)
     if (_model && _model->getOptionsModel())
     {
         connect(_model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
-        connect(_model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setupPayFrom()));
+        connect(_model, &WalletModel::balanceChanged, this, &SendFuturesEntry::setupPayFrom);
     }
     clear();
 }

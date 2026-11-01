@@ -449,6 +449,7 @@ public:
     CDeterministicMNCPtr GetMNByService(const CService& service) const;
     CDeterministicMNCPtr GetMNByInternalId(uint64_t internalId) const;
     CDeterministicMNCPtr GetMNPayee() const;
+    CDeterministicMNCPtr GetMNPayeeForBlock(int blockHeight) const;
 
     /**
      * Calculates the projected MN payees for the next *count* blocks. The result is not guaranteed to be correct

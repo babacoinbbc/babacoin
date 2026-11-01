@@ -2257,7 +2257,6 @@ int64_t CWallet::RescanFromTime(int64_t startTime, const WalletRescanReserver& r
 CBlockIndex* CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, CBlockIndex* pindexStop, const WalletRescanReserver &reserver, bool fUpdate)
 {
     int64_t nNow = GetTime();
-    const CChainParams& chainParams = Params();
 
     assert(reserver.isReserved());
     if (pindexStop) {
@@ -2273,28 +2272,29 @@ CBlockIndex* CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, CBlock
         fAbortRescan = false;
         ShowProgress(_("Rescanning..."), 0); // show rescan progress in GUI as dialog or on splashscreen, if -rescan on startup
         CBlockIndex* tip = nullptr;
-        double progress_begin;
-        double progress_end;
+        const int scan_start_height = pindex ? pindex->nHeight : 0;
+        int scanned_height = scan_start_height - 1;
+        int target_height = -1;
         {
             LOCK(cs_main);
-            progress_begin = GuessVerificationProgress(chainParams.TxData(), pindex);
-            if (pindexStop == nullptr) {
-                tip = chainActive.Tip();
-                progress_end = GuessVerificationProgress(chainParams.TxData(), tip);
-            } else {
-                progress_end = GuessVerificationProgress(chainParams.TxData(), pindexStop);
-            }
+            tip = chainActive.Tip();
+            if (pindex) target_height = pindexStop ? pindexStop->nHeight : (tip ? tip->nHeight : -1);
         }
-        double progress_current = progress_begin;
+        auto report_scan = [&](bool complete) {
+            const WalletScanProgress progress{GetName(), scan_start_height, scanned_height, target_height, complete};
+            m_scanning_progress = progress.basisPoints() / 10000.0;
+            uiInterface.NotifyWalletScanProgress(progress);
+        };
+        report_scan(false);
+        int64_t last_ui_update = GetTimeMillis();
         while (pindex && !fAbortRescan && !ShutdownRequested())
         {
-            m_scanning_progress = (progress_current - progress_begin) / (progress_end - progress_begin);
-            if (pindex->nHeight % 100 == 0 && progress_end - progress_begin > 0.0) {
+            if (pindex->nHeight % 100 == 0) {
                 ShowProgress(_("Rescanning..."), std::max(1, std::min(99, (int)(m_scanning_progress * 100))));
             }
             if (GetTime() >= nNow + 60) {
                 nNow = GetTime();
-                LogPrintf("Still rescanning. At block %d. Progress=%f\n", pindex->nHeight, progress_current);
+                LogPrintf("Still rescanning. At block %d. Progress=%f\n", pindex->nHeight, m_scanning_progress.load());
             }
 
             CBlock block;
@@ -2312,25 +2312,29 @@ CBlockIndex* CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, CBlock
             } else {
                 ret = pindex;
             }
+            scanned_height = pindex->nHeight;
+            if (GetTimeMillis() >= last_ui_update + 500) {
+                report_scan(false);
+                last_ui_update = GetTimeMillis();
+            }
             if (pindex == pindexStop) {
                 break;
             }
             {
                 LOCK(cs_main);
                 pindex = chainActive.Next(pindex);
-                progress_current = GuessVerificationProgress(chainParams.TxData(), pindex);
                 if (pindexStop == nullptr && tip != chainActive.Tip()) {
                     tip = chainActive.Tip();
-                    // in case the tip has changed, update progress max
-                    progress_end = GuessVerificationProgress(chainParams.TxData(), tip);
+                    target_height = tip ? tip->nHeight : -1;
                 }
             }
         }
         if (pindex && fAbortRescan) {
-            LogPrintf("Rescan aborted at block %d. Progress=%f\n", pindex->nHeight, progress_current);
+            LogPrintf("Rescan aborted at block %d. Progress=%f\n", pindex->nHeight, m_scanning_progress.load());
         } else if (pindex && ShutdownRequested()) {
-            LogPrintf("Rescan interrupted by shutdown request at block %d. Progress=%f\n", pindex->nHeight, progress_current);
+            LogPrintf("Rescan interrupted by shutdown request at block %d. Progress=%f\n", pindex->nHeight, m_scanning_progress.load());
         }
+        report_scan(ret == nullptr && !fAbortRescan && !ShutdownRequested());
         ShowProgress(_("Rescanning..."), 100); // hide progress dialog in GUI
     }
     return ret;
@@ -5310,7 +5314,12 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(const WalletLocation& loc
             if (!reserver.reserve()) {
                 return error(_("Failed to rescan the wallet during initialization"));
             }
-            walletInstance->ScanForWalletTransactions(pindexRescan, nullptr, reserver, true);
+            CBlockIndex* failedBlock = walletInstance->ScanForWalletTransactions(pindexRescan, nullptr, reserver, true);
+            // Never advance the persisted locator after an incomplete scan.
+            // Otherwise the next startup can skip transactions not yet read.
+            if (failedBlock || walletInstance->IsAbortingRescan() || ShutdownRequested()) {
+                return error(_("Wallet rescan was interrupted or could not read every block. The previous scan checkpoint was preserved; restart to retry."));
+            }
         }
         LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
         walletInstance->SetBestChain(chainActive.GetLocator());

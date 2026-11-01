@@ -77,6 +77,7 @@ QT_MOC_CPP = \
   qt/moc_macnotificationhandler.cpp \
   qt/moc_modaloverlay.cpp \
   qt/moc_smartnodelist.cpp \
+  qt/moc_smartnodewizard.cpp \
   qt/moc_notificator.cpp \
   qt/moc_openuridialog.cpp \
   qt/moc_optionsdialog.cpp \
@@ -148,6 +149,9 @@ BITCOIN_QT_H = \
   qt/editaddressdialog.h \
   qt/guiconstants.h \
   qt/guiutil.h \
+  qt/explorerpeers.h \
+  qt/smartnodewizard.h \
+  qt/webwalletpage.h \
   qt/intro.h \
   qt/macdockiconhandler.h \
   qt/macnotificationhandler.h \
@@ -255,6 +259,7 @@ BITCOIN_QT_BASE_CPP = \
   qt/clientmodel.cpp \
   qt/csvmodelwriter.cpp \
   qt/guiutil.cpp \
+  qt/explorerpeers.cpp \
   qt/intro.cpp \
   qt/modaloverlay.cpp \
   qt/networkstyle.cpp \
@@ -273,6 +278,8 @@ BITCOIN_QT_BASE_CPP = \
 BITCOIN_QT_WINDOWS_CPP = qt/winshutdownmonitor.cpp
 
 BITCOIN_QT_WALLET_CPP = \
+  qt/smartnodewizard.cpp \
+  qt/webwalletpage.cpp \
   qt/addressbookpage.cpp \
   qt/addresstablemodel.cpp \
   qt/askpassphrasedialog.cpp \
@@ -314,6 +321,7 @@ BITCOIN_QT_CPP += $(BITCOIN_QT_WALLET_CPP)
 endif
 
 RES_IMAGES = \
+  qt/res/images/babacoin_brand_gold.png \
   qt/res/images/arrow_down_dark.png \
   qt/res/images/arrow_down_light.png \
   qt/res/images/arrow_left_dark.png \

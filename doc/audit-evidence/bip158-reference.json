@@ -1,0 +1,8 @@
+{
+  "url": "https://raw.githubusercontent.com/bitcoin/bips/dd3948b4742eaad13872a85691347dc77cce09f0/bip-0158/testnet-19.json",
+  "sha256": "d9049756f744e561b882a8eff507582fb7cd74ed9cf5542bdac58257449ee2a2",
+  "cases": 10,
+  "note": "Replace the seven inherited Dash-adjusted vectors with the ten official BIP158 SHA256d test vectors. BBC block IDs are SHA256d; GhostRider PoW is a separate hash. No production filter implementation changes.",
+  "conversion": "Strip Bitcoin witness records for BBC non-witness decoding. Preserve all transaction IDs, raw block headers, Merkle roots, scripts, and official filter/header expectations.",
+  "witness_transactions_stripped": 4
+}

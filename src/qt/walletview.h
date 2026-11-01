@@ -47,6 +47,8 @@ public:
     */
     void setClientModel(ClientModel *clientModel);
     WalletModel *getWalletModel() { return walletModel; }
+    void prepareCollateralTransfer(const QString& address, CAmount amount);
+    void gotoWebWalletPage();
     /** Set the wallet model.
         The wallet model represents a bitcoin wallet, and offers access to the list of transactions, address book and sending
         functionality.
@@ -70,6 +72,7 @@ private:
     AddressBookPage *usedSendingAddressesPage;
     AddressBookPage *usedReceivingAddressesPage;
     SmartnodeList *smartnodeListPage;
+    QWidget* webWalletPage;
 
     TransactionView *transactionView;
 

@@ -1,0 +1,19 @@
+{
+  "scope": "Local isolated Windows development build; the exact release commit requires its separate full platform CI gate",
+  "qt_groups_completed": 6,
+  "result": "PASS",
+  "peer_discovery": {
+    "case": "CompatTests::explorerPeerSafety",
+    "checks": ["opt-in and mainnet/network/proxy/restriction policy", "public numeric addresses and exact P2P port", "private/loopback/hostname/injected input rejection", "response and network-group limits"]
+  },
+  "smartnode": {
+    "cases": ["WalletTests::smartnodeFundingSafety", "WalletTests::smartnodeRegistrationWorkflow"],
+    "network": "private in-process regtest fixture with no networking threads started",
+    "checks": ["eight unsafe funding variants rejected", "preparation/dry-run leave mempool unchanged", "cancelled preparation restores its new collateral lock", "unchecked consent prevents submission", "explicit fixture confirmation submits exactly one registration", "10 tBBC external collateral remains unspent and locked"]
+  },
+  "configuration_export": {
+    "case": "WalletTests::legacyConfigExportSafety",
+    "checks": ["two exclusive recovery exports preserve the first file", "loopback RPC and selected-network RPC port", "configuration-safe credential encoding", "owner-only permissions checked on POSIX targets by CI"]
+  },
+  "web_wallet": "The actual Web Wallet page's mainnet launch button is disabled in the regtest fixture; no browser or production wallet is opened by this test"
+}

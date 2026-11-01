@@ -1,0 +1,60 @@
+name: Ubuntu compatibility and wallet safety
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ubuntu-compatibility-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  source-safety:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 test/lint/check-network-compatibility.py
+      - run: python3 test/util/wallet_backup_safety_test.py
+      - run: python3 test/util/test_report_safety_test.py
+      - run: python3 test/util/release_archive_safety_test.py
+
+  ubuntu:
+    needs: source-safety
+    name: Ubuntu ${{ matrix.ubuntu }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['18.04', '20.04', '22.04', '24.04', '26.04']
+        arch: [x86_64, arm64]
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      # Checkout runs on the host: Node actions cannot run on Bionic's glibc.
+      - uses: actions/checkout@v4
+      - name: Build and test in the target Ubuntu userspace
+        env:
+          TARGET_UBUNTU: ${{ matrix.ubuntu }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/bbc-output"
+          docker run --rm --init --network bridge -e JOBS=2 -e BBC_DISPOSABLE_BUILD=1 \
+            -e "BBC_SOURCE_COMMIT=$GITHUB_SHA" \
+            --mount "type=bind,source=$PWD,target=/src,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/bbc-output,target=/output" \
+            "ubuntu:$TARGET_UBUNTU" bash /src/ci/ubuntu-compat.sh /output
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: babacoin-tested-ubuntu-${{ matrix.ubuntu }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/bbc-output
+          if-no-files-found: error

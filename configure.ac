@@ -4,11 +4,11 @@ define(_CLIENT_VERSION_MAJOR, 2)
 define(_CLIENT_VERSION_MINOR, 0)
 define(_CLIENT_VERSION_REVISION, 0)
 define(_CLIENT_VERSION_BUILD, 0)
-define(_CLIENT_VERSION_IS_RELEASE, true)
-define(_COPYRIGHT_YEAR, 2022)
+define(_CLIENT_VERSION_IS_RELEASE, false)
+define(_COPYRIGHT_YEAR, 2026)
 define(_COPYRIGHT_HOLDERS,[The %s developers])
 define(_COPYRIGHT_HOLDERS_SUBSTITUTION,[[Babacoin Core]])
-AC_INIT([Babacoin Core],[_CLIENT_VERSION_MAJOR._CLIENT_VERSION_MINOR._CLIENT_VERSION_REVISION],[https://github.com/bugahost/babacoin/issues],[babacoin],[https://babacoin.network/])
+AC_INIT([Babacoin Core],[_CLIENT_VERSION_MAJOR._CLIENT_VERSION_MINOR._CLIENT_VERSION_REVISION],[https://github.com/babacoinbbc/babacoin/issues],[babacoin],[https://babacoin.network/])
 AC_CONFIG_SRCDIR([src/validation.cpp])
 AC_CONFIG_HEADERS([src/config/babacoin-config.h])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -60,8 +60,8 @@ case $host in
      lt_cv_deplibs_check_method="pass_all"
   ;;
 esac
-dnl Require C++14 compiler (no GNU extensions)
-AX_CXX_COMPILE_STDCXX([14], [noext], [mandatory], [nodefault])
+dnl BLS 1.1.0 and current Boost require C++17, also supported by Ubuntu 18.04 GCC 7.
+AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory], [nodefault])
 dnl Check if -latomic is required for <std::atomic>
 CHECK_ATOMIC
 
@@ -474,8 +474,9 @@ use_pkgconfig=yes
 case $host in
   *mingw*)
 
-     #pkgconfig does more harm than good with MinGW
-     use_pkgconfig=no
+     # Legacy cross toolchains may lack .pc files. Native MSYS2 builds opt in
+     # with an explicit target pkg-config so transitive dependencies are kept.
+     if test "x$PKG_CONFIG" = x; then use_pkgconfig=no; fi
 
      TARGET_OS=windows
      AC_CHECK_LIB([mingwthrd],      [main],, AC_MSG_ERROR(libmingwthrd missing))
@@ -562,7 +563,7 @@ case $host in
          bdb_prefix=`$BREW --prefix berkeley-db4 2>/dev/null`
          qt5_prefix=`$BREW --prefix qt5 2>/dev/null`
          if test x$openssl_prefix != x; then
-           PKG_CONFIG_PATH="$openssl_prefix/lib/pkgconfig:$PKG_CONFIG_PATH"
+           PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$openssl_prefix/lib/pkgconfig"
            export PKG_CONFIG_PATH
          fi
          if test x$bdb_prefix != x; then
@@ -570,7 +571,7 @@ case $host in
            LIBS="$LIBS -L$bdb_prefix/lib"
          fi
          if test x$qt5_prefix != x; then
-           PKG_CONFIG_PATH="$qt5_prefix/lib/pkgconfig:$PKG_CONFIG_PATH"
+           PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$qt5_prefix/lib/pkgconfig"
            export PKG_CONFIG_PATH
          fi
        fi
@@ -1460,6 +1461,9 @@ AC_SUBST(TESTDEFS)
 AC_SUBST(LEVELDB_TARGET_FLAGS)
 AC_SUBST(MINIUPNPC_CPPFLAGS)
 AC_SUBST(MINIUPNPC_LIBS)
+AC_ARG_VAR([BLS_LIBS], [BLS library and transitive dependency linker flags])
+if test "x$BLS_LIBS" = x; then BLS_LIBS="-lbls-dash -lgmp"; fi
+AC_SUBST(BLS_LIBS)
 AC_SUBST(CRYPTO_LIBS)
 AC_SUBST(SSL_LIBS)
 AC_SUBST(EVENT_LIBS)

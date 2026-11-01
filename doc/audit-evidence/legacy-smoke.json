@@ -1,0 +1,15 @@
+{
+  "binary_sha256": "54c9a3d0514edf2ce0d5620c7271e98f85d59917d28e0e12979567d6f7d50aa4",
+  "workdir": "<isolated temporary directory>",
+  "wallet_network": "main",
+  "checks": [
+    "offline mainnet identity and zero P2P connections",
+    "fresh isolated wallet, owned address, RPC backup, zero P2P connections",
+    "wallet ownership survives clean daemon restart",
+    "RPC backup restores ownership in a separate data directory"
+  ],
+  "version": 1000000,
+  "subversion": "/Babacoin Core:1.0.0.0/",
+  "protocolversion": 70219,
+  "local_paths_redacted": true
+}

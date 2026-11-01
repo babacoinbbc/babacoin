@@ -1,0 +1,26 @@
+{
+  "source_commit": "dd3136bd6c31f34da6669238e3c4956199fbe1a5",
+  "core_cases": 343,
+  "qt_suites": 6,
+  "transaction_utility_cases": 49,
+  "rpcauth_cases": 3,
+  "secp256k1_suites": 2,
+  "univalue_suites": 3,
+  "result": "PASS",
+  "binaries_sha256": {
+    "babacoin-cli.exe": "28d3699639b8a241d7e809e793af93c05cc164cde83167d7b6757ce01cff03f5",
+    "babacoin-tx.exe": "f702cb78604e001e457a7a6f3a713951991198912ceee02cab94d63f5db3cc62",
+    "babacoind.exe": "2691873beccfc29d24baea1b7a50a09323fb741699e422962dd62139ab99cb63",
+    "bdb-version.exe": "9651e007d26ea7e5462e68b102a38d1d12e4f81f20922ecee95c0b72dae71908",
+    "qt/babacoin-qt.exe": "3c641216c671be45ff2d7f3b6f6a757ebc503c58b3651208cd8d60515c52bfdd",
+    "qt/test/test_babacoin-qt.exe": "5e76af8d06030ca5817ccc98a1a4107a881567987f2898f3d229e9a96fff46c9",
+    "secp256k1/exhaustive_tests.exe": "f005a924e5355296736832185bc6963f8789d11bdd1956d5f8cacb66ee99d004",
+    "secp256k1/tests.exe": "b58ea3e3a33362920803b77cd148a6ec9bb9e724a08d75007b63cae0b7fe655f",
+    "test/test_babacoin.exe": "4e2f54ee8c42f0f75bd1d585d10505bba08dc86538c2afff685ac10505103790",
+    "univalue/test/no_nul.exe": "1b8247f4459eb98592a390949d524c5034a687d4107fcc93b468343b9f8a5c89",
+    "univalue/test/object.exe": "8754ee841504c29bc494fb75826bae3d3d095c555ea101c791b3ef88540af7fb",
+    "univalue/test/unitester.exe": "6459d0cf18c5883a6e20ee2215fe69d80859c65381cb062c4e1e464c2497bda3"
+  },
+  "initial_build_marker": "fde2aacf8d6128f0d6f6d082a1e61a318353a8c9",
+  "execution_notes": "Local incremental build with cached BDB/BLS. Core passed once; Qt and remaining helpers resumed after test-harness repairs. Every src file and configure.ac was then compared against the recorded source archive. Clean CI is reported separately."
+}

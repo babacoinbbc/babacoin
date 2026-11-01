@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-31",
+  "base_commit": "7cdd64b4435d5fef4f63accfaa1706f2425a3324",
+  "tested_source_commit": "169a70c",
+  "environment": "Ubuntu userspace containers in a local Ubuntu 24.04 QEMU/WHPX VM; shared Linux 6.8 kernel. Dependencies built cold; later source fixes tested incrementally. GitHub clean/native ARM64 validation is separate.",
+  "results": [
+    {
+      "ubuntu": "18.04",
+      "arch": "x86_64",
+      "core_cases": 343,
+      "qt_suites": 6,
+      "transaction_utility_cases": 49,
+      "rpcauth_cases": 3,
+      "secp256k1_suites": 2,
+      "univalue_suites": 3,
+      "result": "PASS",
+      "make_check_completed_in_stages": false,
+      "source_files_verified": 80,
+      "binaries_sha256": {
+        "babacoin-cli": "8009e66cc18fc73a0f72a6b88d20e97adfe191048e1107a33793ec7da6ad5599",
+        "babacoin-qt": "eb44c3eeb7f038b31b12b97919975b7fe2af23f4aa11441c5e8ec464cee06d47",
+        "babacoin-tx": "0c7664803af7658a0ff987e8dda7c907c81b6751690356d16be195475e782e51",
+        "babacoind": "6fa392be6cfd264dd37040c72c50e0a5ecb50ff7aa22b41b521a128422be8171"
+      },
+      "archive": "babacoin-ubuntu-18.04-x86_64.tar.gz",
+      "archive_sha256": "c0d254c0a596d5cacafaa5e57cd8aa7e1fedcf3b156b9b0cf3231ea3ec423655"
+    },
+    {
+      "ubuntu": "20.04",
+      "arch": "x86_64",
+      "core_cases": 343,
+      "qt_suites": 6,
+      "transaction_utility_cases": 49,
+      "rpcauth_cases": 3,
+      "secp256k1_suites": 2,
+      "univalue_suites": 3,
+      "result": "PASS",
+      "make_check_completed_in_stages": false,
+      "source_files_verified": 80,
+      "binaries_sha256": {
+        "babacoin-cli": "28cd14c898d858a1fa4df7237fa01c1e3424220eadc86eb9396a7600a8b12aa5",
+        "babacoin-qt": "3de2e9b5494d247ec63823188b0ac52a799d6475cb0dd4381f6621230f3629d2",
+        "babacoin-tx": "afc81b99dbbfe15c446ca4c3df81968ea73e09ed45b09d1e872bf12b35dc003a",
+        "babacoind": "e28f189872b511c583e8a94954f7dc23b1fb639c38de6e2f0c1eca33695a5ea0"
+      },
+      "archive": "babacoin-ubuntu-20.04-x86_64.tar.gz",
+      "archive_sha256": "830b05eaf21877728fee7b80383b12a31f3dd1948c87ef8d9c22c67d5a16ceae"
+    },
+    {
+      "ubuntu": "22.04",
+      "arch": "x86_64",
+      "core_cases": 343,
+      "qt_suites": 6,
+      "transaction_utility_cases": 49,
+      "rpcauth_cases": 3,
+      "secp256k1_suites": 2,
+      "univalue_suites": 3,
+      "result": "PASS",
+      "make_check_completed_in_stages": false,
+      "source_files_verified": 80,
+      "binaries_sha256": {
+        "babacoin-cli": "350da232ef6accd514db7de916aecba3f532123792b25de274c04aefabeab962",
+        "babacoin-qt": "c51cd0939edc02c2005ab96a3838143404f25d599c51d3221633f229b6365288",
+        "babacoin-tx": "bc98ce5679c105ad27517ae902e5e8167a24efbf4df534f1025ec048166995f7",
+        "babacoind": "31e06038f5853c4f18b929efa435e5a415afc235c39c2e1de9c93567d7b98b85"
+      },
+      "archive": "babacoin-ubuntu-22.04-x86_64.tar.gz",
+      "archive_sha256": "f7660576a2a457635b0bb9475fba6ce7f3516e88817c89f7c08ffbc8c717e8a4"
+    },
+    {
+      "ubuntu": "24.04",
+      "arch": "x86_64",
+      "core_cases": 343,
+      "qt_suites": 6,
+      "transaction_utility_cases": 49,
+      "rpcauth_cases": 3,
+      "secp256k1_suites": 2,
+      "univalue_suites": 3,
+      "result": "PASS",
+      "make_check_completed_in_stages": false,
+      "source_files_verified": 80,
+      "binaries_sha256": {
+        "babacoin-cli": "5f39a8b313efe08a30a5595a5489af56467aa81a706f21e01c6738474d460061",
+        "babacoin-qt": "69890c203e979a6432199098be54f6a5938bba7a0ebb0e924d3928e7e85b5ef5",
+        "babacoin-tx": "45776f23b40943b033d0cb4d93670bd51d956842b6a7314039496eb740d5cb5f",
+        "babacoind": "9e63455567153a7a3dff92e7720a047e3474e51289faaf3960edc2b6ce45fca0"
+      },
+      "archive": "babacoin-ubuntu-24.04-x86_64.tar.gz",
+      "archive_sha256": "c76d52608b4e0653c1da195e5af19aee1ec2f08bb9daa99b99cca6fd5bc709fd"
+    },
+    {
+      "ubuntu": "26.04",
+      "arch": "x86_64",
+      "core_cases": 343,
+      "qt_suites": 6,
+      "transaction_utility_cases": 49,
+      "rpcauth_cases": 3,
+      "secp256k1_suites": 2,
+      "univalue_suites": 3,
+      "result": "PASS",
+      "make_check_completed_in_stages": true,
+      "source_files_verified": 80,
+      "binaries_sha256": {
+        "babacoin-cli": "e44f8096481d6e2bf2b318d264b50ad0538f5ef97361a83f9a54e9866cf16d57",
+        "babacoin-qt": "ef0a8c0d99ea308d78bc1446f0dfa818de6b3dad43c7f9d8a9b7b1b6757cc64c",
+        "babacoin-tx": "1a7af95ecfb061e3176215db100f9699a1074e24db96f2911f42bcd49c04b60a",
+        "babacoind": "b722ae7631938e394735ed8534df612b13bfa0e376cc50b21c10dd4edbfd2fbc"
+      },
+      "archive": "babacoin-ubuntu-26.04-x86_64.tar.gz",
+      "archive_sha256": "8920ed25b2f498beed6a1885edb240c17c86c7b387f67b688d248ce91d53b931"
+    }
+  ]
+}

@@ -1,394 +1,291 @@
-# Babacoin Core — v1.0.0
+# Babacoin Core V2
 
-[![Build Status](https://github.com/babacoinbbc/babacoin/actions/workflows/build-release.yml/badge.svg)](https://github.com/babacoinbbc/babacoin/actions)
-[![GitHub Release](https://img.shields.io/github/v/release/babacoinbbc/babacoin)](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**A more capable, accessible, non-custodial BBC wallet on the existing Babacoin blockchain.**
 
-> ### 🚀 Stable release: v1.0.0
->
-> v1.0.0 is the current production release running across the network.
-> All nodes (mining, smartnodes, wallets) should run this version.
->
-> **→ [Download v1.0.0](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0)**
->
-> The release page includes a `bootstrap.zip` snapshot for fast first-time
-> sync. Place it inside your `~/.babacoin/` directory before starting the
-> node.
+[Releases](https://github.com/babacoinbbc/babacoin/releases) ·
+[Build and test results](https://github.com/babacoinbbc/babacoin/actions) ·
+[Migration and settings](doc/v2-migration.md) ·
+[Platform support](doc/platform-support.md)
 
----
+## V2.0.0 Release Candidate 4
 
-## What is Babacoin?
+V2 combines a redesigned day/night desktop wallet, safer wallet handling and a
+larger, test-gated platform matrix. Download the matching package from the
+[V2.0.0-rc.3 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.4).
+Read its release status, checksums, source manifest and migration notes first.
+Release assets are assembled only after every required platform job passes.
 
-Babacoin (BBC) is a decentralized financial technology that is fast, reliable, and secure, with negligible transaction costs. It operates on its own blockchain — a fork of the Raptoreum codebase — featuring:
+**Mandatory network upgrade:** all validating wallets and services must upgrade
+promptly on release, not wait for block 1,250,000. V2 allows early 2,000,000 BBC
+Smartnode registration without an opening block; V1 can reject its first block.
+The 1,800,000 BBC tier stops qualifying for rewards at block 1,250,000.
+Read the [exchange, pool and wallet upgrade notice](doc/release/mandatory-network-upgrade.md).
 
-- **ASIC-resistant Proof of Work** — minable with both CPUs and GPUs
-- **Smartnode consensus** — immune to 51% attacks
-- **CoinJoin privacy** — built-in balance mixing directly within the wallet
-- **Low transaction fees** — designed for everyday use
+This is a **release candidate**, not a claim that all historical node versions
+agree or that software is free of defects. V1 and the earlier V2 test release
+remain preserved. Publishing a candidate does not remotely upgrade nodes or
+activate a new blockchain. Production adoption and network-rule changes require
+separate operator coordination and review.
 
-Official website: [https://babacoin.network](https://babacoin.network)  
-Block Explorer: [https://explorer.babacoin.network](https://explorer.babacoin.network)
+## What changes in V2
 
----
+![Babacoin V2 desktop wallet in night mode](doc/images/v2-wallet-night.jpg)
 
-## Build Targets
+[View the day theme](doc/images/v2-wallet-day.jpg)
 
-### Platform Support
+*Windows development preview with isolated regtest data and test coins. The
+supplied gold artwork is retained unchanged and rendered at the sidebar's
+display density. Final release candidates also display the pre-release notice.*
 
-Full multi-platform build support with automated GitHub Actions CI/CD:
+- **Day and night themes:** persistent appearance, keyboard switching and a
+  gold-and-teal balance panel, high-DPI line icons, clearer transaction rows
+  and a bounded recent-activity view. Decorative artwork adds no animation
+  timers or remote image downloads.
+  Theme loading normalizes Windows line endings and safely filters multiple
+  platform-specific CSS sections, with a regression test for both behaviors.
+- **Clear financial information:** the existing balance calculations, pending,
+  immature and watch-only fields remain intact. Activity bars describe only the
+  displayed recent transactions; they are not price or investment-return charts.
+- **Live network overview:** connection state, validated block height and
+  synchronization cards update from the client model. Header-only heights do
+  not replace validated heights, and paused/peerless wallets do not claim to be
+  up to date. Existing synchronization warnings remain visible.
+- **Visible startup checks:** the main window opens with a dedicated startup
+  panel before backend initialization finishes. It shows the current phase,
+  elapsed time and data directory, with diagnostics and safe cancellation.
+  Rescans show a two-decimal percentage calculated from the actual block
+  interval, checked/target blocks and current/target heights. Unknown-duration
+  phases use an indeterminate bar. Financial controls stay unavailable until
+  required checks succeed; verification and block validation remain enabled.
+- **Windows setup wizard:** a per-user installer bundles the exact tested EXEs,
+  DLLs and Qt plugins, with Start menu and desktop shortcuts and an optional
+  existing data-folder choice. It refuses running wallets and installation into
+  wallet data. Reinstallation and uninstall preserve wallet fixtures in tests.
+  Installation does not start a wallet or rescan automatically.
+- **Readable amounts:** balances and transaction lists use the operating system's
+  decimal and thousands separators, including `1.234.567,89 BBC` in Turkish and
+  `1,234,567.89 BBC` in US English. Amount calculations retain integer precision.
+- **Responsive history:** large transaction lists load in bounded batches with
+  visible progress; export waits until history is complete. Splash artwork uses
+  a fixed logical rectangle so high-DPI scaling cannot overlap the title.
+- **Safer persistence:** interrupted startup rescans retain the previous checkpoint
+  and retry instead of skipping unread transactions; corrected disk-index field decoding, strict BDB 4.8.30
+  selection, fail-closed backups and test reports that reject premature exits.
+- **Correct peer attribution:** invalid mixed-sender DKG messages no longer blame
+  a single unrelated sender without the individual checks.
+- **Broader packaging:** Ubuntu LTS, Debian, Windows and both Mac architectures,
+  plus explicit ARM64 and Windows-on-ARM emulation validation targets.
+- **Optional Explorer discovery:** a live desktop Network preference fetches
+  bounded HTTPS peer hints from the official Explorer. Public IP/port checks,
+  network-group limits and existing peer validation apply; it is off by default.
+- **Smartnode setup wizard:** current-height collateral checks, a separate
+  collateral transfer review, local transaction preparation, exact fee review
+  and explicit registration confirmation. The operator secret stays on the server.
+- **Web Wallet tab:** open the separate Web Wallet in your default browser;
+  local keys and wallet files are never automatically imported. Embedded browser
+  support is future work; test-network previews disable the mainnet launch button.
+- **Isolated previews:** every package includes a launcher that creates new
+  regtest data and separate GUI preferences with external P2P disabled.
 
-| Platform | Architecture | Status |
-|---|---|---|
-| Ubuntu 20.04 LTS | x86_64, ARM64 | Supported |
-| Ubuntu 22.04 LTS | x86_64, ARM64 | Supported |
-| Ubuntu 24.04 LTS | x86_64, ARM64 | Supported |
-| Ubuntu 26.04 LTS | x86_64 | Preview — GitHub's 26.04 runner is still in beta |
-| macOS Intel | x86_64 | Supported |
-| macOS Apple Silicon | arm64 | Supported |
-| Raspberry Pi 4 / 5 | ARM64 | Supported |
-| Windows | x64 | Supported |
+The wallet remains a full-node client. Blockchain synchronization, wallet loading
+and a requested rescan can take substantial time; a prettier interface does not
+remove those safety checks.
 
-### Technical Changes
+## Platform coverage
 
-- **C++17** standard adopted across all builds
-- **OpenSSL 3.x** compatibility — fixed deprecated `SSL_library_init()` call
-- **BerkeleyDB 5.3** support — Ubuntu 20.04+ ships `libdb5.3` instead of `libdb4.8`
-- **GCC 12+** compatibility — resolved `u_int8_t` type conflict in BDB atomic headers
-- **CI/CD** — Dockerfile.builder updated to Ubuntu 22.04 LTS
-- **GitHub Actions** — automated build and release pipeline for all supported platforms
-
-### Network Changes
-
-These are consensus and network rules. Every change below is height-gated except the
-spork key, which takes effect the moment a node upgrades.
-
-| Change | New value | Activates at |
-|---|---|---|
-| Smartnode collateral | `2,000,000 BBC` (was 1,800,000) | block **1,250,000** |
-| Founder / dev wallet | `B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT` | block **1,250,000** |
-| Spork key | `BH9codHixVqU6ShdJXgaEQ3xZjXKEs1P2P` | on upgrade (no height gate) |
-
-The founder and spork keys were rotated because the previous wallet was compromised.
-The historical founder address (`BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF`) and every past
-collateral tier remain in the consensus tables — removing them would invalidate blocks
-that already paid them and make the existing chain unsyncable.
-
-#### What operators must do
-
-- **Smartnode operators** — top up collateral from 1,800,000 to 2,000,000 BBC before
-  block 1,250,000. Nodes still at 1,800,000 stop earning at that height. You can raise
-  collateral early; 2,000,000 BBC is accepted before the activation height too.
-- **Miners** — upgrade before block 1,250,000. From that height the coinbase must pay
-  the new founder address; blocks paying the old one will be rejected.
-- **Spork key holder** — record `spork show` output *before* upgrading, then re-sign and
-  broadcast all sporks with the new key *immediately after*. Sporks signed by the old key
-  are dropped on upgrade and every spork reverts to its default of OFF, including
-  `SPORK_19_CHAINLOCKS_ENABLED`. The network has no ChainLocks protection until they are
-  re-broadcast.
-
----
-
-## Download
-
-Pre-built binaries are available on the [Releases page](https://github.com/babacoinbbc/babacoin/releases/tag/v.1.0.0):
-
-| File | Platform |
+| Platform | Package / validation scope |
 |---|---|
-| `babacoin-v.1.0.0-linux-ubuntu20.04-x86_64.tar.gz` | Ubuntu 20.04 |
-| `babacoin-v.1.0.0-linux-ubuntu22.04-x86_64.tar.gz` | Ubuntu 22.04 |
-| `babacoin-v.1.0.0-macos-x86_64.tar.gz` | macOS Intel |
-| `babacoin-v.1.0.0-macos-arm64.tar.gz` | macOS Apple Silicon |
-| `babacoin-v.1.0.0-raspberry-pi-arm64.tar.gz` | Raspberry Pi 4 / 5 |
-| `babacoin-v.1.0.0-windows-x86_64.zip` | Windows x64 |
+| Ubuntu 18.04, 20.04, 22.04, 24.04, 26.04 LTS | Separate x86_64 and ARM64 userspaces; full native build/test gate |
+| Debian 12 and 13 | Separate x86_64 and ARM64 userspaces; full native build/test gate |
+| Raspberry Pi OS 64-bit | Debian 12/13 ARM64 compatibility target; physical Pi hardware/display testing remains separate |
+| Windows x64 | Native UCRT64 build; tests on a separate clean Windows runner |
+| Windows 11 ARM64 | The **same x64 Windows package under emulation**; no native ARM64 Windows executable is claimed |
+| macOS Intel / Apple Silicon | Separate native builds/tests; bundled GUI, ad hoc signed |
 
----
+The [support matrix](doc/platform-support.md) distinguishes configured targets,
+actual completed jobs, hardware testing and unsupported systems. There is no
+universal binary for every operating system. Android/iOS, 32-bit Windows/ARM,
+FreeBSD and other systems are roadmap work, not shipped support. Old operating
+systems still require appropriate vendor security maintenance.
 
-## Building from Source
+## Windows package and DLL files
 
-### Ubuntu 20.04 / 22.04 / 24.04
+For the guided installation, download the release's
+`babacoin-v2.0.0-rc.4-windows-x86_64-setup.exe` and verify its `.sha256` file.
+It installs for the current user without an administrator account. Leave the
+normal data settings selected, or choose an existing data folder deliberately;
+the program folder and wallet data folder must be separate. Close Babacoin
+normally before upgrading. The installer refuses running wallets rather than
+terminating them. The Finish-page launch option is unchecked by default.
+`INSTALLER-MANIFEST.json` identifies the exact portable payload and source;
+`INSTALLER-TESTS.json` records the matching x64 and ARM64-host installer tests.
+Back up a production wallet before using a new release candidate.
 
-Install dependencies:
+The portable alternative is the complete ZIP:
+Download the complete Windows ZIP and extract **all** its contents into a new
+application folder before starting `babacoin-qt.exe`. Keep the included DLLs and
+the `platforms` folder beside the executable. The Windows wallet uses dynamic
+Qt, Boost and other libraries; its EXE is not a standalone single-file package.
+Moving only the EXE can produce missing-DLL errors, including `libabsl_*` or
+`libboost_*` files. Create a shortcut to the EXE in its extracted folder instead
+of copying the EXE to the desktop or an older installation.
 
-```bash
-sudo apt-get update
-sudo apt-get install -y \
-    build-essential libtool autotools-dev automake pkg-config \
-    libssl-dev libevent-dev libboost-all-dev \
-    libdb5.3-dev libdb5.3++-dev \
-    libminiupnpc-dev libzmq3-dev python3
-```
+Use the libraries from that exact verified release package. Do not download
+individual DLLs from unrelated websites or mix files from different builds.
+Application files belong in the application folder; keep wallet backups private
+and follow the migration guide when selecting an existing data directory.
 
-Build:
+## Try the interface without touching a production wallet
 
-```bash
-git clone https://github.com/babacoinbbc/babacoin.git
-cd babacoin
-./autogen.sh
-./configure \
-    --with-incompatible-bdb \
-    BDB_LIBS="-ldb_cxx-5.3" \
-    BDB_CFLAGS="-I/usr/include"
-make -j$(nproc)
-```
+Extract the package into a **new directory** and run:
 
----
+- Windows: `TEST-WALLET.cmd`
+- Linux/macOS: `bash TEST-WALLET.sh`
 
-### Ubuntu 18.04 (BDB 4.8)
+Each launch creates fresh temporary regtest data and GUI preferences. No
+production wallet is copied or opened. Test coins have no mainnet value.
+Use **Day / Night** or **Ctrl+Shift+L** to change appearance.
 
-```bash
-sudo apt-get install -y libdb4.8-dev libdb4.8++-dev
-./autogen.sh
-./configure
-make -j$(nproc)
-```
+Directly starting `babacoin-qt` or the Mac application uses normal settings and
+can open an existing wallet. Read [migration instructions](doc/v2-migration.md)
+before doing that. Never put your real `wallet.dat` into a disposable test folder.
 
----
+## Existing network, explicit rules
 
-### macOS (Intel and Apple Silicon)
+V2 retains the audited `main` network identity and the selected collateral
+expiry height. It fixes payment selection at that boundary and supports early
+registration of the final tier. These rules require a coordinated upgrade from
+V1; retaining the same genesis does not make that upgrade optional.
 
-Install dependencies via Homebrew:
+An actual V1 data-directory trial exposed an incorrect historical founder
+destination in the earlier main-branch source. V2 restores the published V1
+destination before the existing 1,250,000 transition, with five public historical
+coinbase regressions. Mainnet founder validation is enforced from its original
+start; historical acceptance is not repaired by skipping those checks.
 
-```bash
-brew install autoconf automake libtool pkg-config \
-    openssl@3 libevent boost miniupnpc zeromq berkeley-db@5
-```
-
-Build:
-
-```bash
-./autogen.sh
-export PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig"
-export LDFLAGS="-L$(brew --prefix openssl@3)/lib -L$(brew --prefix berkeley-db@5)/lib"
-export CPPFLAGS="-I$(brew --prefix openssl@3)/include -I$(brew --prefix berkeley-db@5)/include"
-./configure --with-incompatible-bdb
-make -j$(sysctl -n hw.logicalcpu)
-```
-
----
-
-### Raspberry Pi 4 / 5 (ARM64 — Native Build)
-
-```bash
-sudo apt-get install -y \
-    build-essential libssl-dev libevent-dev libboost-all-dev \
-    libdb5.3-dev libdb5.3++-dev libzmq3-dev
-
-./autogen.sh
-./configure \
-    --with-incompatible-bdb \
-    BDB_LIBS="-ldb_cxx-5.3" \
-    BDB_CFLAGS="-I/usr/include"
-make -j4
-```
-
----
-
-### Windows (Cross-compile from Ubuntu)
-
-```bash
-sudo apt-get install -y g++-mingw-w64-x86-64 mingw-w64
-
-cd depends
-make HOST=x86_64-w64-mingw32 -j$(nproc) NO_QT=1
-cd ..
-
-./autogen.sh
-CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site \
-./configure \
-    --host=x86_64-w64-mingw32 \
-    --with-incompatible-bdb
-make -j$(nproc)
-```
-
----
-
-### Docker
-
-```bash
-cd ci
-docker build -f Dockerfile.builder -t babacoin-builder .
-docker run --rm -v $(pwd)/..:/babacoin-src babacoin-builder bash -c \
-  "cd /babacoin-src && ./autogen.sh && \
-   ./configure --with-incompatible-bdb BDB_LIBS='-ldb_cxx-5.3' && \
-   make -j$(nproc)"
-```
-
----
-
-## Running the Node
-
-Start the daemon:
-
-```bash
-./src/babacoind -daemon
-```
-
-Check sync status:
-
-```bash
-./src/babacoin-cli getblockcount
-./src/babacoin-cli getinfo
-```
-
-Stop the daemon:
-
-```bash
-./src/babacoin-cli stop
-```
-
-Default data directories:
-
-| OS | Path |
-|---|---|
-| Linux | `~/.babacoincore/` |
-| macOS | `~/Library/Application Support/BabacoinCore/` |
-| Windows | `%APPDATA%\BabacoinCore\` |
-
----
-
-## Smartnodes
-
-Smartnodes secure the network, enable InstantSend, and provide CoinJoin mixing. Operators earn a share of block rewards in return.
-
-### Collateral Schedule
-
-| Block Range | Required Collateral |
-|---|---|
-| 1 — 88,720 | 600,000 BBC |
-| 88,721 — 132,720 | 800,000 BBC |
-| 132,721 — 176,720 | 1,000,000 BBC |
-| 176,721 — 220,720 | 1,250,000 BBC |
-| 220,721 — 264,720 | 1,500,000 BBC |
-| 264,721 — 1,249,999 | 1,800,000 BBC |
-| **1,250,000+** | **2,000,000 BBC** |
-
-Existing 1,800,000 BBC smartnodes keep earning until block 1,249,999. Operators must
-top up to 2,000,000 BBC before that height to continue receiving rewards; collateral
-can be raised early, as 2,000,000 BBC is accepted before the activation height too.
-
-### Reward Distribution
-
-Block reward — split from the 5,000 BBC subsidy plus regular fees:
-
-| Share | Recipient | Source |
-|---|---|---|
-| **20%** | Smartnode operators | `nCollaterals` reward percentage, from block 5,761 |
-| **5%** | Founder / development fund | `nFounderPayment`, from block 250 |
-| **75%** | Miner | remainder of the coinbase |
-
-Special transaction fees are split separately and do **not** follow the percentages
-above (`nFutureRewardShare`):
-
-| Share | Recipient |
-|---|---|
-| **80%** | Smartnode operators |
-| **20%** | Miner |
-| **0%** | Founder |
-
-Smartnode payments only start once the network has at least 10 smartnodes; below that
-the entire block reward goes to the miner.
-
-Founder address: `B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT` (from block 1,250,000)
-
-| Block Range | Founder Address |
-|---|---|
-| 250 — 1,249,999 | `BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF` |
-| **1,250,000+** | **`B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT`** |
-
----
-
-## Network Parameters
-
-| Parameter | Value |
+| Parameter | Existing mainnet value |
 |---|---|
 | Ticker | BBC |
-| Algorithm | GhostRider (ASIC-resistant) |
-| Block Time | 2 minutes |
-| Block Reward | 5,000 BBC |
-| Halving Interval | 210,240 blocks (~400 days) |
-| P2P Port | 6678 |
-| RPC Port | 6679 |
-| Address Prefix | `B` |
-| Genesis Block | `84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854` |
+| Proof of Work | GhostRider |
+| Target block spacing | 120 seconds |
+| P2P port | `6678` |
+| RPC port | `17668`; keep RPC private |
+| Genesis hash | `84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854` |
+| Message start | `03 5d d7 2f` |
+| Public-key / script / private-key version bytes | `25 / 102 / 205` |
 
-### DNS Seeds
+The existing `main` source already differs from published V1. In particular:
 
-```
-seed00.babacoin.network
-seed01.babacoin.network
-seed02.babacoin.network
-seed03.babacoin.network
-seed04.babacoin.network
-seed05.babacoin.network
-seed06.babacoin.network
-seed07.babacoin.network
-seed08.babacoin.network
-seed09.babacoin.network
-seed10.babacoin.network
-```
-
----
-
-## Problems Babacoin Aims to Solve
-
-Babacoin aspires to create a transparent and scalable financial system that makes cryptocurrencies accessible to everyone:
-
-**1. User-Friendly Wallets**  
-Mobile wallets for Android and iOS to simplify cryptocurrency management for everyday users.
-
-**2. Cryptocurrency Adoption**  
-A payment gateway with a free plugin for small businesses. Customers pay in BBC; merchants receive fiat currency directly to their accounts.
-
-**3. Exchange Accessibility**  
-Removing high listing fees and launching Bitroeum Exchange — an integrated platform where any coin can be listed and traded against Bitroeum.
-
-**4. Inclusive Financial Opportunities**  
-Smartnode deployment with modest collateral requirements, allowing anyone to earn BBC while contributing to network security and stability.
-
-Full roadmap: [https://babacoin.network](https://babacoin.network)
-
----
-
-## Automated CI/CD
-
-Every push to a version tag (`v*`) triggers the GitHub Actions pipeline defined in `.github/workflows/build-release.yml`. The workflow compiles binaries for every supported platform in parallel and uploads them automatically to the GitHub Releases page. The Ubuntu 26.04 job is marked `continue-on-error` because GitHub's 26.04 runner is still in preview; if it fails, the rest of the release still publishes.
-
-Manual builds can be triggered from the Actions tab at any time using the `workflow_dispatch` option.
-
----
-
-## Development
-
-The `main` branch is kept stable at all times. Feature development happens in dedicated branches and is merged through Pull Requests.
-
-Run unit tests:
-
-```bash
-make check
-```
-
-Run functional tests:
-
-```bash
-test/functional/test_runner.py
-```
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a Pull Request. All contributions are welcome.
-
----
-
-## License
-
-Babacoin Core is released under the **MIT License**.  
-See [COPYING](COPYING) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT).
-
----
-
-## Links
-
-| Resource | URL |
+| Existing rule | Schedule / behavior |
 |---|---|
-| Website | https://babacoin.network |
-| Block Explorer | https://explorer.babacoin.network |
-| GitHub | https://github.com/babacoinbbc/babacoin |
-| Releases | https://github.com/babacoinbbc/babacoin/releases |
+| Smartnode collateral | 2,000,000 BBC may be registered immediately; 1,800,000 BBC remains reward-eligible through 1,249,999 and expires at 1,250,000 |
+| Founder destination schedule | Existing address change at block 1,250,000; enforcement must be read with the actual validation rules |
+| Spork key rotation | Takes effect on upgrade, not through a new height gate |
+
+All historical collateral tiers remain recorded so historical registrations can
+still be decoded and validated. Registration validity and current payment
+eligibility are different checks. V1 has no 2,000,000-BBC final tier. Do not infer
+network-wide agreement from matching ports or a successful P2P handshake. The
+upgrade deadline must precede the first 2,000,000 BBC registration, not merely
+the old tier's later expiry. The wizard offers either payable tier before expiry.
+
+**No automatic collateral top-up or coin movement is performed.** An existing
+collateral UTXO cannot be enlarged by sending additional coins to its address.
+Smartnode owners must use a separately reviewed registration/migration process.
+ChainLocks and related protections also depend on active quorums and spork state;
+never assume those protections are active solely because the software runs.
+
+## Settings and data
+
+Default data directories, unless `-datadir` or saved GUI preferences override them:
+
+| OS | Default directory |
+|---|---|
+| Linux | `~/.babacoin/` |
+| macOS | `~/Library/Application Support/BabaCoin/` |
+| Windows | `%APPDATA%\BabaCoin\` |
+
+Configuration belongs in `babacoin.conf`. Cookie authentication is available
+for local RPC; never publish RPC credentials, seeds or private keys. Keep RPC
+bound to loopback and do not expose it through the public P2P firewall rule.
+Examples and the distinction between `-datadir`, `-conf` and `-uiconfigdir` are in
+[the settings guide](doc/v2-migration.md).
+See [Smartnode setup](doc/smartnode-setup.md) for the wizard's scope and recovery
+steps. The new wizard is a self-operated, zero-operator-reward registration flow;
+it does not deploy or administer a remote VPS.
+
+The verified Linux download helper is optional and **fresh-install only**:
+
+```sh
+# Review the tagged source and select the release explicitly.
+BBC_VERSION=v2.0.0-rc.4 bash contrib/install.sh
+```
+
+It verifies the exact distribution/architecture package and SHA256, rejects
+unsafe archives and writes a new user-owned installation directory. It does not
+start a node, create a wallet, modify configuration, require sudo or alter a
+firewall, service or OS security setting. Existing data/installations are refused.
+Legacy automatic seed/OS-upgrade scripts now exit safely; see
+[operator helpers](contrib/README.md). Never pipe an unreviewed installer into a shell.
+
+## Validation and release integrity
+
+The release gate builds the daemon, CLI, transaction utility and Qt GUI. It runs
+343 core test cases, six Qt groups, transaction-utility and RPCAuth tests,
+secp256k1 and UniValue suites, source-integrity checks, archive-safety tests and
+fresh-wallet smoke tests. Platform logs record their exact source commit and
+package versions. A failed target prevents release assembly.
+
+The audit also exercised encrypted/unencrypted V1 test-wallet round trips,
+backup restoration, message signatures, localhost-only P2P and bounded historical
+block/UTXO comparisons. These are **bounded tests**, not complete chain validation
+or a certification of every real wallet. Existing wallet files were not used as
+build fixtures. See [validation notes](doc/wallet-desktop-validation.md).
+
+Release files include `SHA256SUMS`, per-archive hashes and `RELEASE-MANIFEST.json`.
+The assembler checks architecture, source revision and the complete expected
+package set. Mac GUI applications are ad hoc signed and are not Apple notarized;
+no Microsoft publisher certificate is claimed. Mac CLI tools retain documented
+Homebrew dependencies. Linux packages record their runtime libraries and build
+packages. Dependencies retain their [own licenses](doc/release/dependency-notices.md).
+
+## Mission and development goals
+
+Our goal is a capable, understandable, non-custodial BBC wallet that protects
+users through explicit controls, transparent releases and compatibility testing.
+We prioritize reliable recovery and clear network state over cosmetic claims or
+promised financial returns.
+
+1. **V2 foundation:** accessible day/night UI, safer persistence and backups,
+   reproducible validation paths, platform-specific packages and English docs.
+2. **Release confidence:** independent review, signed/notarized distribution,
+   broader migration fixtures, physical Raspberry Pi testing and longer history
+   replays. Signing requires the project's actual publisher credentials.
+3. **Wallet capabilities:** improve hardware-wallet integration, offline signing,
+   accessibility and transaction workflows after design and security review.
+   Investigate a separately isolated embedded Web Wallet with supported browser
+   engines and updated build tooling; V2 opens the system browser instead.
+4. **Wider clients:** investigate mobile and additional OS targets with explicit
+   threat models and real runtime tests. They are not advertised as delivered.
+5. **Network evolution:** publish proposals, compatibility analysis, activation
+   plans and operator guidance before changing consensus or governance rules.
+
+Features become supported when implementation and tests exist. No investment
+returns, exchange listings, mobile availability or network-wide migration are
+promised by this roadmap.
+
+## Build, contribute and review
+
+- [Ubuntu build guide](doc/ubuntu-compatibility.md)
+- [Desktop validation](doc/wallet-desktop-validation.md)
+- [V2 release notes](doc/release/v2.0.0-rc.4.md)
+- [Contribution guide](CONTRIBUTING.md)
+
+Use disposable build environments and `make check`. Do not disable tests to
+obtain release artifacts or run source-build experiments on a production node.
+The protected `main` branch requires an independent approving review. That
+protection is retained; passing CI does not replace human review.
+
+Babacoin Core is distributed under the [MIT license](COPYING). Project resources:
+[website](https://babacoin.network), [explorer](https://explorer.babacoin.network),
+[repository](https://github.com/babacoinbbc/babacoin).

@@ -17,11 +17,16 @@ BOOST_FIXTURE_TEST_SUITE(coinjoin_tests, BasicTestingSetup)
 
 BOOST_AUTO_TEST_CASE(coinjoin_collateral_tests)
 {
-    // Good collateral values
-    BOOST_CHECK(CCoinJoin::IsCollateralAmount(0.00010000 * COIN));
-    BOOST_CHECK(CCoinJoin::IsCollateralAmount(0.00012345 * COIN));
-    BOOST_CHECK(CCoinJoin::IsCollateralAmount(0.00032123 * COIN));
-    BOOST_CHECK(CCoinJoin::IsCollateralAmount(0.00019000 * COIN));
+    // BBC's smallest denomination is 1 BBC + 1 satoshi. Its integer
+    // collateral range is 0.1 through 0.4 BBC, not the inherited Dash values.
+    BOOST_CHECK_EQUAL(CCoinJoin::GetCollateralAmount(), COIN / 10);
+    BOOST_CHECK_EQUAL(CCoinJoin::GetMaxCollateralAmount(), 4 * COIN / 10);
+    BOOST_CHECK(CCoinJoin::IsCollateralAmount(COIN / 10));
+    BOOST_CHECK(CCoinJoin::IsCollateralAmount(COIN / 10 + 1));
+    BOOST_CHECK(CCoinJoin::IsCollateralAmount(COIN / 5));
+    BOOST_CHECK(CCoinJoin::IsCollateralAmount(4 * COIN / 10));
+    BOOST_CHECK(!CCoinJoin::IsCollateralAmount(COIN / 10 - 1));
+    BOOST_CHECK(!CCoinJoin::IsCollateralAmount(4 * COIN / 10 + 1));
 
     // Bad collateral values
     BOOST_CHECK(!CCoinJoin::IsCollateralAmount(0.00009999 * COIN));

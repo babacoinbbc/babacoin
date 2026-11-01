@@ -8,8 +8,37 @@
 #include <test/test_babacoin.h>
 
 #include <boost/test/unit_test.hpp>
+#include <type_traits>
+
+// GCC 7 must retain the copy/move operations needed by worker futures/vectors.
+static_assert(std::is_copy_constructible<CBLSSecretKey>::value, "BLS keys must be copyable");
+static_assert(std::is_move_constructible<CBLSSecretKey>::value, "BLS keys must be movable");
+static_assert(std::is_copy_constructible<CBLSPublicKey>::value, "BLS public keys must be copyable");
+static_assert(std::is_move_constructible<CBLSPublicKey>::value, "BLS public keys must be movable");
 
 BOOST_FIXTURE_TEST_SUITE(bls_tests, BasicTestingSetup)
+
+BOOST_AUTO_TEST_CASE(bls_move_preserves_encoding)
+{
+    CBLSSecretKey sk;
+    sk.MakeNewKey();
+    const auto legacyBytes = sk.GetPublicKey().ToByteVector();
+    const auto element = bls::G1Element::FromBytes(bls::Bytes(legacyBytes), true);
+    for (bool legacy : {true, false}) {
+        const auto bytes = element.Serialize(legacy);
+        CBLSPublicKey source(bytes, legacy);
+        BOOST_REQUIRE(source.IsValid());
+        const auto hash = source.GetHash();
+        CBLSPublicKey moved(std::move(source));
+        BOOST_CHECK(moved.IsValid());
+        BOOST_CHECK(moved.ToByteVector() == bytes);
+        BOOST_CHECK(moved.GetHash() == hash);
+        // Reuse the moved-from object with its original encoding mode.
+        source.SetByteVector(bytes);
+        BOOST_CHECK(source.IsValid());
+        BOOST_CHECK(source.ToByteVector() == bytes);
+    }
+}
 
 BOOST_AUTO_TEST_CASE(bls_sethexstr_tests)
 {

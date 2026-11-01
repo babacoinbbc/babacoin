@@ -1,0 +1,6 @@
+{
+  "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.0/crypto/asn1_dsa.c",
+  "sha256": "0c7a353b9b213cb1f4ee4ad004faf2c4ee6511ca78daaecc6bf088e51f67b0b6",
+  "finding": "OpenSSL ossl_decode_der_integer explicitly rejects negative integers. The vendored libsecp256k1 decoder retains their DER encoding but maps invalid scalars to zero; only the cross-library test expectation was changed. Production crypto sources are unchanged.",
+  "upstream_secp_removed_openssl_tests": "https://github.com/bitcoin-core/secp256k1/commit/bc08599e776aff33c834ef829843ec5f629d1f39"
+}

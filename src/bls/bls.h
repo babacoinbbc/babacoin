@@ -65,7 +65,7 @@ public:
 
     CBLSWrapper(const CBLSWrapper& ref) = default;
     CBLSWrapper& operator=(const CBLSWrapper& ref) = default;
-    CBLSWrapper(CBLSWrapper&& ref)
+    CBLSWrapper(CBLSWrapper&& ref) : CBLSWrapper(ref.fLegacy)
     {
         std::swap(impl, ref.impl);
         std::swap(fValid, ref.fValid);
@@ -220,6 +220,10 @@ public:
     using CBLSWrapper::CBLSWrapper;
 
     CBLSId() {}
+    CBLSId(const CBLSId&) = default;
+    CBLSId& operator=(const CBLSId&) = default;
+    CBLSId(CBLSId&&) = default;
+    CBLSId& operator=(CBLSId&&) = default;
     CBLSId(const uint256& nHash);
 };
 
@@ -232,6 +236,10 @@ public:
     using CBLSWrapper::CBLSWrapper;
 
     CBLSSecretKey() {}
+    CBLSSecretKey(const CBLSSecretKey&) = default;
+    CBLSSecretKey& operator=(const CBLSSecretKey&) = default;
+    CBLSSecretKey(CBLSSecretKey&&) = default;
+    CBLSSecretKey& operator=(CBLSSecretKey&&) = default;
 
     void AggregateInsecure(const CBLSSecretKey& o);
     static CBLSSecretKey AggregateInsecure(const std::vector<CBLSSecretKey>& sks);
@@ -257,6 +265,10 @@ public:
     using CBLSWrapper::CBLSWrapper;
 
     CBLSPublicKey() {}
+    CBLSPublicKey(const CBLSPublicKey&) = default;
+    CBLSPublicKey& operator=(const CBLSPublicKey&) = default;
+    CBLSPublicKey(CBLSPublicKey&&) = default;
+    CBLSPublicKey& operator=(CBLSPublicKey&&) = default;
 
     void AggregateInsecure(const CBLSPublicKey& o);
     static CBLSPublicKey AggregateInsecure(const std::vector<CBLSPublicKey>& pks, bool fLegacy = fLegacyDefault);

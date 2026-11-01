@@ -844,10 +844,8 @@ std::string ArgsManager::GetChainName() const
     if (fRegTest)
         return CBaseChainParams::REGTEST;
     if (fTestNet) {
-        std::cout<< CBaseChainParams::TESTNET << "\n";
         return CBaseChainParams::TESTNET;
     }
-    std::cout<< CBaseChainParams::MAIN << "\n";
     return CBaseChainParams::MAIN;
 }
 

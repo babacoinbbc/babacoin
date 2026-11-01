@@ -145,6 +145,11 @@ void WalletFrame::gotoSmartnodePage()
         i.value()->gotoSmartnodePage();
 }
 
+void WalletFrame::gotoWebWalletPage()
+{
+    for (auto view : mapWalletViews) view->gotoWebWalletPage();
+}
+
 void WalletFrame::gotoReceiveCoinsPage()
 {
     QMap<QString, WalletView*>::const_iterator i;

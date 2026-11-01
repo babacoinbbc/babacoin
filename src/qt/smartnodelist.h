@@ -77,6 +77,7 @@ private:
     void updateDIP3List();
 
 Q_SIGNALS:
+    void setupRequested();
     void doubleClicked(const QModelIndex&);
 
 private Q_SLOTS:

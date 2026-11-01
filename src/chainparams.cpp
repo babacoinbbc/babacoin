@@ -472,8 +472,9 @@ static Consensus::LLMQParams llmq100_67 = {
 
 
 // Block at which the smartnode collateral rises from 1,800,000 to 2,000,000 BBC.
-// Must be far enough ahead of the current tip for operators to upgrade and top up
-// their collateral; at 2 minute blocks that is 720 blocks per day.
+// The 2M denomination can be registered before this height; only the 1.8M
+// payment eligibility expires here. V1 does not understand 2M registrations,
+// so validating services must upgrade before the first such registration.
 static const int nCollateral2MHeight = 1250000;
 
 // Block at which the founder payment moves to the new dev wallet. The old address
@@ -588,12 +589,13 @@ public:
         std::vector<FounderRewardStructure> rewardStructures = {  {INT_MAX, 5} };// 5% founder/dev fee forever
         consensus.nFounderPayment = FounderPayment(rewardStructures, 250,
           std::vector<FounderAddressStructure>{
-            {nFounderAddressChangeHeight - 1, "BRBeLPQNg7PMJa9BfqB2U2JY6EjQPEDjFF"},
+            {nFounderAddressChangeHeight - 1, "BLbWwABzjJGsSeibe6oJvTK5aEq8Sx7rU9"},
             {INT_MAX, "B6uz2zqVRvL6RWw9w1vYmahiuQPRm9G8gT"}
           });
         // Historical tiers must stay listed: isValidCollateral() matches on amount
         // alone, so dropping an amount invalidates every ProRegTx that ever used it
         // and makes the existing chain unsyncable.
+        consensus.nSmartnodeCollateralUpgradeHeight = nCollateral2MHeight;
         consensus.nCollaterals = SmartnodeCollaterals(
           { {88720,   600000 * COIN},
             {132720,  800000 * COIN},
@@ -951,6 +953,9 @@ class CRegTestParams : public CChainParams {
 public:
     CRegTestParams() {
         strNetworkID = "regtest";
+        // Small, explicit collateral keeps isolated smartnode tests fundable
+        // with BBC's initial 4-coin block reward. Mainnet tiers are unchanged.
+        consensus.nCollaterals = SmartnodeCollaterals({{INT_MAX, 10 * COIN}}, {{INT_MAX, 20}});
         consensus.nSubsidyHalvingInterval = 150;
         consensus.nSmartnodePaymentsStartBlock = 240;
         consensus.nSmartnodePaymentsIncreaseBlock = 350;
@@ -979,7 +984,9 @@ public:
         consensus.nPowTargetSpacing = 2.5 * 60; // Babacoin: 2.5 minutes
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = true;
-        consensus.nPowDGWHeight = 60;
+        // Keep the existing no-retargeting intent for this isolated test chain
+        // at every height. Mainnet and testnet DGW schedules are unchanged.
+        consensus.nPowDGWHeight = INT_MAX;
         consensus.DGWBlocksAvg = 60;
         consensus.nRuleChangeActivationThreshold = 108; // 75% for testchains
         consensus.nMinerConfirmationWindow = 144; // Faster than normal for regtest (144 instead of 2016)
@@ -1009,10 +1016,12 @@ public:
         nDefaultPort = 19899;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1614369600, 1130, 0x20001fff, 4, 5000 * COIN);
+        genesis = CreateGenesisBlock(1614369600, 1, 0x207fffff, 4, 5000 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0xb79e5df07278b9567ada8fc655ffbfa9d3f586dc38da3dd93053686f41caeea0"));
-        assert(genesis.hashMerkleRoot == uint256S("0x"));
+        // The old regtest header did not satisfy its own PoW target. This valid
+        // easy genesis is for fresh test directories only; no mainnet changes.
+        assert(consensus.hashGenesisBlock == uint256S("0x1e32f08a02ca50d742eb84790d4b8729f704a4caa35b8e9504e24b983d27f9a7"));
+        assert(genesis.hashMerkleRoot == uint256S("0x41db5581d19c0c1858ba5f54779285f37a6085225b90556502747c739c207a6e"));
         consensus.nFutureRewardShare = Consensus::FutureRewardShare(0.8,0.2,0.0);
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
@@ -1033,17 +1042,21 @@ public:
         nPoolNewMaxParticipants = 20;
 
         // privKey: cP4EKFyJsHT39LDqgdcB43Y3YXjNyjb5Fuas1GQSeAtjnZWmZEQK
-        vSporkAddresses = {"RWGvGpd3yJdnfh9ziyHNDEoHMJBvnZ23zK"};
+        // Preserve the existing key hash using this network's address prefix.
+        vSporkAddresses = {"yhKB3WU6mjht6NJvgXvs1GaDheoPeJPvus"};
         nMinSporkKeys = 1;
         // regtest usually has no smartnodes in most tests, so don't check for upgraged MNs
         fBIP9CheckSmartnodesUpgraded = false;
         std::vector<FounderRewardStructure> rewardStructures = {  {INT_MAX, 5} };// 5% founder/dev fee forever
 
-        consensus.nFounderPayment = FounderPayment(rewardStructures, 200);
+        // Same key hash as the default founder, encoded for this isolated
+        // regtest network. A mainnet B... address cannot be decoded on regtest.
+        consensus.nFounderPayment = FounderPayment(rewardStructures, 200,
+                                                   "yNnMGV7d5fcrUMy7kGECY11CHR1uX8aJ4T");
 
         checkpointData = {
             {
-                {0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e")},
+                {0, consensus.hashGenesisBlock},
             }
         };
 
@@ -1068,12 +1081,17 @@ public:
         nExtCoinType = 1;
 
         // long living quorum params
-        consensus.llmqs[Consensus::LLMQ_5_60] = llmq3_60;
-        consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
+        // llmq3_60 identifies itself as LLMQ_50_60. Keep its map key and roles
+        // consistent instead of selecting the unsupported type 100.
+        consensus.llmqs[Consensus::LLMQ_50_60] = llmq3_60;
+        // UpdateLLMQParams also updates these types as the test MN set grows.
+        // Declare them before LLMQ caches are initialized.
+        consensus.llmqs[Consensus::LLMQ_400_60] = llmq20_60;
+        consensus.llmqs[Consensus::LLMQ_400_85] = llmq20_85;
         consensus.llmqs[Consensus::LLMQ_TEST_V17] = llmq_test_v17;
-        consensus.llmqTypeChainLocks = Consensus::LLMQ_5_60;
-        consensus.llmqTypeInstantSend = Consensus::LLMQ_5_60;
-        consensus.llmqTypePlatform = Consensus::LLMQ_5_60;
+        consensus.llmqTypeChainLocks = Consensus::LLMQ_50_60;
+        consensus.llmqTypeInstantSend = Consensus::LLMQ_50_60;
+        consensus.llmqTypePlatform = Consensus::LLMQ_50_60;
     }
 };
 

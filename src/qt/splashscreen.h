@@ -42,6 +42,13 @@ public Q_SLOTS:
 
     /** Show message and progress */
     void showMessage(const QString &message, int alignment, const QColor &color);
+    void showProgress(const QString& title, int progress, bool resumePossible);
+    void showWalletScanProgress(const QString& wallet, int start, int current, int target, bool complete);
+
+Q_SIGNALS:
+    void startupMessage(const QString& message);
+    void startupProgress(const QString& title, int progress);
+    void startupWalletScanProgress(const QString& wallet, int start, int current, int target, bool complete);
 
 protected:
     bool eventFilter(QObject * obj, QEvent * ev);
@@ -51,8 +58,6 @@ private:
     void subscribeToCoreSignals();
     /** Disconnect core signals to splash screen */
     void unsubscribeFromCoreSignals();
-    /** Connect wallet signals to splash screen */
-    void ConnectWallet(std::unique_ptr<interfaces::Wallet> wallet);
 
     QPixmap pixmap;
     QString curMessage;
@@ -62,9 +67,7 @@ private:
     interfaces::Node& m_node;
     std::unique_ptr<interfaces::Handler> m_handler_init_message;
     std::unique_ptr<interfaces::Handler> m_handler_show_progress;
-    std::unique_ptr<interfaces::Handler> m_handler_load_wallet;
-    std::list<std::unique_ptr<interfaces::Wallet>> m_connected_wallets;
-    std::list<std::unique_ptr<interfaces::Handler>> m_connected_wallet_handlers;
+    std::unique_ptr<interfaces::Handler> m_handler_wallet_scan;
 };
 
 #endif // BITCOIN_QT_SPLASHSCREEN_H

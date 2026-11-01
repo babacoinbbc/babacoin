@@ -66,6 +66,7 @@ public Q_SLOTS:
     void gotoOverviewPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
+    void gotoWebWalletPage();
     /** Switch to smartnode page */
     void gotoSmartnodePage();
     /** Switch to receive coins page */

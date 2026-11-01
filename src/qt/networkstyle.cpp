@@ -86,7 +86,7 @@ NetworkStyle::NetworkStyle(const QString &_appName, const int iconColorHueShift,
 
     appIcon             = QIcon(appIconPixmap);
     trayAndWindowIcon   = QIcon(appIconPixmap.scaled(QSize(256,256)));
-    splashImage         = QPixmap(":/images/splash");
+    splashImage         = appIconPixmap; // Reuse the small brand asset; avoid decoding the old poster at startup.
 }
 
 const NetworkStyle *NetworkStyle::instantiate(const QString &networkId)

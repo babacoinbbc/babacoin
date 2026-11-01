@@ -23,6 +23,7 @@
 #include <QApplication>
 #include <QObject>
 #include <QTest>
+#include <QSettings>
 
 #include <openssl/ssl.h>
 
@@ -45,6 +46,7 @@ extern void noui_connect();
 // This is all you need to run all the tests
 int main(int argc, char *argv[])
 {
+    Q_INIT_RESOURCE(babacoin);
     SetupEnvironment();
     SetupNetworking();
     SelectParams(CBaseChainParams::MAIN);
@@ -60,15 +62,22 @@ int main(int argc, char *argv[])
     // platform ("xcb", "windows", or "cocoa") so tests can't unintentionally
     // interfere with any background GUIs and don't require extra resources.
     #if defined(WIN32)
-        _putenv_s("QT_QPA_PLATFORM", "minimal");
+        _putenv_s("QT_QPA_PLATFORM", "minimal:enable_fonts");
     #else
-        setenv("QT_QPA_PLATFORM", "minimal", 0);
+        setenv("QT_QPA_PLATFORM", "minimal:enable_fonts", 0);
     #endif
 
     // Don't remove this, it's needed to access
     // QApplication:: and QCoreApplication:: in the tests
     QApplication app(argc, argv);
+    app.setOrganizationName("Babacoin-Qt-test");
     app.setApplicationName("Babacoin-Qt-test");
+    // Exercise preferences without reading or modifying a user's registry/INI.
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
+        QString::fromStdString((pathTemp / "settings").string()));
+    QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope,
+        QString::fromStdString((pathTemp / "system-settings").string()));
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     SSL_library_init();
