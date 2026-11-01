@@ -334,6 +334,28 @@ void TestGUI()
             }
         });
     heartbeat.start(0);
+    std::atomic<bool> historyLockHeld{false}, releaseHistoryLock{false}, historyWaitTimedOut{false};
+    std::thread headerBatch([&] {
+        LOCK(cs_main);
+        historyLockHeld.store(true);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!releaseHistoryLock.load() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        historyWaitTimedOut.store(!releaseHistoryLock.load());
+    });
+    // No event processing until the lock is held: the first history batch
+    // must meet contention rather than completing before the test starts.
+    while (!historyLockHeld.load()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    bool historyHeartbeatWhileLocked = false;
+    QTimer::singleShot(1, [&] { historyHeartbeatWhileLocked = !releaseHistoryLock.load(); });
+    QTest::qWait(100);
+    releaseHistoryLock.store(true);
+    headerBatch.join();
+    QVERIFY2(!historyWaitTimedOut.load(), "History loading waited for the validation lock on the GUI thread");
+    QVERIFY(historyHeartbeatWhileLocked);
+    QVERIFY(transactionTableModel->isLoadingHistory());
+    QCOMPARE(transactionTableModel->rowCount({}), 0);
     QTRY_VERIFY(!transactionTableModel->isLoadingHistory());
     heartbeat.stop();
     QVERIFY(eventLoopResponsive);
@@ -350,6 +372,32 @@ void TestGUI()
     QCOMPARE(transactionTableModel->rowCount({}), 107);
     QVERIFY(FindTx(*transactionTableModel, txid1).isValid());
     QVERIFY(FindTx(*transactionTableModel, txid2).isValid());
+
+    // A live notification also retries without losing a deferred update.
+    std::atomic<bool> updateLockHeld{false}, releaseUpdateLock{false}, updateWaitTimedOut{false};
+    std::thread updateBatch([&] {
+        LOCK(cs_main);
+        updateLockHeld.store(true);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!releaseUpdateLock.load() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        updateWaitTimedOut.store(!releaseUpdateLock.load());
+    });
+    while (!updateLockHeld.load()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    QMetaObject::invokeMethod(transactionTableModel, "updateTransaction", Qt::DirectConnection,
+        Q_ARG(QString, QString::fromStdString(txid1.ToString())), Q_ARG(int, int(CT_UPDATED)), Q_ARG(bool, false));
+    QTest::qWait(100);
+    const int rowsWhileBusy = transactionTableModel->rowCount({});
+    releaseUpdateLock.store(true);
+    updateBatch.join();
+    QVERIFY(!updateWaitTimedOut.load());
+    QCOMPARE(rowsWhileBusy, 107);
+    QTRY_COMPARE(transactionTableModel->rowCount({}), 106);
+    QMetaObject::invokeMethod(transactionTableModel, "updateTransaction", Qt::DirectConnection,
+        Q_ARG(QString, QString::fromStdString(txid1.ToString())), Q_ARG(int, int(CT_UPDATED)), Q_ARG(bool, true));
+    QTRY_COMPARE(transactionTableModel->rowCount({}), 107);
+    QVERIFY(FindTx(*transactionTableModel, txid1).isValid());
 
     // Check current balance on OverviewPage
     OverviewPage overviewPage;

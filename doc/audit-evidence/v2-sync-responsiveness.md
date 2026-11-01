@@ -16,6 +16,17 @@ frequency limits. Destruction joins the worker before node databases shut down.
 Balance rendering uses the first successful cached snapshot rather than a
 blocking startup query. Normal transaction creation checks remain unchanged.
 
+Further review identified the same chain-lock wait inside bounded transaction
+history batches: a CPU time budget does not prevent a single blocking query.
+Initial snapshots, later history batches, live update replay and passive status
+painting now use nonblocking chain-lock attempts before wallet queries. Busy
+work is retried; live notifications are coalesced without dropping the latest
+update. Cached records remain available for painting. A second regression holds
+the chain lock before the first history batch runs and checks GUI heartbeats,
+deferred history completion and successful replay after the lock is released.
+Another check defers a live display update and confirms it is applied after
+release. These changes affect display scheduling, not wallet records or spending.
+
 ## Observer-only changes to protected validation files
 
 `src/validation.h` adds an optional read-only progress callback to

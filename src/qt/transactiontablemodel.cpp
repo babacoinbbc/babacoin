@@ -77,13 +77,33 @@ public:
     QList<TransactionRecord> stagedWallet;
     bool loadingHistory{false};
     bool reloadRequested{false};
+    bool historySnapshotReady{false};
+    bool pendingRetryScheduled{false};
     std::vector<uint256> historyIds;
     size_t historyPosition{0};
     QElapsedTimer historyTimer;
     std::map<uint256, std::pair<int, bool>> pendingUpdates;
 
+    void schedulePendingUpdates()
+    {
+        if (pendingRetryScheduled) return;
+        pendingRetryScheduled = true;
+        QTimer::singleShot(50, parent, [this] {
+            pendingRetryScheduled = false;
+            if (loadingHistory && !historySnapshotReady) return;
+            drainPendingUpdates();
+        });
+    }
+
     void loadHistoryBatch()
     {
+        // Batching limits CPU work, but a single blocking wallet query can
+        // still wait behind a header batch. Retry before entering that query.
+        TRY_LOCK(cs_main, locked_chain);
+        if (!locked_chain) {
+            QTimer::singleShot(50, parent, [this] { loadHistoryBatch(); });
+            return;
+        }
         auto& wallet = parent->walletModel->wallet();
         QElapsedTimer budget;
         budget.start();
@@ -116,11 +136,18 @@ public:
         cachedWallet.swap(stagedWallet);
         parent->endResetModel();
         stagedWallet.clear();
+        historySnapshotReady = true;
         drainPendingUpdates();
     }
 
     void drainPendingUpdates()
     {
+        if (loadingHistory && !historySnapshotReady) return;
+        TRY_LOCK(cs_main, locked_chain);
+        if (!locked_chain) {
+            schedulePendingUpdates();
+            return;
+        }
         auto& wallet = parent->walletModel->wallet();
         if (reloadRequested) {
             loadingHistory = false;
@@ -144,10 +171,27 @@ public:
             QTimer::singleShot(1, parent, [this] { drainPendingUpdates(); });
             return;
         }
-        loadingHistory = false;
-        qDebug() << "Wallet transaction history ready:" << historyPosition
-                 << "transactions in" << historyTimer.elapsed() << "ms";
-        Q_EMIT parent->historyLoadFinished();
+        if (loadingHistory) {
+            loadingHistory = false;
+            qDebug() << "Wallet transaction history ready:" << historyPosition
+                     << "transactions in" << historyTimer.elapsed() << "ms";
+            Q_EMIT parent->historyLoadFinished();
+        }
+    }
+
+    void beginHistorySnapshot()
+    {
+        TRY_LOCK(cs_main, locked_chain);
+        if (!locked_chain) {
+            QTimer::singleShot(50, parent, [this] { beginHistorySnapshot(); });
+            return;
+        }
+        parent->beginResetModel();
+        cachedWallet.clear();
+        historyIds = parent->walletModel->wallet().getWalletTxIds();
+        parent->endResetModel();
+        Q_EMIT parent->historyLoadProgress(0, static_cast<int>(historyIds.size()));
+        loadHistoryBatch();
     }
 
     /* Query entire wallet anew from core.
@@ -157,6 +201,7 @@ public:
         Q_UNUSED(wallet);
         if (loadingHistory) { reloadRequested = true; return; }
         loadingHistory = true;
+        historySnapshotReady = false;
         historyTimer.start();
         historyPosition = 0;
         historyIds.clear();
@@ -164,14 +209,7 @@ public:
         // Let the window render before converting a large wallet's history.
         // Each later conversion takes its own core locks, rather than holding
         // them while materializing every transaction on the GUI thread.
-        QTimer::singleShot(0, parent, [this] {
-            parent->beginResetModel();
-            cachedWallet.clear();
-            historyIds = parent->walletModel->wallet().getWalletTxIds();
-            parent->endResetModel();
-            Q_EMIT parent->historyLoadProgress(0, static_cast<int>(historyIds.size()));
-            loadHistoryBatch();
-        });
+        QTimer::singleShot(0, parent, [this] { beginHistorySnapshot(); });
     }
 
     /* Update our model of the wallet incrementally, to synchronize our model of the wallet
@@ -190,6 +228,13 @@ public:
         if (hash == uint256() && status == CT_UPDATED)
         {
             refreshWallet(wallet);
+            return;
+        }
+
+        TRY_LOCK(cs_main, locked_chain);
+        if (!locked_chain) {
+            pendingUpdates[hash] = std::make_pair(status, showTransaction);
+            schedulePendingUpdates();
             return;
         }
 
@@ -301,7 +346,8 @@ public:
             // simply re-use the cached status.
             interfaces::WalletTxStatus wtxStatus;
             int64_t adjustedTime;
-            if (rec->statusUpdateNeeded(numBlocks, parent->getChainLockHeight()) && wallet.tryGetTxStatus(rec->hash, wtxStatus, adjustedTime)) {
+            TRY_LOCK(cs_main, locked_chain);
+            if (locked_chain && rec->statusUpdateNeeded(numBlocks, parent->getChainLockHeight()) && wallet.tryGetTxStatus(rec->hash, wtxStatus, adjustedTime)) {
                 interfaces::WalletTx wtx = wallet.getWalletTx(rec->hash);
                 rec->updateStatus(wtx, wtxStatus, numBlocks, adjustedTime, parent->getChainLockHeight());
             }
