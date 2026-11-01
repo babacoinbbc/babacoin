@@ -1,4 +1,4 @@
-name: Validated V2 release candidate
+name: Validated V2 release
 'on':
   workflow_dispatch:
     inputs:
@@ -37,8 +37,8 @@ jobs:
       with:
         script: |
           const tag = process.env.RELEASE_TAG;
-          if (!/^v2\.0\.0-rc\.[1-9][0-9]*$/.test(tag)) {
-            core.setFailed('This pipeline currently creates V2.0.0 release candidates only.');
+          if (!/^v2\.0\.0$/.test(tag)) {
+            core.setFailed('This source builds the final V2.0.0 release only.');
             return;
           }
           try {
@@ -70,7 +70,7 @@ jobs:
         target_commitish: ${{ github.sha }}
         name: Babacoin ${{ inputs.release_tag }}
         draft: true
-        prerelease: true
+        prerelease: false
         generate_release_notes: false
         body_path: dist/RELEASE-NOTES.md
         fail_on_unmatched_files: true

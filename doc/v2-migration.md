@@ -2,7 +2,7 @@
 
 ## Release status and network review
 
-V2.0.0-rc.4 is a release candidate. It retains the audited main-branch network
+V2.0.0 is the final release build. It retains the audited main-branch network
 identity and selected future boundaries, including changes already present
 relative to V1. It corrects the historical founder destination to match V1 and
 real mainnet coinbases; the earlier main-branch historical address was wrong.

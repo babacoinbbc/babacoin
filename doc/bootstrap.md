@@ -1,7 +1,7 @@
 # Mainnet blockchain bootstrap
 
 Download the archives and `SHA256SUMS-BOOTSTRAP` from the
-[current V2 release](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.4).
+[current V2 release](https://github.com/babacoinbbc/babacoin/releases/latest).
 These are public raw blocks, usable across the supported operating systems.
 They save block downloading; the node still performs normal proof-of-work,
 transaction and consensus validation. Validation and a wallet rescan can take

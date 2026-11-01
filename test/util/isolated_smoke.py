@@ -118,6 +118,12 @@ def run(binary, work, wallet_network="regtest"):
     with Node(binary, work / "main-offline", False, wallet=False) as node:
         info = node.rpc("getblockchaininfo")
         net = node.rpc("getnetworkinfo")
+        # A final-source build must not still identify itself as an RC at runtime.
+        release_source = (Path(__file__).resolve().parents[2] / "configure.ac").read_text()
+        if "define(_CLIENT_VERSION_IS_RELEASE, true)" in release_source:
+            require("pre-release test build" not in net.get("warnings", ""),
+                    "final-source binary still reports the prerelease warning")
+            report["checks"].append("final binary has no prerelease warning at runtime")
         require(info["chain"] == "main", "unexpected main chain")
         require(node.rpc("getblockhash", 0) == MAIN_GENESIS, "mainnet genesis mismatch")
         powhash = node.rpc("getblock", MAIN_GENESIS, 1, True)["powhash"]

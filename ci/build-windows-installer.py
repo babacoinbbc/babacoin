@@ -9,6 +9,7 @@ import shutil
 import stat
 import subprocess
 import zipfile
+from release_policy import check_source
 
 
 def digest(path):
@@ -30,11 +31,12 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--tag', required=True)
     args = parser.parse_args()
+    check_source(args.tag)
     for revision in (args.binary_source, args.packaging_source):
         if not re.fullmatch(r'[0-9a-f]{40}', revision):
             raise ValueError('A full source commit is required')
-    if not re.fullmatch(r'v2\.0\.0-rc\.[1-9][0-9]*', args.tag):
-        raise ValueError('Only V2 release candidates are supported')
+    if not re.fullmatch(r'v2\.0\.0(?:-rc\.[1-9][0-9]*)?', args.tag):
+        raise ValueError('Only V2.0.0 and its release candidates are supported')
     native = json.loads(args.native_report.read_text(encoding='utf-8-sig'))
     arm = json.loads(args.arm_report.read_text(encoding='utf-8-sig'))
     for report in (native, arm):
