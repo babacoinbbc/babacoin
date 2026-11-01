@@ -129,6 +129,11 @@ TransactionView::TransactionView(QWidget* parent) :
     QTableView *view = new QTableView(this);
     vlayout->addLayout(hlayout);
     vlayout->addWidget(createDateRangeWidget());
+    historyLoadingNotice = new QLabel(this);
+    historyLoadingNotice->setObjectName("transactionHistoryLoadingNotice");
+    historyLoadingNotice->setWordWrap(true);
+    historyLoadingNotice->hide();
+    vlayout->addWidget(historyLoadingNotice);
     vlayout->addWidget(view);
     vlayout->setSpacing(0);
 #ifndef Q_OS_MAC
@@ -209,6 +214,11 @@ void TransactionView::setModel(WalletModel *_model)
     {
         transactionProxyModel = new TransactionFilterProxy(this);
         transactionProxyModel->setSourceModel(_model->getTransactionTableModel());
+        connect(_model->getTransactionTableModel(), &TransactionTableModel::historyLoadProgress,
+                this, [this](int, int) { updateHistoryLoading(); });
+        connect(_model->getTransactionTableModel(), &TransactionTableModel::historyLoadFinished,
+                this, &TransactionView::updateHistoryLoading);
+        updateHistoryLoading();
         transactionProxyModel->setDynamicSortFilter(true);
         transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
@@ -370,9 +380,26 @@ void TransactionView::changedAmount()
     }
 }
 
+void TransactionView::updateHistoryLoading()
+{
+    auto* history = model ? model->getTransactionTableModel() : nullptr;
+    const bool loading = history && history->isLoadingHistory();
+    historyLoadingNotice->setVisible(loading);
+    if (loading) {
+        historyLoadingNotice->setText(tr("Loading transaction history: %1 of %2 transactions. Export will be available when loading finishes.")
+            .arg(history->loadedHistoryTransactions()).arg(history->totalHistoryTransactions()));
+    }
+}
+
 void TransactionView::exportClicked()
 {
     if (!model || !model->getOptionsModel()) {
+        return;
+    }
+    if (model->getTransactionTableModel()->isLoadingHistory()) {
+        Q_EMIT message(tr("Transaction history is loading"),
+            tr("Please wait until transaction history has finished loading before exporting."),
+            CClientUIInterface::MSG_INFORMATION);
         return;
     }
 

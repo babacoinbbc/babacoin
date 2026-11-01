@@ -179,6 +179,8 @@ public:
 
     //! Get list of all wallet transactions.
     virtual std::vector<WalletTx> getWalletTxs() = 0;
+    //! Lightweight ascending transaction IDs for bounded GUI history loading.
+    virtual std::vector<uint256> getWalletTxIds() = 0;
 
     //! Try to get updated status for a particular transaction, if possible without blocking.
     virtual bool tryGetTxStatus(const uint256& txid,

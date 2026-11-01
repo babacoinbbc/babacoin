@@ -59,6 +59,7 @@ private:
     TxViewDelegate *txdelegate;
     WalletActivityGraph* activityGraph;
     QLabel* emptyTransactions;
+    QLabel* historyLoadingNotice;
     QLabel* heroBalance;
     std::unique_ptr<TransactionFilterProxy> filter;
 
@@ -67,6 +68,7 @@ private:
 
 private Q_SLOTS:
     void updateRecentActivity();
+    void updateHistoryLoading();
     void toggleCoinJoin();
     void updateDisplayUnit();
     void updateCoinJoinProgress();

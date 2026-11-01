@@ -189,7 +189,41 @@ void TestGUI()
 
     // Send two transactions, and verify they are added to transaction list.
     TransactionTableModel* transactionTableModel = walletModel.getTransactionTableModel();
+    QVERIFY(transactionTableModel->isLoadingHistory());
+    QCOMPARE(transactionTableModel->rowCount({}), 0);
+    bool exportDeferred = false;
+    QObject::connect(&transactionView, &TransactionView::message,
+        [&](const QString&, const QString&, unsigned int) { exportDeferred = true; });
+    transactionView.exportClicked();
+    QVERIFY(exportDeferred);
+    const QString existingHash = QString::fromStdString(walletModel.wallet().getWalletTxIds().front().ToString());
+    QVERIFY(QMetaObject::invokeMethod(transactionTableModel, "updateTransaction", Qt::DirectConnection,
+        Q_ARG(QString, existingHash), Q_ARG(int, int(CT_NEW)), Q_ARG(bool, true)));
+    bool eventLoopResponsive = false;
+    bool sawPartialHistory = false;
+    QTimer heartbeat;
+    QObject::connect(&heartbeat, &QTimer::timeout, [&] {
+        if (transactionTableModel->isLoadingHistory()) eventLoopResponsive = true;
+    });
+    QObject::connect(transactionTableModel, &TransactionTableModel::historyLoadProgress,
+        [&](int processed, int total) {
+            if (processed > 0 && processed < total) {
+                sawPartialHistory = true;
+                // No repeated growing-table updates for accessibility clients.
+                QCOMPARE(transactionTableModel->rowCount({}), 0);
+            }
+        });
+    heartbeat.start(0);
+    QTRY_VERIFY(!transactionTableModel->isLoadingHistory());
+    heartbeat.stop();
+    QVERIFY(eventLoopResponsive);
+    QVERIFY(sawPartialHistory);
     QCOMPARE(transactionTableModel->rowCount({}), 105);
+    // Destruction cancels scheduled batches before they access model state.
+    auto* cancelledHistory = new TransactionTableModel(&walletModel);
+    QVERIFY(cancelledHistory->isLoadingHistory());
+    delete cancelledHistory;
+    QCoreApplication::processEvents();
     uint256 txid1 = SendCoins(*wallet.get(), sendCoinsDialog, CKeyID(), 5 * COIN);
     uint256 txid2 = SendCoins(*wallet.get(), sendCoinsDialog, CKeyID(), 10 * COIN);
     QCOMPARE(transactionTableModel->rowCount({}), 107);
@@ -204,7 +238,7 @@ void TestGUI()
     QString balanceText = balanceLabel->text();
     int unit = walletModel.getOptionsModel()->getDisplayUnit();
     CAmount balance = walletModel.wallet().getBalance();
-    QString balanceComparison = BitcoinUnits::floorHtmlWithUnit(unit, balance, false, BitcoinUnits::separatorAlways);
+    QString balanceComparison = BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balance, false, BitcoinUnits::separatorAlways);
     QCOMPARE(balanceText, balanceComparison);
 
     // Check Request Payment button

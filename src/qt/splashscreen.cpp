@@ -53,9 +53,9 @@ SplashScreen::SplashScreen(interfaces::Node& node, Qt::WindowFlags f, const Netw
     painter.setBrush(background);
     painter.setPen(QPen(QColor("#39545e"), 1));
     painter.drawRoundedRect(QRectF(1, 1, width - 2, height - 2), 18, 18);
-    QPixmap logo = networkStyle->getAppIcon().pixmap(88 * scale, 88 * scale);
-    logo.setDevicePixelRatio(scale);
-    painter.drawPixmap(30, 40, logo);
+    // QIcon handles device-pixel scaling itself. A fixed logical destination
+    // avoids applying the application and screen scale factors twice.
+    networkStyle->getAppIcon().paint(&painter, QRect(30, 40, 88, 88), Qt::AlignCenter);
     QFont font = QApplication::font();
     font.setPointSize(27);
     font.setWeight(QFont::DemiBold);
@@ -66,7 +66,10 @@ SplashScreen::SplashScreen(interfaces::Node& node, Qt::WindowFlags f, const Netw
     font.setWeight(QFont::Normal);
     painter.setFont(font);
     painter.setPen(QColor("#b1c4cb"));
-    painter.drawText(QRect(144, 95, 320, 24), Qt::AlignLeft, QString::fromStdString(FormatFullVersion()));
+    const QString version = QString::fromStdString(FormatFullVersion());
+    painter.drawText(QRect(144, 95, 320, 24), Qt::AlignLeft,
+        painter.fontMetrics().elidedText(version, Qt::ElideRight, 320));
+    setToolTip(version);
     const QString network = networkStyle->getTitleAddText();
     painter.setPen(QColor("#e4be60"));
     painter.drawText(QRect(32, 158, 435, 24), Qt::AlignLeft, network.isEmpty() ? tr("BBC CORE") : network);

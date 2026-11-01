@@ -7,11 +7,11 @@
 [Migration and settings](doc/v2-migration.md) ·
 [Platform support](doc/platform-support.md)
 
-## V2.0.0 Release Candidate 1
+## V2.0.0 Release Candidate 2
 
 V2 combines a redesigned day/night desktop wallet, safer wallet handling and a
 larger, test-gated platform matrix. Download the matching package from the
-[V2.0.0-rc.1 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.1).
+[V2.0.0-rc.2 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.2).
 Read its release status, checksums, source manifest and migration notes first.
 Release assets are assembled only after every required platform job passes.
 
@@ -45,6 +45,12 @@ display density. Final release candidates also display the pre-release notice.*
 - **Better startup feedback:** the splash appears before application font setup;
   unnecessary system-font logging is removed. A pixel-font crash has a regression
   test. Wallet verification, rescans and block validation remain enabled.
+- **Readable amounts:** balances and transaction lists use the operating system's
+  decimal and thousands separators, including `1.234.567,89 BBC` in Turkish and
+  `1,234,567.89 BBC` in US English. Amount calculations retain integer precision.
+- **Responsive history:** large transaction lists load in bounded batches with
+  visible progress; export waits until history is complete. Splash artwork uses
+  a fixed logical rectangle so high-DPI scaling cannot overlap the title.
 - **Safer persistence:** interrupted startup rescans retain the previous checkpoint
   and retry instead of skipping unread transactions; corrected disk-index field decoding, strict BDB 4.8.30
   selection, fail-closed backups and test reports that reject premature exits.
@@ -168,7 +174,7 @@ The verified Linux download helper is optional and **fresh-install only**:
 
 ```sh
 # Review the tagged source and select the release explicitly.
-BBC_VERSION=v2.0.0-rc.1 bash contrib/install.sh
+BBC_VERSION=v2.0.0-rc.2 bash contrib/install.sh
 ```
 
 It verifies the exact distribution/architecture package and SHA256, rejects
@@ -228,7 +234,7 @@ promised by this roadmap.
 
 - [Ubuntu build guide](doc/ubuntu-compatibility.md)
 - [Desktop validation](doc/wallet-desktop-validation.md)
-- [V2 release notes](doc/release/v2.0.0-rc.1.md)
+- [V2 release notes](doc/release/v2.0.0-rc.2.md)
 - [Contribution guide](CONTRIBUTING.md)
 
 Use disposable build environments and `make check`. Do not disable tests to

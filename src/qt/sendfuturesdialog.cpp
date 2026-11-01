@@ -208,7 +208,7 @@ void SendFuturesDialog::setModel(WalletModel *_model)
         }
         interfaces::WalletBalances balances = _model->wallet().getBalances();
         setBalance(balances);
-        connect(_model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
+        connect(_model, &WalletModel::balanceChanged, this, &SendFuturesDialog::setBalance);
         connect(_model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
         updateDisplayUnit();
 

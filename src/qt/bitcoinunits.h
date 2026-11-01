@@ -11,6 +11,7 @@
 
 #include <QAbstractListModel>
 #include <QString>
+#include <QLocale>
 
 // U+2009 THIN SPACE = UTF-8 E2 80 89
 #define REAL_THIN_SP_CP 0x2009
@@ -97,6 +98,11 @@ public:
     //! Format as string (with unit) but floor value up to "digits" settings
     static QString floorWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
     static QString floorHtmlWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
+    //! Localized read-only display; canonical parsing, URI and clipboard formats stay separate.
+    static QString formatLocalized(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorAlways, const QLocale& locale=QLocale::system());
+    static QString formatLocalizedWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorAlways, const QLocale& locale=QLocale::system());
+    static QString floorLocalizedWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorAlways, const QLocale& locale=QLocale::system());
+    static QString floorLocalizedHtmlWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorAlways, const QLocale& locale=QLocale::system());
     //! Parse string to coin amount
     static bool parse(int unit, const QString &value, CAmount *val_out);
     //! Gets title for amount column including current display unit if optionsModel reference available */

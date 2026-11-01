@@ -2,7 +2,7 @@
 
 ## Release status and network review
 
-V2.0.0-rc.1 is a release candidate. It retains the audited main-branch network
+V2.0.0-rc.2 is a release candidate. It retains the audited main-branch network
 identity and selected future boundaries, including changes already present
 relative to V1. It corrects the historical founder destination to match V1 and
 real mainnet coinbases; the earlier main-branch historical address was wrong.
@@ -118,6 +118,23 @@ initialization before advancing its persisted scan locator. Restart retries
 from the previous checkpoint; this prioritizes correct transaction discovery
 over showing an incomplete balance. It does not implement per-block checkpoint
 acceleration or eliminate the time needed for a required scan.
+
+## Amount display and transaction history
+
+Read-only balances and transaction lists follow the operating system's regional
+separators. For example, Turkish displays `1.234.567,89 BBC`, while US English
+displays `1,234,567.89 BBC`. The existing decimal-place preference still controls
+the overview display; the underlying integer amount and full precision do not
+change. URI amounts, amount entry, CSV exports and canonical copied amounts
+retain their existing machine-readable format. Do not paste a localized display
+string into a canonical amount field without checking its format.
+
+Large transaction histories load in bounded batches after the window can render.
+A loading notice remains visible until the snapshot and queued updates finish.
+The complete snapshot is published once, avoiding repeated full-table work in
+Windows accessibility clients;
+CSV export is deferred during this phase to avoid exporting a partial history.
+This improves GUI responsiveness, not blockchain verification or rescan speed.
 
 ## Fresh Linux package helper
 

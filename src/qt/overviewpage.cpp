@@ -121,7 +121,7 @@ public:
         colorForeground = qvariant_cast<QColor>(indexAmount.data(Qt::ForegroundRole));
         // Note: do NOT use Qt::DisplayRole, have format properly here
         qint64 nAmount = index.data(TransactionTableModel::AmountRole).toLongLong();
-        QString strAmount = BitcoinUnits::floorWithUnit(unit, nAmount, true, BitcoinUnits::separatorAlways);
+        QString strAmount = BitcoinUnits::floorLocalizedWithUnit(unit, nAmount, true, BitcoinUnits::separatorAlways);
         painter->setPen(colorForeground);
         painter->drawText(rectTopHalf, Qt::AlignRight | Qt::AlignVCenter, strAmount);
 
@@ -164,6 +164,7 @@ OverviewPage::OverviewPage(QWidget* parent) :
     txdelegate(new TxViewDelegate(this)),
     activityGraph(nullptr),
     emptyTransactions(nullptr),
+    historyLoadingNotice(nullptr),
     heroBalance(nullptr)
 {
     ui->setupUi(this);
@@ -214,6 +215,11 @@ OverviewPage::OverviewPage(QWidget* parent) :
     ui->verticalLayout_2->addWidget(activity);
     ui->verticalLayout_2->setSpacing(18);
 
+    historyLoadingNotice = new QLabel(tr("Loading transaction history..."), this);
+    historyLoadingNotice->setObjectName("historyLoadingNotice");
+    historyLoadingNotice->setWordWrap(true);
+    historyLoadingNotice->hide();
+    ui->verticalLayout->insertWidget(1, historyLoadingNotice);
     emptyTransactions = new QLabel(tr("No recent transactions") + "\n\n" + tr("Your wallet activity will appear here."), this);
     emptyTransactions->setObjectName("emptyTransactions");
     emptyTransactions->setAlignment(Qt::AlignCenter);
@@ -227,6 +233,7 @@ OverviewPage::OverviewPage(QWidget* parent) :
     GUIUtil::setFont({activityTitle}, GUIUtil::FontWeight::Bold, 12);
     GUIUtil::setFont({activityHint}, GUIUtil::FontWeight::Normal, 8);
     GUIUtil::setFont({emptyTransactions}, GUIUtil::FontWeight::Normal, 11);
+    GUIUtil::setFont({historyLoadingNotice}, GUIUtil::FontWeight::Normal, 9);
 
     // Scroll the content instead of clipping balances on smaller screens or
     // when the user's font scale is large. Existing wallet widgets are reused.
@@ -309,16 +316,16 @@ void OverviewPage::setBalance(const interfaces::WalletBalances& balances)
 {
     int unit = walletModel->getOptionsModel()->getDisplayUnit();
     m_balances = balances;
-    ui->labelBalance->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.balance, false, BitcoinUnits::separatorAlways));
-    ui->labelUnconfirmed->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.unconfirmed_balance, false, BitcoinUnits::separatorAlways));
-    ui->labelImmature->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.immature_balance, false, BitcoinUnits::separatorAlways));
-    ui->labelAnonymized->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.anonymized_balance, false, BitcoinUnits::separatorAlways));
-    ui->labelTotal->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.balance + balances.unconfirmed_balance + balances.immature_balance, false, BitcoinUnits::separatorAlways));
+    ui->labelBalance->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.balance, false, BitcoinUnits::separatorAlways));
+    ui->labelUnconfirmed->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.unconfirmed_balance, false, BitcoinUnits::separatorAlways));
+    ui->labelImmature->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.immature_balance, false, BitcoinUnits::separatorAlways));
+    ui->labelAnonymized->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.anonymized_balance, false, BitcoinUnits::separatorAlways));
+    ui->labelTotal->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.balance + balances.unconfirmed_balance + balances.immature_balance, false, BitcoinUnits::separatorAlways));
     heroBalance->setText(ui->labelTotal->text());
-    ui->labelWatchAvailable->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.watch_only_balance, false, BitcoinUnits::separatorAlways));
-    ui->labelWatchPending->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.unconfirmed_watch_only_balance, false, BitcoinUnits::separatorAlways));
-    ui->labelWatchImmature->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.immature_watch_only_balance, false, BitcoinUnits::separatorAlways));
-    ui->labelWatchTotal->setText(BitcoinUnits::floorHtmlWithUnit(unit, balances.watch_only_balance + balances.unconfirmed_watch_only_balance + balances.immature_watch_only_balance, false, BitcoinUnits::separatorAlways));
+    ui->labelWatchAvailable->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.watch_only_balance, false, BitcoinUnits::separatorAlways));
+    ui->labelWatchPending->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.unconfirmed_watch_only_balance, false, BitcoinUnits::separatorAlways));
+    ui->labelWatchImmature->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.immature_watch_only_balance, false, BitcoinUnits::separatorAlways));
+    ui->labelWatchTotal->setText(BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balances.watch_only_balance + balances.unconfirmed_watch_only_balance + balances.immature_watch_only_balance, false, BitcoinUnits::separatorAlways));
 
     // only show immature (newly mined) balance if it's non-zero, so as not to complicate things
     // for the non-mining users
@@ -386,6 +393,9 @@ void OverviewPage::setWalletModel(WalletModel *model)
         interfaces::WalletBalances balances = wallet.getBalances();
         setBalance(balances);
         connect(model, SIGNAL(balanceChanged(interfaces::WalletBalances)), this, SLOT(setBalance(interfaces::WalletBalances)));
+        connect(model->getTransactionTableModel(), &TransactionTableModel::historyLoadProgress, this, [this](int, int) { updateHistoryLoading(); });
+        connect(model->getTransactionTableModel(), &TransactionTableModel::historyLoadFinished, this, &OverviewPage::updateHistoryLoading);
+        updateHistoryLoading();
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
         updateWatchOnlyLabels(wallet.haveWatchOnly() || gArgs.GetBoolArg("-debug-ui", false));
@@ -814,8 +824,22 @@ void OverviewPage::updateRecentActivity()
         values.push_back(filter->index(row, 0).data(TransactionTableModel::AmountRole).toLongLong());
     }
     activityGraph->setValues(values);
-    emptyTransactions->setVisible(count == 0);
+    const bool loading = walletModel && walletModel->getTransactionTableModel()->isLoadingHistory();
+    emptyTransactions->setVisible(count == 0 && !loading);
     ui->listTransactions->setVisible(count != 0);
+}
+
+void OverviewPage::updateHistoryLoading()
+{
+    const auto* history = walletModel ? walletModel->getTransactionTableModel() : nullptr;
+    const bool loading = history && history->isLoadingHistory();
+    historyLoadingNotice->setVisible(loading);
+    if (loading) {
+        historyLoadingNotice->setText(history->totalHistoryTransactions() > 0 ?
+            tr("Loading transaction history: %1 of %2 transactions").arg(history->loadedHistoryTransactions()).arg(history->totalHistoryTransactions()) :
+            tr("Loading transaction history..."));
+    }
+    updateRecentActivity();
 }
 
 void OverviewPage::DisableCoinJoinCompletely()

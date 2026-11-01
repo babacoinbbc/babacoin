@@ -27,6 +27,9 @@ using namespace boost::placeholders;
 #include <QDebug>
 #include <QIcon>
 #include <QList>
+#include <QElapsedTimer>
+#include <QTimer>
+#include <map>
 
 // Amount column is right-aligned it contains numbers
 static int column_alignments[] = {
@@ -71,20 +74,104 @@ public:
      * this is sorted by sha256.
      */
     QList<TransactionRecord> cachedWallet;
+    QList<TransactionRecord> stagedWallet;
+    bool loadingHistory{false};
+    bool reloadRequested{false};
+    std::vector<uint256> historyIds;
+    size_t historyPosition{0};
+    QElapsedTimer historyTimer;
+    std::map<uint256, std::pair<int, bool>> pendingUpdates;
+
+    void loadHistoryBatch()
+    {
+        auto& wallet = parent->walletModel->wallet();
+        QElapsedTimer budget;
+        budget.start();
+        int transactions = 0;
+        while (historyPosition < historyIds.size() && transactions < 64 &&
+               (transactions == 0 || budget.elapsed() < 4)) {
+            const auto tx = wallet.getWalletTx(historyIds[historyPosition++]);
+            if (tx.tx && TransactionRecord::showTransaction()) {
+                auto records = TransactionRecord::decomposeTransaction(wallet, tx);
+                interfaces::WalletTxStatus status;
+                int64_t adjustedTime;
+                if (wallet.tryGetTxStatus(tx.tx->GetHash(), status, adjustedTime)) {
+                    for (auto& record : records) {
+                        record.updateStatus(tx, status, parent->walletModel->getNumBlocks(), adjustedTime, parent->getChainLockHeight());
+                    }
+                }
+                stagedWallet.append(records);
+            }
+            ++transactions;
+        }
+        Q_EMIT parent->historyLoadProgress(static_cast<int>(historyPosition), static_cast<int>(historyIds.size()));
+        if (historyPosition < historyIds.size()) {
+            QTimer::singleShot(1, parent, [this] { loadHistoryBatch(); });
+            return;
+        }
+        // Windows accessibility may walk every table row on each insertion.
+        // Publish one complete snapshot instead of repeatedly rescanning a
+        // growing table; the preparation above still yields between batches.
+        parent->beginResetModel();
+        cachedWallet.swap(stagedWallet);
+        parent->endResetModel();
+        stagedWallet.clear();
+        drainPendingUpdates();
+    }
+
+    void drainPendingUpdates()
+    {
+        auto& wallet = parent->walletModel->wallet();
+        if (reloadRequested) {
+            loadingHistory = false;
+            reloadRequested = false;
+            pendingUpdates.clear();
+            refreshWallet(wallet);
+            return;
+        }
+        QElapsedTimer budget;
+        budget.start();
+        int processed = 0;
+        while (!pendingUpdates.empty() && processed < 32 && (processed == 0 || budget.elapsed() < 4)) {
+            const auto update = *pendingUpdates.begin();
+            pendingUpdates.erase(pendingUpdates.begin());
+            // The initial snapshot may already include a queued new transaction.
+            const int status = update.second.first == CT_NEW ? CT_UPDATED : update.second.first;
+            updateWallet(wallet, update.first, status, update.second.second, true);
+            ++processed;
+        }
+        if (!pendingUpdates.empty()) {
+            QTimer::singleShot(1, parent, [this] { drainPendingUpdates(); });
+            return;
+        }
+        loadingHistory = false;
+        qDebug() << "Wallet transaction history ready:" << historyPosition
+                 << "transactions in" << historyTimer.elapsed() << "ms";
+        Q_EMIT parent->historyLoadFinished();
+    }
 
     /* Query entire wallet anew from core.
      */
     void refreshWallet(interfaces::Wallet& wallet)
     {
-        qDebug() << "TransactionTablePriv::refreshWallet";
-        cachedWallet.clear();
-        {
-            for (const auto& wtx : wallet.getWalletTxs()) {
-                if (TransactionRecord::showTransaction()) {
-                    cachedWallet.append(TransactionRecord::decomposeTransaction(wallet, wtx));
-                }
-            }
-        }
+        Q_UNUSED(wallet);
+        if (loadingHistory) { reloadRequested = true; return; }
+        loadingHistory = true;
+        historyTimer.start();
+        historyPosition = 0;
+        historyIds.clear();
+        stagedWallet.clear();
+        // Let the window render before converting a large wallet's history.
+        // Each later conversion takes its own core locks, rather than holding
+        // them while materializing every transaction on the GUI thread.
+        QTimer::singleShot(0, parent, [this] {
+            parent->beginResetModel();
+            cachedWallet.clear();
+            historyIds = parent->walletModel->wallet().getWalletTxIds();
+            parent->endResetModel();
+            Q_EMIT parent->historyLoadProgress(0, static_cast<int>(historyIds.size()));
+            loadHistoryBatch();
+        });
     }
 
     /* Update our model of the wallet incrementally, to synchronize our model of the wallet
@@ -92,15 +179,17 @@ public:
 
        Call with transaction that was added, removed or changed.
      */
-    void updateWallet(interfaces::Wallet& wallet, const uint256 &hash, int status, bool showTransaction)
+    void updateWallet(interfaces::Wallet& wallet, const uint256 &hash, int status, bool showTransaction, bool replay = false)
     {
-        qDebug() << "TransactionTablePriv::updateWallet: " + QString::fromStdString(hash.ToString()) + " " + QString::number(status);
+        if (loadingHistory && !replay) {
+            if (hash.IsNull() && status == CT_UPDATED) reloadRequested = true;
+            else pendingUpdates[hash] = std::make_pair(status, showTransaction);
+            return;
+        }
 
         if (hash == uint256() && status == CT_UPDATED)
         {
-            parent->beginResetModel();
             refreshWallet(wallet);
-            parent->endResetModel();
             return;
         }
 
@@ -120,10 +209,6 @@ public:
             if(!showTransaction && inModel)
                 status = CT_DELETED; /* In model, but want to hide, treat as deleted */
         }
-
-        qDebug() << "    inModel=" + QString::number(inModel) +
-                    " Index=" + QString::number(lowerIndex) + "-" + QString::number(upperIndex) +
-                    " showTransaction=" + QString::number(showTransaction) + " derivedStatus=" + QString::number(status);
 
         switch(status)
         {
@@ -176,7 +261,9 @@ public:
                 TransactionRecord *rec = &cachedWallet[i];
                 rec->status.needsUpdate = true;
             }
-            Q_EMIT parent->dataChanged(parent->index(lowerIndex, TransactionTableModel::Status), parent->index(upperIndex, TransactionTableModel::Status));
+            if (upperIndex > lowerIndex) {
+                Q_EMIT parent->dataChanged(parent->index(lowerIndex, TransactionTableModel::Status), parent->index(upperIndex - 1, TransactionTableModel::Status));
+            }
             break;
         }
     }
@@ -259,6 +346,11 @@ TransactionTableModel::~TransactionTableModel()
     unsubscribeFromCoreSignals();
     delete priv;
 }
+
+bool TransactionTableModel::processingQueuedTransactions() const { return fProcessingQueuedTransactions || priv->loadingHistory; }
+bool TransactionTableModel::isLoadingHistory() const { return priv->loadingHistory; }
+int TransactionTableModel::loadedHistoryTransactions() const { return static_cast<int>(priv->historyPosition); }
+int TransactionTableModel::totalHistoryTransactions() const { return static_cast<int>(priv->historyIds.size()); }
 
 /** Updates the column title to "Amount (DisplayUnit)" and emits headerDataChanged() signal for table headers to react. */
 void TransactionTableModel::updateAmountColumnTitle()
@@ -486,9 +578,11 @@ QVariant TransactionTableModel::addressColor(const TransactionRecord *wtx) const
     return GUIUtil::getThemedQColor(GUIUtil::ThemedColor::DEFAULT);
 }
 
-QString TransactionTableModel::formatTxAmount(const TransactionRecord *wtx, bool showUnconfirmed, BitcoinUnits::SeparatorStyle separators) const
+QString TransactionTableModel::formatTxAmount(const TransactionRecord *wtx, bool showUnconfirmed, BitcoinUnits::SeparatorStyle separators, bool localized) const
 {
-    QString str = BitcoinUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), wtx->credit + wtx->debit, false, separators);
+    const int unit = walletModel->getOptionsModel()->getDisplayUnit();
+    QString str = localized ? BitcoinUnits::formatLocalized(unit, wtx->credit + wtx->debit, false, separators) :
+                              BitcoinUnits::format(unit, wtx->credit + wtx->debit, false, separators);
     if(showUnconfirmed)
     {
         if(!wtx->status.countsForBalance)
@@ -612,7 +706,7 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
         case ToAddress:
             return formatTxToAddress(rec, false);
         case Amount:
-            return formatTxAmount(rec, true, BitcoinUnits::separatorAlways);
+            return formatTxAmount(rec, true, BitcoinUnits::separatorAlways, true);
         }
         break;
     case Qt::EditRole:

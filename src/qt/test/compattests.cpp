@@ -9,6 +9,7 @@
 #include <compat/byteswap.h>
 #include <qt/guiutil.h>
 #include <qt/explorerpeers.h>
+#include <qt/bitcoinunits.h>
 #include <QLabel>
 #include <QApplication>
 #include <QFile>
@@ -154,4 +155,40 @@ void CompatTests::explorerPeerSafety()
     QJsonArray many;
     for (int group = 1; group < 40; ++group) many.append(entry(QString("8.%1.1.1").arg(group)));
     QCOMPARE(ExplorerPeers::Parse(encode(many), now).size(), ExplorerPeers::MAX_PEERS);
+}
+
+void CompatTests::localizedAmounts()
+{
+    QSettings settings;
+    struct RestoreDigits {
+        QSettings& settings;
+        bool existed;
+        QVariant value;
+        ~RestoreDigits() { if (existed) settings.setValue("digits", value); else settings.remove("digits"); }
+    } restore{settings, settings.contains("digits"), settings.value("digits")};
+    settings.setValue("digits", 2);
+    settings.sync();
+    QCOMPARE(settings.status(), QSettings::NoError);
+    const QLocale tr(QLocale::Turkish, QLocale::Turkey);
+    const QLocale en(QLocale::English, QLocale::UnitedStates);
+    const CAmount amount = 1234567 * COIN + 89123456;
+    const QString unit = " " + BitcoinUnits::name(BitcoinUnits::BBC);
+    QCOMPARE(BitcoinUnits::formatLocalized(BitcoinUnits::BBC, amount, false, BitcoinUnits::separatorAlways, tr), QString("1.234.567,89123456"));
+    QCOMPARE(BitcoinUnits::floorLocalizedWithUnit(BitcoinUnits::BBC, amount, false, BitcoinUnits::separatorAlways, tr), QString("1.234.567,89") + unit);
+    QCOMPARE(BitcoinUnits::floorLocalizedWithUnit(BitcoinUnits::BBC, amount, false, BitcoinUnits::separatorAlways, en), QString("1,234,567.89") + unit);
+    QCOMPARE(BitcoinUnits::formatLocalized(BitcoinUnits::BBC, -amount, false, BitcoinUnits::separatorAlways, tr), QString("-1.234.567,89123456"));
+    QCOMPARE(BitcoinUnits::formatLocalized(BitcoinUnits::BBC, 1000 * COIN, true, BitcoinUnits::separatorAlways, tr), QString("+1.000,00000000"));
+    QCOMPARE(BitcoinUnits::formatLocalized(BitcoinUnits::BBC, 1, false, BitcoinUnits::separatorAlways, tr), QString("0,00000001"));
+    // Canonical amount text remains exact and unambiguous for URI/input/export.
+    QCOMPARE(BitcoinUnits::format(BitcoinUnits::BBC, amount, false, BitcoinUnits::separatorNever), QString("1234567.89123456"));
+    CAmount parsed = 0;
+    QVERIFY(BitcoinUnits::parse(BitcoinUnits::BBC, "1234567.89123456", &parsed));
+    QCOMPARE(parsed, amount);
+    QVERIFY(!BitcoinUnits::parse(BitcoinUnits::BBC, "1.234.567,89123456", &parsed));
+    settings.setValue("digits", 0);
+    settings.sync();
+    QCOMPARE(BitcoinUnits::floorLocalizedWithUnit(BitcoinUnits::BBC, amount, false, BitcoinUnits::separatorAlways, tr), QString("1.234.567") + unit);
+    settings.setValue("digits", 8);
+    settings.sync();
+    QCOMPARE(BitcoinUnits::floorLocalizedWithUnit(BitcoinUnits::BBC, amount, false, BitcoinUnits::separatorAlways, tr), QString("1.234.567,89123456") + unit);
 }

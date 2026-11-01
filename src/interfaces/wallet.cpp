@@ -334,6 +334,14 @@ public:
         }
         return result;
     }
+    std::vector<uint256> getWalletTxIds() override
+    {
+        LOCK(m_wallet.cs_wallet);
+        std::vector<uint256> ids;
+        ids.reserve(m_wallet.mapWallet.size());
+        for (const auto& entry : m_wallet.mapWallet) ids.push_back(entry.first);
+        return ids;
+    }
     bool tryGetTxStatus(const uint256& txid,
         interfaces::WalletTxStatus& tx_status,
         int64_t& adjusted_time) override
