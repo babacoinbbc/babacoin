@@ -47,6 +47,7 @@
 #include <boost/thread.hpp>
 
 #include <QApplication>
+#include <QPointer>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QEventLoop>
@@ -233,6 +234,7 @@ private:
     ClientModel *clientModel;
     ExplorerPeers* explorerPeers;
     BitcoinGUI *window;
+    QPointer<SplashScreen> startupSplash;
     QTimer *pollShutdownTimer;
 #ifdef ENABLE_WALLET
     PaymentServer* paymentServer;
@@ -337,6 +339,7 @@ BitcoinApplication::~BitcoinApplication()
         qDebug() << __func__ << ": Stopped thread";
     }
 
+    delete startupSplash.data();
     delete window;
     window = 0;
 #ifdef ENABLE_WALLET
@@ -368,6 +371,18 @@ void BitcoinApplication::createOptionsModel(bool resetSettings)
 void BitcoinApplication::createWindow(const NetworkStyle *networkStyle)
 {
     window = new BitcoinGUI(m_node, networkStyle, 0);
+    window->beginStartup();
+    connect(window, &BitcoinGUI::startupShutdownRequested, this, [this] { m_node.startShutdown(); });
+    if (!startupSplash) {
+        startupSplash = new SplashScreen(m_node, 0, networkStyle);
+        connect(this, SIGNAL(splashFinished(QWidget*)), startupSplash.data(), SLOT(slotFinish(QWidget*)));
+    }
+    connect(startupSplash.data(), &SplashScreen::startupMessage, window, &BitcoinGUI::setStartupMessage);
+    connect(startupSplash.data(), &SplashScreen::startupProgress, window, &BitcoinGUI::setStartupProgress);
+    connect(startupSplash.data(), &SplashScreen::startupWalletScanProgress, window, &BitcoinGUI::setStartupWalletScanProgress);
+    startupSplash->hide();
+    if (gArgs.GetBoolArg("-min", false)) window->showMinimized();
+    else window->show();
     pollShutdownTimer = new QTimer(window);
     connect(pollShutdownTimer, SIGNAL(timeout()), window, SLOT(detectShutdown()));
 }
@@ -375,6 +390,7 @@ void BitcoinApplication::createWindow(const NetworkStyle *networkStyle)
 void BitcoinApplication::createSplashScreen(const NetworkStyle *networkStyle)
 {
     SplashScreen *splash = new SplashScreen(m_node, 0, networkStyle);
+    startupSplash = splash;
     // We don't hold a direct pointer to the splash screen after creation, but the splash
     // screen will take care of deleting itself when slotFinish happens.
     splash->showMessage(tr("Preparing the wallet interface..."), Qt::AlignBottom | Qt::AlignLeft, QColor("#dfe9ed"));
@@ -487,6 +503,11 @@ void BitcoinApplication::initializeResult(bool success)
     qDebug() << __func__ << ": Initialization result: " << success;
     // Set exit result.
     returnValue = success ? EXIT_SUCCESS : EXIT_FAILURE;
+    if (success && m_node.shutdownRequested()) {
+        Q_EMIT splashFinished(window);
+        quit();
+        return;
+    }
     if(success)
     {
         // Log this only after AppInitMain finishes, as then logging setup is guaranteed complete
@@ -515,6 +536,9 @@ void BitcoinApplication::initializeResult(bool success)
         }
 #endif
 
+        // Only expose wallet controls after core initialization and required
+        // wallet rescans completed successfully. The window was already visible.
+        window->finishStartup();
         // If -min option passed, start window minimized.
         if(gArgs.GetBoolArg("-min", false))
         {

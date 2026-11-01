@@ -18,6 +18,7 @@ private Q_SLOTS:
     void stylesheetLineEndings();
     void explorerPeerSafety();
     void localizedAmounts();
+    void startupPanel();
 };
 
 #endif // BITCOIN_QT_TEST_COMPATTESTS_H

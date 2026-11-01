@@ -122,27 +122,20 @@ static void InitMessage(SplashScreen *splash, const std::string &message)
 
 static void ShowProgress(SplashScreen *splash, const std::string &title, int nProgress, bool resume_possible)
 {
-    InitMessage(splash, title + std::string("\n") +
-            (resume_possible ? _("(press q to shutdown and continue later)")
-                                : _("press q to shutdown")) +
-            strprintf("\n%d", nProgress) + "%");
+    QMetaObject::invokeMethod(splash, "showProgress", Qt::QueuedConnection,
+        Q_ARG(QString, QString::fromStdString(title)), Q_ARG(int, nProgress), Q_ARG(bool, resume_possible));
 }
-#ifdef ENABLE_WALLET
-void SplashScreen::ConnectWallet(std::unique_ptr<interfaces::Wallet> wallet)
-{
-    m_connected_wallet_handlers.emplace_back(wallet->handleShowProgress(boost::bind(ShowProgress, this, _1, _2, false)));
-    m_connected_wallets.emplace_back(std::move(wallet));
-}
-#endif
 
 void SplashScreen::subscribeToCoreSignals()
 {
     // Connect signals to client
     m_handler_init_message = m_node.handleInitMessage(boost::bind(InitMessage, this, _1));
     m_handler_show_progress = m_node.handleShowProgress(boost::bind(ShowProgress, this, _1, _2, _3));
-#ifdef ENABLE_WALLET
-    m_handler_load_wallet = m_node.handleLoadWallet([this](std::unique_ptr<interfaces::Wallet> wallet) { ConnectWallet(std::move(wallet)); });
-#endif
+    m_handler_wallet_scan = m_node.handleWalletScanProgress([this](const WalletScanProgress& scan) {
+        QMetaObject::invokeMethod(this, "showWalletScanProgress", Qt::QueuedConnection,
+            Q_ARG(QString, QString::fromStdString(scan.wallet_name)), Q_ARG(int, scan.start_height),
+            Q_ARG(int, scan.current_height), Q_ARG(int, scan.target_height), Q_ARG(bool, scan.complete));
+    });
 }
 
 void SplashScreen::unsubscribeFromCoreSignals()
@@ -150,14 +143,12 @@ void SplashScreen::unsubscribeFromCoreSignals()
     // Disconnect signals from client
     m_handler_init_message->disconnect();
     m_handler_show_progress->disconnect();
-#ifdef ENABLE_WALLET
-    m_handler_load_wallet->disconnect();
-#endif // ENABLE_WALLET
-    for (auto& handler : m_connected_wallet_handlers) {
-        handler->disconnect();
-    }
-    m_connected_wallet_handlers.clear();
-    m_connected_wallets.clear();
+    m_handler_wallet_scan->disconnect();
+}
+
+void SplashScreen::showWalletScanProgress(const QString& wallet, int start, int current, int target, bool complete)
+{
+    Q_EMIT startupWalletScanProgress(wallet, start, current, target, complete);
 }
 
 void SplashScreen::showMessage(const QString &message, int alignment, const QColor &color)
@@ -166,6 +157,14 @@ void SplashScreen::showMessage(const QString &message, int alignment, const QCol
     curAlignment = alignment;
     curColor = color;
     update();
+    Q_EMIT startupMessage(message);
+}
+
+void SplashScreen::showProgress(const QString& title, int progress, bool resumePossible)
+{
+    showMessage(title + "\n" + (resumePossible ? tr("press q to shutdown and continue later") : tr("press q to shutdown")) +
+        QString("\n%1%").arg(progress), Qt::AlignBottom | Qt::AlignHCenter, Qt::white);
+    Q_EMIT startupProgress(title, progress);
 }
 
 void SplashScreen::paintEvent(QPaintEvent *event)

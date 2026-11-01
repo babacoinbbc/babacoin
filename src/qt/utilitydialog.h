@@ -7,6 +7,37 @@
 
 #include <QDialog>
 #include <QObject>
+#include <QElapsedTimer>
+
+class QLabel;
+class QProgressBar;
+class QPushButton;
+class QTimer;
+
+/** Read-only startup UI. It has no wallet/backend access. */
+class StartupPanel : public QWidget
+{
+    Q_OBJECT
+public:
+    StartupPanel(const QString& version, const QString& network, const QString& dataDirectory, QWidget* parent = nullptr);
+    QString diagnostics() const;
+public Q_SLOTS:
+    void setPhase(const QString& message);
+    void setProgress(const QString& title, int progress);
+    void setWalletScanProgress(const QString& wallet, int start, int current, int target, bool complete);
+    void requestStop();
+Q_SIGNALS:
+    void stopRequested();
+private:
+    QString m_version, m_network, m_directory;
+    QLabel* m_phase;
+    QLabel* m_elapsed;
+    QLabel* m_scanSummary;
+    QProgressBar* m_progress;
+    QPushButton* m_stop;
+    QElapsedTimer m_clock;
+    bool m_stopping{false};
+};
 
 class BitcoinGUI;
 

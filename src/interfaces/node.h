@@ -28,6 +28,7 @@ class UniValue;
 class proxyType;
 enum class FeeReason;
 struct CNodeStateStats;
+struct WalletScanProgress;
 
 namespace interfaces {
 
@@ -284,6 +285,8 @@ public:
     //! Register handler for progress messages.
     using ShowProgressFn = std::function<void(const std::string& title, int progress, bool resume_possible)>;
     virtual std::unique_ptr<Handler> handleShowProgress(ShowProgressFn fn) = 0;
+    using WalletScanProgressFn = std::function<void(const WalletScanProgress&)>;
+    virtual std::unique_ptr<Handler> handleWalletScanProgress(WalletScanProgressFn fn) = 0;
 
     //! Register handler for load wallet messages.
     using LoadWalletFn = std::function<void(std::unique_ptr<Wallet> wallet)>;

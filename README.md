@@ -7,11 +7,11 @@
 [Migration and settings](doc/v2-migration.md) ·
 [Platform support](doc/platform-support.md)
 
-## V2.0.0 Release Candidate 2
+## V2.0.0 Release Candidate 3
 
 V2 combines a redesigned day/night desktop wallet, safer wallet handling and a
 larger, test-gated platform matrix. Download the matching package from the
-[V2.0.0-rc.2 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.2).
+[V2.0.0-rc.3 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.3).
 Read its release status, checksums, source manifest and migration notes first.
 Release assets are assembled only after every required platform job passes.
 
@@ -42,9 +42,18 @@ display density. Final release candidates also display the pre-release notice.*
 - **Clear financial information:** the existing balance calculations, pending,
   immature and watch-only fields remain intact. Activity bars describe only the
   displayed recent transactions; they are not price or investment-return charts.
-- **Better startup feedback:** the splash appears before application font setup;
-  unnecessary system-font logging is removed. A pixel-font crash has a regression
-  test. Wallet verification, rescans and block validation remain enabled.
+- **Visible startup checks:** the main window opens with a dedicated startup
+  panel before backend initialization finishes. It shows the current phase,
+  elapsed time and data directory, with diagnostics and safe cancellation.
+  Rescans show a two-decimal percentage calculated from the actual block
+  interval, checked/target blocks and current/target heights. Unknown-duration
+  phases use an indeterminate bar. Financial controls stay unavailable until
+  required checks succeed; verification and block validation remain enabled.
+- **Windows setup wizard:** a per-user installer bundles the exact tested EXEs,
+  DLLs and Qt plugins, with Start menu and desktop shortcuts and an optional
+  existing data-folder choice. It refuses running wallets and installation into
+  wallet data. Reinstallation and uninstall preserve wallet fixtures in tests.
+  Installation does not start a wallet or rescan automatically.
 - **Readable amounts:** balances and transaction lists use the operating system's
   decimal and thousands separators, including `1.234.567,89 BBC` in Turkish and
   `1,234,567.89 BBC` in US English. Amount calculations retain integer precision.
@@ -93,6 +102,18 @@ systems still require appropriate vendor security maintenance.
 
 ## Windows package and DLL files
 
+For the guided installation, download the release's
+`babacoin-v2.0.0-rc.3-windows-x86_64-setup.exe` and verify its `.sha256` file.
+It installs for the current user without an administrator account. Leave the
+normal data settings selected, or choose an existing data folder deliberately;
+the program folder and wallet data folder must be separate. Close Babacoin
+normally before upgrading. The installer refuses running wallets rather than
+terminating them. The Finish-page launch option is unchecked by default.
+`INSTALLER-MANIFEST.json` identifies the exact portable payload and source;
+`INSTALLER-TESTS.json` records the matching x64 and ARM64-host installer tests.
+Back up a production wallet before using a new release candidate.
+
+The portable alternative is the complete ZIP:
 Download the complete Windows ZIP and extract **all** its contents into a new
 application folder before starting `babacoin-qt.exe`. Keep the included DLLs and
 the `platforms` folder beside the executable. The Windows wallet uses dynamic
@@ -189,7 +210,7 @@ The verified Linux download helper is optional and **fresh-install only**:
 
 ```sh
 # Review the tagged source and select the release explicitly.
-BBC_VERSION=v2.0.0-rc.2 bash contrib/install.sh
+BBC_VERSION=v2.0.0-rc.3 bash contrib/install.sh
 ```
 
 It verifies the exact distribution/architecture package and SHA256, rejects
@@ -249,7 +270,7 @@ promised by this roadmap.
 
 - [Ubuntu build guide](doc/ubuntu-compatibility.md)
 - [Desktop validation](doc/wallet-desktop-validation.md)
-- [V2 release notes](doc/release/v2.0.0-rc.2.md)
+- [V2 release notes](doc/release/v2.0.0-rc.3.md)
 - [Contribution guide](CONTRIBUTING.md)
 
 Use disposable build environments and `make check`. Do not disable tests to

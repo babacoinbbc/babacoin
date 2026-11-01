@@ -2,7 +2,7 @@
 
 ## Release status and network review
 
-V2.0.0-rc.2 is a release candidate. It retains the audited main-branch network
+V2.0.0-rc.3 is a release candidate. It retains the audited main-branch network
 identity and selected future boundaries, including changes already present
 relative to V1. It corrects the historical founder destination to match V1 and
 real mainnet coinbases; the earlier main-branch historical address was wrong.
@@ -101,6 +101,18 @@ The selected-network badge identifies the configured network; it does not
 claim that synchronization or quorum protection has completed.
 
 ## Slow startup and rescanning
+
+The main window initially shows a startup panel rather than an apparently stuck
+splash. It identifies the phase, elapsed time and selected data folder. During
+wallet rescanning it shows checked/total blocks, current/target heights and a
+two-decimal percentage of that scan's block interval. This is not an overall
+startup percentage or an estimated completion time: blocks take different times
+to process, and a changing chain tip can extend the target. Completion stays
+below 100% until the scan succeeds. Other phases without a measurable total use
+an indeterminate bar. Balances and sending remain unavailable until all required
+initialization checks succeed. Copy diagnostics includes no keys or wallet-file
+contents, but does include the data-folder path; review it before sharing.
+Close safely requests ordinary core shutdown and waits for it to finish.
 
 Startup may include database loading, block-index verification, wallet loading,
 rescanning and network synchronization. V2 gives earlier visual feedback and

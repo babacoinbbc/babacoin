@@ -39,6 +39,17 @@ static void AddKey(CWallet& wallet, const CKey& key)
 
 BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
 {
+    // Percentages describe this scan's block interval, not chain estimates.
+    BOOST_CHECK_EQUAL((WalletScanProgress{"", 100, 149, 199, false}.basisPoints()), 5000);
+    BOOST_CHECK_EQUAL((WalletScanProgress{"", 100, 199, 199, false}.basisPoints()), 9999);
+    BOOST_CHECK_EQUAL((WalletScanProgress{"", 100, 199, 199, true}.basisPoints()), 10000);
+    BOOST_CHECK_EQUAL((WalletScanProgress{"", 100, 99, 199, false}.basisPoints()), 0);
+    BOOST_CHECK_EQUAL((WalletScanProgress{"", 0, -1, -1, false}.basisPoints()), 0);
+    BOOST_CHECK_EQUAL((WalletScanProgress{"", 0, -1, -1, true}.basisPoints()), 10000);
+    BOOST_CHECK_EQUAL((WalletScanProgress{"", 0, 2147483646, 2147483647, false}.basisPoints()), 9999);
+    std::vector<WalletScanProgress> scan_updates;
+    boost::signals2::scoped_connection scan_progress = uiInterface.NotifyWalletScanProgress.connect(
+        [&](const WalletScanProgress& scan) { scan_updates.push_back(scan); });
     // Cap last block file size, and mine new block in a new block file.
     CBlockIndex* const nullBlock = nullptr;
     CBlockIndex* oldTip = chainActive.Tip();
@@ -111,10 +122,17 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
         BOOST_CHECK(rejected);
         BOOST_CHECK(read);
         BOOST_CHECK(stored.vHave == original.vHave);
+        BOOST_REQUIRE(!scan_updates.empty());
+        BOOST_CHECK(!scan_updates.back().complete);
+        BOOST_CHECK_LT(scan_updates.back().basisPoints(), 10000);
         // A subsequent uninterrupted startup must retry from the old locator
         // and recover the owned coinbase transactions instead of skipping them.
         auto retry = CWallet::CreateWalletFromFile(location);
         BOOST_CHECK(retry != nullptr);
+        BOOST_REQUIRE(!scan_updates.empty());
+        BOOST_CHECK(scan_updates.back().complete);
+        BOOST_CHECK_EQUAL(scan_updates.back().scannedBlocks(), scan_updates.back().totalBlocks());
+        BOOST_CHECK_EQUAL(scan_updates.back().basisPoints(), 10000);
         if (retry) {
             BOOST_CHECK(retry->GetImmatureBalance() > 0);
             CBlockLocator completed;
@@ -151,6 +169,8 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
         WalletRescanReserver reserver(&wallet);
         reserver.reserve();
         BOOST_CHECK_EQUAL(oldTip, wallet.ScanForWalletTransactions(oldTip, nullptr, reserver));
+        BOOST_CHECK(!scan_updates.back().complete);
+        BOOST_CHECK_LT(scan_updates.back().basisPoints(), 10000);
         BOOST_CHECK_EQUAL(wallet.GetImmatureBalance(), coinbaseTxns.front().vout[0].nValue);
     }
 

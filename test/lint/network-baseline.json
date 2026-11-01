@@ -1417,9 +1417,9 @@
     {
       "path": "src/wallet/wallet.cpp",
       "scope": "full",
-      "sha256": "a61a7a2cf600de61cd2a48c7f82f03550ee6ac3216d35ed6a492a3d25fe35c84",
+      "sha256": "52c4ea8b2fd408944d40dee8c5ec17f7463d94117f06df67b4e115e135ccbb89",
       "original_sha256": "d57632ebe8be3c64d6cc23bd3f15aef1b56645d97be736ca47dfc32d5c1728bf",
-      "approved_change": "Fail startup before persisting a new scan locator when rescanning is aborted, interrupted by shutdown, or a block could not be read. Preserve the previous checkpoint for retry; no key, serialization, balance calculation or consensus rule change. Integration regression reproduces old checkpoint advancement and checks successful retry."
+      "approved_change": "Fail startup before persisting a new scan locator when rescanning is aborted, interrupted by shutdown, or a block could not be read. Preserve the previous checkpoint for retry; no key, serialization, balance calculation or consensus rule change. Integration regression reproduces old checkpoint advancement and checks successful retry. Report read-only rescan block positions and completion through a typed UI signal; calculate scan progress from the actual block interval instead of estimated historical transaction throughput. No block traversal, transaction inclusion, key, checkpoint or validation behavior changes in this reporting update."
     },
     {
       "path": "src/wallet/wallet.h",

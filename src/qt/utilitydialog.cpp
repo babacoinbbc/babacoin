@@ -23,6 +23,8 @@
 #include <init.h>
 #include <interfaces/node.h>
 #include <util.h>
+#include <ui_interface.h>
+#include <QLocale>
 
 #include <stdio.h>
 
@@ -32,6 +34,150 @@
 #include <QTextTable>
 #include <QTextCursor>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QProgressBar>
+#include <QPushButton>
+#include <QTimer>
+#include <QClipboard>
+#include <QApplication>
+
+StartupPanel::StartupPanel(const QString& version, const QString& network, const QString& dataDirectory, QWidget* parent) :
+    QWidget(parent), m_version(version), m_network(network), m_directory(dataDirectory)
+{
+    setObjectName("walletPage");
+    auto* root = new QVBoxLayout(this);
+    root->setContentsMargins(40, 30, 40, 30);
+    root->addStretch();
+    auto* title = new QLabel(tr("Starting Babacoin"), this);
+    title->setObjectName("walletPageTitle");
+    auto* heading = new QHBoxLayout;
+    const QPixmap branding(":/images/babacoin_brand_gold");
+    if (!branding.isNull()) {
+        auto* logo = new QLabel(this);
+        logo->setFixedSize(96, 96);
+        const qreal ratio = devicePixelRatioF();
+        QPixmap coin = branding.copy(0, 0, branding.height(), branding.height()).scaled(
+            qRound(96 * ratio), qRound(96 * ratio), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        coin.setDevicePixelRatio(ratio);
+        logo->setPixmap(coin);
+        heading->addWidget(logo);
+    }
+    heading->addWidget(title, 1);
+    root->addLayout(heading);
+    auto* networkLabel = new QLabel(m_network == "main" ? tr("Main network · BBC") : tr("Test network: %1").arg(m_network.toUpper()), this);
+    networkLabel->setObjectName("walletNetworkBadge");
+    root->addWidget(networkLabel, 0, Qt::AlignLeft);
+    auto* explanation = new QLabel(tr("Checking your wallet and blockchain data. Balances and sending become available after these checks finish."), this);
+    explanation->setWordWrap(true);
+    root->addWidget(explanation);
+    m_phase = new QLabel(tr("Preparing the wallet..."), this);
+    m_phase->setObjectName("startupPhase");
+    m_phase->setWordWrap(true);
+    root->addSpacing(24);
+    root->addWidget(m_phase);
+    m_progress = new QProgressBar(this);
+    m_progress->setObjectName("startupProgress");
+    m_progress->setRange(0, 0);
+    root->addWidget(m_progress);
+    m_scanSummary = new QLabel(this);
+    m_scanSummary->setObjectName("startupScanSummary");
+    m_scanSummary->setTextFormat(Qt::PlainText);
+    m_scanSummary->setWordWrap(true);
+    m_scanSummary->hide();
+    root->addWidget(m_scanSummary);
+    m_elapsed = new QLabel(this);
+    m_elapsed->setObjectName("startupElapsed");
+    root->addWidget(m_elapsed);
+    auto* folder = new QLabel(tr("Wallet data folder: %1").arg(m_directory), this);
+    folder->setObjectName("startupDataDirectory");
+    folder->setWordWrap(true);
+    folder->setTextFormat(Qt::PlainText);
+    root->addSpacing(12);
+    root->addWidget(folder);
+    auto* actions = new QHBoxLayout;
+    auto* copy = new QPushButton(tr("Copy diagnostics"), this);
+    copy->setObjectName("copyStartupDiagnostics");
+    connect(copy, &QPushButton::clicked, this, [this] { QApplication::clipboard()->setText(diagnostics()); });
+    actions->addWidget(copy);
+    actions->addStretch();
+    m_stop = new QPushButton(tr("Close safely"), this);
+    m_stop->setObjectName("stopStartup");
+    connect(m_stop, &QPushButton::clicked, this, &StartupPanel::requestStop);
+    actions->addWidget(m_stop);
+    root->addSpacing(16);
+    root->addLayout(actions);
+    root->addStretch();
+    GUIUtil::setFont({title}, GUIUtil::FontWeight::Bold, 24);
+    GUIUtil::setFont({copy, m_stop, networkLabel}, GUIUtil::FontWeight::Normal, 10);
+    GUIUtil::setFont({explanation, m_phase, folder, m_elapsed, m_scanSummary}, GUIUtil::FontWeight::Normal, 11);
+    m_clock.start();
+    auto updateElapsed = [this] {
+        const qint64 seconds = m_clock.elapsed() / 1000;
+        m_elapsed->setText(tr("Elapsed: %1:%2").arg(seconds / 60, 2, 10, QChar('0')).arg(seconds % 60, 2, 10, QChar('0')));
+    };
+    auto* timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, updateElapsed);
+    timer->start(1000);
+    updateElapsed();
+}
+
+void StartupPanel::setPhase(const QString& message)
+{
+    if (m_stopping) return;
+    m_phase->setText(message);
+    m_phase->setTextFormat(Qt::PlainText);
+    m_progress->setRange(0, 0);
+    m_scanSummary->clear();
+    m_scanSummary->hide();
+}
+
+void StartupPanel::setProgress(const QString& title, int progress)
+{
+    if (m_stopping) return;
+    m_phase->setText(title);
+    m_phase->setTextFormat(Qt::PlainText);
+    m_progress->setRange(0, 100);
+    m_progress->setFormat("%p%");
+    m_progress->setValue(qBound(0, progress, 100));
+    m_scanSummary->clear();
+    m_scanSummary->hide();
+}
+
+void StartupPanel::setWalletScanProgress(const QString& wallet, int start, int current, int target, bool complete)
+{
+    if (m_stopping) return;
+    const WalletScanProgress scan{wallet.toStdString(), start, current, target, complete};
+    const QLocale locale = QLocale::system();
+    const int value = scan.basisPoints();
+    const QString percent = locale.toString(value / 100) + locale.decimalPoint() +
+        QString("%1").arg(value % 100, 2, 10, QChar('0')) + "%";
+    m_phase->setText(wallet.isEmpty() ? tr("Rescanning wallet") : tr("Rescanning wallet: %1").arg(wallet));
+    m_phase->setTextFormat(Qt::PlainText);
+    m_progress->setRange(0, 10000);
+    m_progress->setValue(value);
+    m_progress->setFormat(percent);
+    m_scanSummary->setText(tr("Blocks checked: %1 / %2 · Current height: %3 / %4")
+        .arg(locale.toString(qlonglong(scan.scannedBlocks())), locale.toString(qlonglong(scan.totalBlocks())),
+            locale.toString(qlonglong(current)), locale.toString(qlonglong(target))));
+    m_scanSummary->show();
+}
+
+void StartupPanel::requestStop()
+{
+    if (m_stopping) return;
+    m_stopping = true;
+    m_phase->setText(tr("Stopping safely. Please wait..."));
+    m_progress->setRange(0, 0);
+    m_stop->setEnabled(false);
+    Q_EMIT stopRequested();
+}
+
+QString StartupPanel::diagnostics() const
+{
+    return QString("Babacoin startup diagnostics\nVersion: %1\nNetwork: %2\nData directory: %3\nPhase: %4\nElapsed seconds: %5\nWallet readiness: startup checks incomplete\n")
+        .arg(m_version, m_network, m_directory, m_phase->text()).arg(m_clock.elapsed() / 1000) +
+        (m_scanSummary->text().isEmpty() ? QString() : m_scanSummary->text() + "\nProgress: " + m_progress->format() + "\n");
+}
 
 /** "Help message" or "About" dialog box */
 HelpMessageDialog::HelpMessageDialog(interfaces::Node& node, QWidget *parent, HelpMode helpMode) :

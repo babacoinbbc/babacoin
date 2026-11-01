@@ -1,0 +1,18 @@
+BABACOIN CORE V2 - RELEASE CANDIDATE
+
+This wizard installs Babacoin Core and its required libraries together, and can
+create a desktop shortcut. You do not need to locate or install individual DLLs.
+
+Your wallet and blockchain data stay in their existing data folder. Uninstalling
+the application keeps wallet data. Keep a verified private wallet backup before
+upgrading and close any running Babacoin wallet normally.
+
+Use saved settings to keep your existing configuration, or choose an existing
+data folder on the next pages. Setup does not move wallet files or coins.
+
+V2 is a release candidate. Review MIGRATION.md and NETWORK-UPGRADE.md before
+upgrading a wallet, exchange, mining pool or Smartnode. All validators must
+upgrade before the first early 2,000,000 BBC registration. The old 1,800,000 BBC
+reward tier ends at block 1,250,000.
+
+The installer uses Inno Setup: https://jrsoftware.org/

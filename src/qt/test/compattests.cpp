@@ -10,6 +10,11 @@
 #include <qt/guiutil.h>
 #include <qt/explorerpeers.h>
 #include <qt/bitcoinunits.h>
+#include <qt/utilitydialog.h>
+#include <QSignalSpy>
+#include <QProgressBar>
+#include <QPushButton>
+#include <QLabel>
 #include <QLabel>
 #include <QApplication>
 #include <QFile>
@@ -191,4 +196,44 @@ void CompatTests::localizedAmounts()
     settings.setValue("digits", 8);
     settings.sync();
     QCOMPARE(BitcoinUnits::floorLocalizedWithUnit(BitcoinUnits::BBC, amount, false, BitcoinUnits::separatorAlways, tr), QString("1.234.567,89123456") + unit);
+}
+
+void CompatTests::startupPanel()
+{
+    StartupPanel panel("test-version", "regtest", "/synthetic-wallet-data");
+    auto* progress = panel.findChild<QProgressBar*>("startupProgress");
+    auto* phase = panel.findChild<QLabel*>("startupPhase");
+    auto* stop = panel.findChild<QPushButton*>("stopStartup");
+    QVERIFY(progress && phase && stop);
+    panel.setPhase("Rescanning...");
+    QCOMPARE(progress->maximum(), 0);
+    panel.setProgress("Rescanning...", 37);
+    QCOMPARE(progress->maximum(), 100);
+    QCOMPARE(progress->value(), 37);
+    QVERIFY(panel.diagnostics().contains("/synthetic-wallet-data"));
+    QVERIFY(panel.diagnostics().contains("startup checks incomplete"));
+    panel.setWalletScanProgress("test", 100, 119, 199, false);
+    QCOMPARE(progress->maximum(), 10000);
+    QCOMPARE(progress->value(), 2000);
+    QVERIFY(panel.diagnostics().contains("20"));
+    auto* summary = panel.findChild<QLabel*>("startupScanSummary");
+    QVERIFY(summary && !summary->isHidden());
+    QVERIFY(summary->text().contains("119"));
+    panel.setWalletScanProgress("test", 100, 199, 199, false);
+    QCOMPARE(progress->value(), 9999);
+    panel.setWalletScanProgress("test", 100, 199, 199, true);
+    QCOMPARE(progress->value(), 10000);
+    panel.setPhase("Final checks");
+    QCOMPARE(progress->maximum(), 0);
+    QVERIFY(summary->isHidden());
+    QSignalSpy stopping(&panel, &StartupPanel::stopRequested);
+    stop->click();
+    QCOMPARE(stopping.count(), 1);
+    QVERIFY(!stop->isEnabled());
+    const QString stoppingText = phase->text();
+    panel.setProgress("Late progress", 80);
+    panel.setWalletScanProgress("Late scan", 0, 100, 100, true);
+    panel.requestStop();
+    QCOMPARE(phase->text(), stoppingText);
+    QCOMPARE(stopping.count(), 1);
 }

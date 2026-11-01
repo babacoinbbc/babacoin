@@ -18,9 +18,13 @@
 #include <QMenu>
 #include <QPoint>
 #include <QPushButton>
+#include <QKeySequence>
+#include <QPointer>
 #include <QSystemTrayIcon>
 
 #include <memory>
+#include <vector>
+#include <utility>
 
 #ifdef Q_OS_MAC
 #include <qt/macos_appnap.h>
@@ -37,6 +41,7 @@ class WalletFrame;
 class WalletModel;
 class HelpMessageDialog;
 class ModalOverlay;
+class StartupPanel;
 
 namespace interfaces {
 class Handler;
@@ -50,6 +55,8 @@ class QComboBox;
 class QProgressBar;
 class QProgressDialog;
 class QToolButton;
+class QShortcut;
+class QStackedWidget;
 QT_END_NAMESPACE
 
 /**
@@ -70,6 +77,8 @@ public:
         The client model represents the part of the core that communicates with the P2P network, and is wallet-agnostic.
     */
     void setClientModel(ClientModel *clientModel);
+    void beginStartup();
+    void finishStartup();
 
 #ifdef ENABLE_WALLET
     /** Set the wallet model.
@@ -91,6 +100,12 @@ protected:
     bool eventFilter(QObject *object, QEvent *event);
 
 private:
+    void enableReadyActions();
+    StartupPanel* m_startupPanel{nullptr};
+    QStackedWidget* m_startupStack{nullptr};
+    std::vector<std::pair<QPointer<QAction>, QList<QKeySequence>>> m_startupActionShortcuts;
+    std::vector<std::pair<QPointer<QShortcut>, bool>> m_startupShortcuts;
+    bool m_startupStatusHidden{false};
     interfaces::Node& m_node;
     std::unique_ptr<interfaces::Handler> m_handler_message_box;
     std::unique_ptr<interfaces::Handler> m_handler_question;
@@ -216,12 +231,16 @@ private:
     void updateProgressBarVisibility();
 
 Q_SIGNALS:
+    void startupShutdownRequested();
     /** Signal raised when a URI was entered or dragged to the GUI */
     void receivedURI(const QString &uri);
     /** Restart handling */
     void requestedRestart(QStringList args);
 
 public Q_SLOTS:
+    void setStartupMessage(const QString& message);
+    void setStartupProgress(const QString& title, int progress);
+    void setStartupWalletScanProgress(const QString& wallet, int start, int current, int target, bool complete);
     /** Set number of connections shown in the UI */
     void setNumConnections(int count);
     /** Set network state shown in the UI */

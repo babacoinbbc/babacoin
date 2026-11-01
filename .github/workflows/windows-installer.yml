@@ -1,0 +1,136 @@
+name: Verified Windows setup wizard
+'on':
+  workflow_call:
+    inputs:
+      binary_run_id:
+        required: true
+        type: string
+      binary_source:
+        required: true
+        type: string
+      release_tag:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - name: Require a completed successful same-source full release run
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BINARY_RUN: ${{ inputs.binary_run_id }}
+        BINARY_SOURCE: ${{ inputs.binary_source }}
+      run: |
+        if ($env:BINARY_RUN -notmatch '^[0-9]+$' -or $env:BINARY_SOURCE -notmatch '^[0-9a-f]{40}$') { throw 'Invalid payload identity' }
+        $run = gh run view $env:BINARY_RUN --repo $env:GITHUB_REPOSITORY --json headSha,status,conclusion | ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0 -or $run.status -ne 'completed' -or $run.conclusion -ne 'success' -or $run.headSha -ne $env:BINARY_SOURCE) { throw 'The complete release run must pass first' }
+    - uses: actions/download-artifact@v4
+      with:
+        name: babacoin-tested-windows-x64
+        path: payload-x64
+        run-id: ${{ inputs.binary_run_id }}
+        github-token: ${{ github.token }}
+    - uses: actions/download-artifact@v4
+      with:
+        name: babacoin-tested-windows-arm64-emulation
+        path: payload-arm
+        run-id: ${{ inputs.binary_run_id }}
+        github-token: ${{ github.token }}
+    - name: Verify and unpack the pinned compiler in portable mode
+      shell: pwsh
+      run: |
+        $setup = Join-Path $env:RUNNER_TEMP 'innosetup-7.1.1-x64.exe'
+        Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_1/innosetup-7.1.1-x64.exe' -OutFile $setup
+        if ((Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant() -ne '8a5a6711c3766a6e5fb74f280ba0e3551e719ce94538d901fdbd1f8f9920b3f0') { throw 'Compiler checksum mismatch' }
+        if ((Get-AuthenticodeSignature $setup).Status -ne 'Valid') { throw 'Compiler signature did not verify' }
+        $compiler = Join-Path $env:RUNNER_TEMP 'babacoin-inno'
+        $p = Start-Process $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER','/PORTABLE=1','/NOICONS','/TASKS=',('/DIR="'+$compiler+'"')) -WindowStyle Hidden -Wait -PassThru
+        if ($p.ExitCode -ne 0) { throw 'Compiler extraction failed' }
+        "BBC_ISCC=$compiler\ISCC.exe" >> $env:GITHUB_ENV
+    - name: Package the exact validated DLLs and executables
+      shell: pwsh
+      env:
+        BINARY_SOURCE: ${{ inputs.binary_source }}
+        RELEASE_TAG: ${{ inputs.release_tag }}
+      run: |
+        python ci/build-windows-installer.py --payload payload-x64/babacoin-windows-x86_64-test.zip --native-report payload-x64/native-windows-tests.json --arm-report payload-arm/native-windows-tests.json --binary-source $env:BINARY_SOURCE --packaging-source $env:GITHUB_SHA --compiler $env:BBC_ISCC --output installer-dist --tag $env:RELEASE_TAG
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    - uses: actions/upload-artifact@v4
+      with:
+        name: babacoin-windows-installer-build
+        path: |
+          installer-dist/*.exe
+          installer-dist/*.sha256
+          installer-dist/INSTALLER-MANIFEST.json
+        if-no-files-found: error
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - runner: windows-2022
+          arch: x64
+        - runner: windows-11-arm
+          arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+      with:
+        name: babacoin-windows-installer-build
+        path: installer
+    - name: Install, start offline GUI, reinstall, and uninstall with wallet fixtures
+      shell: pwsh
+      run: |
+        $setup = (Get-ChildItem installer/*-setup.exe).FullName
+        python ci/test-windows-installer.py --installer $setup --manifest installer/INSTALLER-MANIFEST.json --report installer-test/report.json
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: babacoin-installer-test-${{ matrix.arch }}
+        path: installer-test
+        if-no-files-found: error
+  assemble:
+    needs: [build, test]
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: babacoin-windows-installer-build
+        path: dist
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: babacoin-installer-test-*
+        path: reports
+    - name: Require matching installer hashes on both Windows architectures
+      run: |
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        manifest = json.loads(Path('dist/INSTALLER-MANIFEST.json').read_text())
+        reports = []
+        for arch in ('x64', 'arm64'):
+            r = json.loads(Path('reports/babacoin-installer-test-' + arch + '/report.json').read_text())
+            assert r['result'] == 'PASS' and len(r['tests']) == 7
+            assert r['installer_sha256'] == manifest['installer_sha256']
+            assert r['binary_source_commit'] == manifest['binary_source_commit']
+            assert r['packaging_source_commit'] == manifest['packaging_source_commit']
+            assert r['host_architecture'].upper() in (('ARM64', 'AARCH64') if arch == 'arm64' else ('X64', 'AMD64', 'X86_64'))
+            r.pop('fixture_directory', None)
+            reports.append(r)
+        Path('dist/INSTALLER-TESTS.json').write_text(json.dumps({'result': 'PASS', 'reports': reports}, indent=2) + '\n')
+        PY
+    - uses: actions/upload-artifact@v4
+      with:
+        name: babacoin-verified-windows-installer
+        path: dist
+        if-no-files-found: error

@@ -9,15 +9,42 @@ name: Native Windows and macOS compatibility (no release upload)
         - all
         - macos
         - windows
+        - installer
         default: all
+      binary_run_id:
+        description: Successful full release run to package (installer only)
+        type: string
+      binary_source:
+        description: Full source commit of the tested Windows payload
+        type: string
+      release_tag:
+        description: Candidate tag for the installer
+        type: string
   workflow_call:
     inputs:
       platform:
         type: string
         default: all
+      binary_run_id:
+        type: string
+        default: ''
+      binary_source:
+        type: string
+        default: ''
+      release_tag:
+        type: string
+        default: ''
 permissions:
   contents: read
+  actions: read
 jobs:
+  installer:
+    if: ${{ inputs.platform == 'installer' }}
+    uses: ./.github/workflows/windows-installer.yml
+    with:
+      binary_run_id: ${{ inputs.binary_run_id }}
+      binary_source: ${{ inputs.binary_source }}
+      release_tag: ${{ inputs.release_tag }}
   macos:
     name: macOS ${{ matrix.arch }} native tests
     runs-on: ${{ matrix.runner }}
@@ -40,7 +67,7 @@ jobs:
         name: babacoin-tested-macos-${{ matrix.arch }}
         path: desktop-output
         if-no-files-found: error
-    if: ${{ inputs.platform != 'windows' }}
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'macos' }}
   windows-native:
     name: Windows x64 native tests
     needs: windows-build
@@ -102,7 +129,7 @@ jobs:
         if-no-files-found: error
   windows-build:
     name: Windows x64 UCRT native build
-    if: ${{ inputs.platform != 'macos' }}
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'windows' }}
     runs-on: windows-2022
     timeout-minutes: 150
     steps:

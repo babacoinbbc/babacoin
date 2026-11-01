@@ -9,6 +9,7 @@
 #include <memory>
 #include <stdint.h>
 #include <string>
+#include <algorithm>
 
 #include <boost/signals2/last_value.hpp>
 #include <boost/signals2/signal.hpp>
@@ -16,6 +17,24 @@
 class CWallet;
 class CBlockIndex;
 class CDeterministicMNList;
+
+/** Read-only block-position progress. Completion never implies wallet readiness. */
+struct WalletScanProgress
+{
+    std::string wallet_name;
+    int start_height;
+    int current_height;
+    int target_height;
+    bool complete;
+    int64_t totalBlocks() const { return std::max<int64_t>(0, int64_t(target_height) - start_height + 1); }
+    int64_t scannedBlocks() const { return std::max<int64_t>(0, std::min<int64_t>(totalBlocks(), int64_t(current_height) - start_height + 1)); }
+    int basisPoints() const
+    {
+        const int64_t total = totalBlocks();
+        if (!total) return complete ? 10000 : 0;
+        return int(std::min<int64_t>(complete ? 10000 : 9999, scannedBlocks() * 10000 / total));
+    }
+};
 
 /** General change type (added, updated, removed). */
 enum ChangeType
@@ -81,6 +100,7 @@ public:
 
     /** Progress message during initialization. */
     boost::signals2::signal<void (const std::string &message)> InitMessage;
+    boost::signals2::signal<void (const WalletScanProgress&)> NotifyWalletScanProgress;
 
     /** Number of network connections changed. */
     boost::signals2::signal<void (int newNumConnections)> NotifyNumConnectionsChanged;

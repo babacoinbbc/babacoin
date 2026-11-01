@@ -315,6 +315,74 @@ BitcoinGUI::~BitcoinGUI()
     delete tabGroup;
 }
 
+void BitcoinGUI::beginStartup()
+{
+    if (m_startupPanel) return;
+    m_startupStack = new QStackedWidget(this);
+    m_startupStack->addWidget(takeCentralWidget());
+    m_startupPanel = new StartupPanel(QString::fromStdString(FormatFullVersion()),
+        QString::fromStdString(Params().NetworkIDString()), GUIUtil::boostPathToQString(GetDataDir()), m_startupStack);
+    m_startupStack->addWidget(m_startupPanel);
+    m_startupStack->setCurrentWidget(m_startupPanel);
+    setCentralWidget(m_startupStack);
+    GUIUtil::updateFonts();
+    connect(m_startupPanel, &StartupPanel::stopRequested, this, &BitcoinGUI::startupShutdownRequested);
+    menuBar()->setEnabled(false);
+    m_startupStatusHidden = statusBar()->isHidden();
+    statusBar()->hide();
+    if (trayIconMenu) trayIconMenu->setEnabled(false);
+#ifdef Q_OS_MAC
+    if (dockIconMenu) dockIconMenu->setEnabled(false);
+#endif
+    // Prevent global shortcuts from reaching models that have not loaded yet.
+    for (auto* action : findChildren<QAction*>()) {
+        m_startupActionShortcuts.emplace_back(action, action->shortcuts());
+        action->setShortcuts(QList<QKeySequence>());
+    }
+    for (auto* shortcut : findChildren<QShortcut*>()) {
+        m_startupShortcuts.emplace_back(shortcut, shortcut->isEnabled());
+        shortcut->setEnabled(false);
+    }
+}
+
+void BitcoinGUI::finishStartup()
+{
+    if (!m_startupPanel) return;
+    m_startupStack->setCurrentIndex(0);
+    m_startupStack->removeWidget(m_startupPanel);
+    m_startupPanel->deleteLater();
+    m_startupPanel = nullptr;
+    for (const auto& saved : m_startupActionShortcuts)
+        if (saved.first) saved.first->setShortcuts(saved.second);
+    m_startupActionShortcuts.clear();
+    for (const auto& saved : m_startupShortcuts)
+        if (saved.first) saved.first->setEnabled(saved.second);
+    m_startupShortcuts.clear();
+    menuBar()->setEnabled(true);
+    if (!m_startupStatusHidden) statusBar()->show();
+    if (trayIconMenu) trayIconMenu->setEnabled(true);
+#ifdef Q_OS_MAC
+    if (dockIconMenu) dockIconMenu->setEnabled(true);
+#endif
+    enableReadyActions();
+    updateCoinJoinVisibility();
+}
+
+void BitcoinGUI::setStartupMessage(const QString& message)
+{
+    if (m_startupPanel) m_startupPanel->setPhase(message);
+}
+
+void BitcoinGUI::setStartupProgress(const QString& title, int progress)
+{
+    if (m_startupPanel) m_startupPanel->setProgress(title, progress);
+}
+
+void BitcoinGUI::setStartupWalletScanProgress(const QString& wallet, int start, int current, int target, bool complete)
+{
+    if (m_startupPanel) m_startupPanel->setWalletScanProgress(wallet, start, current, target, complete);
+}
+
 void BitcoinGUI::startSpinner()
 {
     if (labelBlocksIcon == nullptr || labelBlocksIcon->isHidden() || timerSpinner != nullptr) {
@@ -860,6 +928,7 @@ void BitcoinGUI::setClientModel(ClientModel *_clientModel)
             trayIconMenu = new QMenu(this);
             trayIcon->setContextMenu(trayIconMenu);
             createIconMenu(trayIconMenu);
+            if (m_startupPanel) trayIconMenu->setEnabled(false);
 
 #ifndef Q_OS_MAC
             // Show main window on tray icon click
@@ -1630,6 +1699,7 @@ void BitcoinGUI::message(const QString &title, const QString &message, unsigned 
         showNormalIfMinimized();
         QMessageBox mBox(static_cast<QMessageBox::Icon>(nMBoxIcon), strTitle, message, buttons, this);
         mBox.setTextFormat(Qt::PlainText);
+        if (m_startupPanel) mBox.setDetailedText(m_startupPanel->diagnostics());
         int r = mBox.exec();
         if (ret != nullptr)
             *ret = r == QMessageBox::Ok;
@@ -1640,6 +1710,10 @@ void BitcoinGUI::message(const QString &title, const QString &message, unsigned 
 
 void BitcoinGUI::changeEvent(QEvent *e)
 {
+    if (m_startupPanel) {
+        QMainWindow::changeEvent(e);
+        return;
+    }
     QMainWindow::changeEvent(e);
 #ifndef Q_OS_MAC // Ignored on Mac
     if(e->type() == QEvent::WindowStateChange)
@@ -1673,6 +1747,11 @@ void BitcoinGUI::changeEvent(QEvent *e)
 
 void BitcoinGUI::closeEvent(QCloseEvent *event)
 {
+    if (m_startupPanel) {
+        m_startupPanel->requestStop();
+        event->ignore();
+        return;
+    }
 #ifndef Q_OS_MAC // Ignored on Mac
     if(clientModel && clientModel->getOptionsModel())
     {
@@ -1696,6 +1775,13 @@ void BitcoinGUI::closeEvent(QCloseEvent *event)
 
 void BitcoinGUI::showEvent(QShowEvent *event)
 {
+    if (m_startupPanel) return;
+    enableReadyActions();
+    if (!event->spontaneous()) updateCoinJoinVisibility();
+}
+
+void BitcoinGUI::enableReadyActions()
+{
     // enable the debug window when the main window shows up
     openInfoAction->setEnabled(true);
     openRPCConsoleAction->setEnabled(true);
@@ -1705,9 +1791,6 @@ void BitcoinGUI::showEvent(QShowEvent *event)
     aboutAction->setEnabled(true);
     optionsAction->setEnabled(true);
 
-    if (!event->spontaneous()) {
-        updateCoinJoinVisibility();
-    }
 }
 
 #ifdef ENABLE_WALLET
