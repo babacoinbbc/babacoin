@@ -7,11 +7,11 @@
 [Migration and settings](doc/v2-migration.md) ·
 [Platform support](doc/platform-support.md)
 
-## V2.0.0 Release Candidate 3
+## V2.0.0 Release Candidate 4
 
 V2 combines a redesigned day/night desktop wallet, safer wallet handling and a
 larger, test-gated platform matrix. Download the matching package from the
-[V2.0.0-rc.3 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.3).
+[V2.0.0-rc.3 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.4).
 Read its release status, checksums, source manifest and migration notes first.
 Release assets are assembled only after every required platform job passes.
 
@@ -29,19 +29,27 @@ separate operator coordination and review.
 
 ## What changes in V2
 
-![Babacoin V2 desktop wallet in night mode](doc/images/v2-wallet-night.png)
+![Babacoin V2 desktop wallet in night mode](doc/images/v2-wallet-night.jpg)
+
+[View the day theme](doc/images/v2-wallet-day.jpg)
 
 *Windows development preview with isolated regtest data and test coins. The
 supplied gold artwork is retained unchanged and rendered at the sidebar's
 display density. Final release candidates also display the pre-release notice.*
 
 - **Day and night themes:** persistent appearance, keyboard switching and a
-  redesigned navigation panel, balance summary and recent-activity view.
+  gold-and-teal balance panel, high-DPI line icons, clearer transaction rows
+  and a bounded recent-activity view. Decorative artwork adds no animation
+  timers or remote image downloads.
   Theme loading normalizes Windows line endings and safely filters multiple
   platform-specific CSS sections, with a regression test for both behaviors.
 - **Clear financial information:** the existing balance calculations, pending,
   immature and watch-only fields remain intact. Activity bars describe only the
   displayed recent transactions; they are not price or investment-return charts.
+- **Live network overview:** connection state, validated block height and
+  synchronization cards update from the client model. Header-only heights do
+  not replace validated heights, and paused/peerless wallets do not claim to be
+  up to date. Existing synchronization warnings remain visible.
 - **Visible startup checks:** the main window opens with a dedicated startup
   panel before backend initialization finishes. It shows the current phase,
   elapsed time and data directory, with diagnostics and safe cancellation.
@@ -103,7 +111,7 @@ systems still require appropriate vendor security maintenance.
 ## Windows package and DLL files
 
 For the guided installation, download the release's
-`babacoin-v2.0.0-rc.3-windows-x86_64-setup.exe` and verify its `.sha256` file.
+`babacoin-v2.0.0-rc.4-windows-x86_64-setup.exe` and verify its `.sha256` file.
 It installs for the current user without an administrator account. Leave the
 normal data settings selected, or choose an existing data folder deliberately;
 the program folder and wallet data folder must be separate. Close Babacoin
@@ -210,7 +218,7 @@ The verified Linux download helper is optional and **fresh-install only**:
 
 ```sh
 # Review the tagged source and select the release explicitly.
-BBC_VERSION=v2.0.0-rc.3 bash contrib/install.sh
+BBC_VERSION=v2.0.0-rc.4 bash contrib/install.sh
 ```
 
 It verifies the exact distribution/architecture package and SHA256, rejects
@@ -270,7 +278,7 @@ promised by this roadmap.
 
 - [Ubuntu build guide](doc/ubuntu-compatibility.md)
 - [Desktop validation](doc/wallet-desktop-validation.md)
-- [V2 release notes](doc/release/v2.0.0-rc.3.md)
+- [V2 release notes](doc/release/v2.0.0-rc.4.md)
 - [Contribution guide](CONTRIBUTING.md)
 
 Use disposable build environments and `make check`. Do not disable tests to

@@ -25,6 +25,21 @@ def main():
     parser.add_argument('--manifest', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args()
+    # The product AppId owns per-user uninstall/shortcut metadata even when
+    # /DIR points at a temporary folder. Never run this harness over a real
+    # installation; CI supplies a clean Windows user profile.
+    import winreg
+    if (Path(os.environ['LOCALAPPDATA']) / 'Programs/Babacoin Core/babacoin-qt.exe').exists():
+        raise RuntimeError('Installer tests require a clean Windows user profile; an existing Babacoin program was found')
+    for view in (winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY):
+        for key in (r'Software\Microsoft\Windows\CurrentVersion\Uninstall\{C40A2BB5-A761-47E2-A872-284A9E6BBC02}_is1',
+                    r'Software\Babacoin\Installer'):
+            try:
+                installed = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_READ | view)
+            except FileNotFoundError:
+                continue
+            installed.Close()
+            raise RuntimeError('Installer tests require a clean Windows user profile; an existing Babacoin installation was found')
     manifest = json.loads(args.manifest.read_text(encoding='utf-8-sig'))
     assert digest(args.installer) == manifest['installer_sha256']
     root = Path(tempfile.mkdtemp(prefix='babacoin-installer-test-')).resolve()

@@ -42,6 +42,7 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QPlainTextEdit>
+#include <QLocale>
 #include <QFile>
 #include <QTemporaryDir>
 #include <QRegularExpression>
@@ -240,6 +241,32 @@ void TestGUI()
     CAmount balance = walletModel.wallet().getBalance();
     QString balanceComparison = BitcoinUnits::floorLocalizedHtmlWithUnit(unit, balance, false, BitcoinUnits::separatorAlways);
     QCOMPARE(balanceText, balanceComparison);
+
+    // Dashboard heights represent validated blocks, never a header-only tip.
+    auto* height = overviewPage.findChild<QLabel*>("blockHeightValue");
+    auto* connection = overviewPage.findChild<QLabel*>("connectionValue");
+    auto* synchronization = overviewPage.findChild<QLabel*>("syncValue");
+    QVERIFY(height && connection && synchronization);
+    const int validatedHeight = node->getNumBlocks();
+    const QString originalHeight = QLocale::system().toString(validatedHeight);
+    QCOMPARE(height->text(), originalHeight);
+    Q_EMIT clientModel.numBlocksChanged(validatedHeight + 1000, QDateTime(), QString(), 1.0, true);
+    QCOMPARE(height->text(), originalHeight);
+    Q_EMIT clientModel.numBlocksChanged(validatedHeight + 1, QDateTime(), QString(), 1.0, false);
+    QCOMPARE(height->text(), QLocale::system().toString(validatedHeight + 1));
+    overviewPage.setClientModel(nullptr);
+    Q_EMIT clientModel.numBlocksChanged(validatedHeight + 2, QDateTime(), QString(), 1.0, false);
+    QCOMPARE(height->text(), QString::fromUtf8("—"));
+    overviewPage.setClientModel(&clientModel);
+    QCOMPARE(height->text(), originalHeight);
+    const bool wasActive = node->getNetworkActive();
+    node->setNetworkActive(false);
+    Q_EMIT clientModel.networkActiveChanged(false);
+    overviewPage.showOutOfSyncWarning(false);
+    QCOMPARE(connection->text(), QString("Network paused"));
+    QCOMPARE(synchronization->text(), QString("Offline view"));
+    node->setNetworkActive(wasActive);
+    overviewPage.showOutOfSyncWarning(true);
 
     // Check Request Payment button
     ReceiveCoinsDialog receiveCoinsDialog;

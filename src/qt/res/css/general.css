@@ -1974,7 +1974,8 @@ WalletFrame { padding: 0; }
 QWidget#walletPage, QWidget#walletDashboardBody, QScrollArea#walletDashboardScroll { border: none; }
 QToolBar#walletSidebar {
     min-width: 192px; max-width: 340px; min-height: 0px; max-height: 16777215px;
-    background: #102028; border: none; padding: 0; spacing: 1px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #142b35, stop:1 #0b1922);
+    border: none; border-right: 1px solid #29414b; padding: 0; spacing: 1px;
 }
 QToolBar#walletSidebar QToolButton {
     min-width: 140px; max-width: 296px; min-height: 1.4em; max-height: 16777215px;
@@ -1982,7 +1983,10 @@ QToolBar#walletSidebar QToolButton {
     background: transparent; color: #b8cad1; text-align: left;
 }
 QToolBar#walletSidebar QToolButton:hover { background: #21343e; color: #f0f5f5; }
-QToolBar#walletSidebar QToolButton:checked { background: #e4be60; color: #14232a; }
+QToolBar#walletSidebar QToolButton:checked {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0d48b, stop:1 #d7af51);
+    color: #14232a;
+}
 QToolBar#walletSidebar QToolButton:disabled { color: #667b85; }
 QToolBar#walletSidebar QToolButton:focus { border: 1px solid #e4be60; }
 QToolBar#walletSidebar QLabel#walletBrandName { color: #f2f6f6; }
@@ -1997,15 +2001,20 @@ QToolButton#walletQuickSend { background: #e4be60; color: #14232a; border: 1px s
 QToolButton#walletQuickSend:hover { background: #efce80; }
 QToolButton#walletQuickReceive:focus, QToolButton#walletQuickSend:focus { border: 2px solid #b99137; }
 QWidget#OverviewPage QFrame#balanceHero {
-    border: 1px solid #324d56; border-radius: 16px;
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #12232c, stop:1 #25464a);
+    border: 1px solid #52604a; border-radius: 20px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #142c36, stop:0.6 #1b3b43, stop:1 #304946);
 }
-QFrame#balanceHero QLabel#heroCaption { color: #b8ccd3; }
+QFrame#balanceHero QLabel#heroCaption { color: #efce80; }
 QFrame#balanceHero QLabel#heroTotal { color: #fafcfb; min-height: 44px; }
 QFrame#balanceHero QLabel#balanceHint { color: #b7c9cf; }
+QFrame#networkMetricCard { border: 1px solid transparent; border-radius: 12px; }
+QFrame#networkMetricCard QLabel { padding: 0; border: none; }
+QLabel#metricCaption { margin-bottom: 3px; }
+QLabel#activityCreditLegend { color: #268d75; }
+QLabel#activityDebitLegend { color: #c05567; }
 QWidget#OverviewPage QFrame#frame, QWidget#OverviewPage QFrame#frame_2,
 QWidget#OverviewPage QFrame#activityCard, QWidget#OverviewPage QFrame#frameCoinJoin {
-    border: 1px solid transparent; border-radius: 13px; padding: 14px;
+    border: 1px solid transparent; border-radius: 16px; padding: 14px;
 }
 QWidget#OverviewPage QFrame#frame { min-width: 285px; }
 QWidget#OverviewPage QFrame#frame_2 { min-width: 345px; }
@@ -2014,6 +2023,7 @@ QLabel#activityTitle { padding-bottom: 8px; }
 QLabel#activityHint { }
 QLabel#emptyTransactions { min-height: 260px; padding: 24px; }
 QWidget#OverviewPage QListView { border: none; background: transparent; padding: 0; }
+QWidget#OverviewPage QFrame#frame_2 QListView { max-width: 16777215px; margin-right: 0; }
 QWidget#OverviewPage QListView::item { border-bottom: 1px solid transparent; }
 
 QLabel#walletNetworkBadge { color: #94722b; border: 1px solid #b99540; border-radius: 7px; padding: 6px 10px; margin-right: 6px; }

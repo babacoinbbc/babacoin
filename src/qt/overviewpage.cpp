@@ -27,22 +27,58 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QPainterPath>
+#include <QLinearGradient>
+#include <QLocale>
+#include <QStyle>
 #include <cmath>
 #include <algorithm>
 
-#define ITEM_HEIGHT 54
+#define ITEM_HEIGHT 68
 #define NUM_ITEMS_DISABLED 5
 #define NUM_ITEMS_ENABLED_NORMAL 6
 #define NUM_ITEMS_ENABLED_ADVANCED 8
 
 Q_DECLARE_METATYPE(interfaces::WalletBalances)
 
+// Decorative only: fixed geometry, no timers, balances or network operations.
+class WalletBalanceHero : public QFrame
+{
+public:
+    explicit WalletBalanceHero(QWidget* parent) : QFrame(parent) { setMinimumHeight(176); }
+protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        QFrame::paintEvent(event);
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        QPainterPath clip;
+        clip.addRoundedRect(QRectF(rect()).adjusted(1, 1, -1, -1), 20, 20);
+        painter.setClipPath(clip);
+        painter.setClipRect(QRectF(width() * 0.62, 0, width() * 0.38, height()), Qt::IntersectClip);
+        const QPointF center(width() - 72, height() * 0.52);
+        painter.setBrush(Qt::NoBrush);
+        for (int radius : {76, 110, 148, 192}) {
+            painter.setPen(QPen(QColor(228, 190, 96, radius == 110 ? 65 : 25), 1));
+            painter.drawEllipse(center, radius, radius);
+        }
+        painter.setPen(QPen(QColor(228, 190, 96, 45), 1));
+        const QPointF a = center + QPointF(-114, -64), b = center + QPointF(-158, 46);
+        painter.drawLine(a, b);
+        painter.drawLine(b, center + QPointF(-22, 88));
+        painter.setBrush(QColor("#e4be60"));
+        painter.setPen(Qt::NoPen);
+        painter.drawEllipse(a, 3, 3);
+        painter.drawEllipse(b, 4, 4);
+    }
+};
+
 // Bounded presentation of the entries already displayed in the recent list.
 // It never scans wallet history or computes balances, prices or investment returns.
 class WalletActivityGraph : public QWidget
 {
 public:
-    explicit WalletActivityGraph(QWidget* parent = nullptr) : QWidget(parent) { setMinimumHeight(100); }
+    explicit WalletActivityGraph(QWidget* parent = nullptr) : QWidget(parent) { setMinimumHeight(110); }
     void setValues(const QVector<qint64>& entries) { values = entries; update(); }
 protected:
     void paintEvent(QPaintEvent*) override
@@ -57,6 +93,12 @@ protected:
             painter.drawText(plot, Qt::AlignCenter, QCoreApplication::translate("OverviewPage", "No recent activity"));
             return;
         }
+        QColor grid = muted;
+        grid.setAlpha(35);
+        painter.setPen(QPen(grid, 1, Qt::DashLine));
+        for (qreal y : {plot.top(), plot.bottom()})
+            painter.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y));
+        painter.setPen(QPen(muted, 1));
         painter.drawLine(QPointF(plot.left(), middle), QPointF(plot.right(), middle));
         long double maximum = 1;
         for (qint64 value : values) maximum = std::max(maximum, std::fabs(static_cast<long double>(value)));
@@ -65,8 +107,11 @@ protected:
             const qreal height = static_cast<qreal>(std::fabs(static_cast<long double>(values[i])) / maximum) * (plot.height() / 2 - 6);
             const QColor color = GUIUtil::getThemedQColor(values[i] >= 0 ? GUIUtil::ThemedColor::GREEN : GUIUtil::ThemedColor::RED);
             painter.setPen(Qt::NoPen);
-            painter.setBrush(color);
-            const qreal width = std::min(qreal(28), slot * 0.55);
+            QLinearGradient fill(0, middle - height, 0, middle + height);
+            fill.setColorAt(0, color.lighter(125));
+            fill.setColorAt(1, color.darker(115));
+            painter.setBrush(fill);
+            const qreal width = std::min(qreal(36), slot * 0.55);
             const qreal x = plot.left() + slot * i + (slot - width) / 2;
             painter.drawRoundedRect(QRectF(x, values[i] >= 0 ? middle - height : middle, width, height), 3, 3);
         }
@@ -91,7 +136,12 @@ public:
         painter->save();
 
         QRect mainRect = option.rect;
-        int xspace = 8;
+        if (option.state & (QStyle::State_Selected | QStyle::State_MouseOver)) {
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(228, 190, 96, option.state & QStyle::State_Selected ? 38 : 18));
+            painter->drawRoundedRect(QRectF(mainRect).adjusted(1, 2, -1, -2), 10, 10);
+        }
+        int xspace = 56;
         int ypad = 8;
         int halfheight = (mainRect.height() - 2*ypad)/2;
         QRect rectTopHalf(mainRect.left() + xspace, mainRect.top() + ypad, mainRect.width() - xspace, halfheight);
@@ -112,16 +162,21 @@ public:
         colorForeground = qvariant_cast<QColor>(indexDate.data(Qt::ForegroundRole));
         QString strDate = indexDate.data(Qt::DisplayRole).toString();
         painter->setPen(colorForeground);
-        painter->drawText(rectTopHalf, Qt::AlignLeft | Qt::AlignVCenter, strDate, &rectBounding);
-        // Optional IS indicator
-        QIcon iconInstantSend = qvariant_cast<QIcon>(indexAddress.data(TransactionTableModel::RawDecorationRole));
-        QRect rectInstantSend(rectBounding.right() + 5, rectTopHalf.top(), 16, halfheight);
-        iconInstantSend.paint(painter, rectInstantSend);
         // Amount
         colorForeground = qvariant_cast<QColor>(indexAmount.data(Qt::ForegroundRole));
         // Note: do NOT use Qt::DisplayRole, have format properly here
         qint64 nAmount = index.data(TransactionTableModel::AmountRole).toLongLong();
         QString strAmount = BitcoinUnits::floorLocalizedWithUnit(unit, nAmount, true, BitcoinUnits::separatorAlways);
+        // Reserve the amount column before drawing the date. Long localized
+        // amounts and dates must not paint over one another at large font sizes.
+        const int amountWidth = painter->fontMetrics().width(strAmount) + 16;
+        const QRect dateRect = rectTopHalf.adjusted(0, 0, -amountWidth, 0);
+        painter->setPen(qvariant_cast<QColor>(indexDate.data(Qt::ForegroundRole)));
+        painter->drawText(dateRect, Qt::AlignLeft | Qt::AlignVCenter,
+            painter->fontMetrics().elidedText(strDate, Qt::ElideRight, std::max(0, dateRect.width() - 22)), &rectBounding);
+        QIcon iconInstantSend = qvariant_cast<QIcon>(indexAddress.data(TransactionTableModel::RawDecorationRole));
+        if (rectBounding.right() + 21 < dateRect.right())
+            iconInstantSend.paint(painter, QRect(rectBounding.right() + 5, dateRect.top(), 16, halfheight));
         painter->setPen(colorForeground);
         painter->drawText(rectTopHalf, Qt::AlignRight | Qt::AlignVCenter, strAmount);
 
@@ -132,7 +187,8 @@ public:
         colorForeground = qvariant_cast<QColor>(indexAddress.data(Qt::ForegroundRole));
         QString address = indexAddress.data(Qt::DisplayRole).toString();
         painter->setPen(colorForeground);
-        painter->drawText(rectBottomHalf, Qt::AlignLeft | Qt::AlignVCenter, address, &rectBounding);
+        painter->drawText(rectBottomHalf, Qt::AlignLeft | Qt::AlignVCenter,
+            painter->fontMetrics().elidedText(address, Qt::ElideMiddle, std::max(0, rectBottomHalf.width() - 24)), &rectBounding);
         // Optional Watchonly indicator
         if (index.data(TransactionTableModel::WatchonlyRole).toBool())
         {
@@ -141,6 +197,19 @@ public:
             iconWatchonly.paint(painter, rectWatchonly);
         }
 
+        const QColor direction = GUIUtil::getThemedQColor(nAmount >= 0 ? GUIUtil::ThemedColor::GREEN : GUIUtil::ThemedColor::RED);
+        QColor badge = direction;
+        badge.setAlpha(28);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(badge);
+        const QRectF icon(mainRect.left() + 6, mainRect.center().y() - 18, 36, 36);
+        painter->drawRoundedRect(icon, 10, 10);
+        painter->setPen(QPen(direction, 1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        const QPointF c = icon.center();
+        const int d = nAmount < 0 ? -1 : 1;
+        painter->drawLine(c + QPointF(0, -8), c + QPointF(0, 8));
+        painter->drawLine(c + QPointF(0, d * 8), c + QPointF(-5, d * 3));
+        painter->drawLine(c + QPointF(0, d * 8), c + QPointF(5, d * 3));
         painter->restore();
     }
 
@@ -175,28 +244,61 @@ OverviewPage::OverviewPage(QWidget* parent) :
     ui->label_5->setText(tr("Balance details"));
     ui->label_4->setText(tr("Recent transactions"));
 
-    QFrame* hero = new QFrame(this);
+    QFrame* hero = new WalletBalanceHero(this);
     hero->setObjectName("balanceHero");
     QHBoxLayout* heroLayout = new QHBoxLayout(hero);
-    heroLayout->setContentsMargins(26, 22, 26, 22);
+    heroLayout->setContentsMargins(30, 26, 30, 26);
     QVBoxLayout* totalLayout = new QVBoxLayout;
     totalLayout->setSpacing(8);
-    QLabel* totalCaption = new QLabel(tr("Total balance"), hero);
+    QLabel* totalCaption = new QLabel(tr("YOUR BABACOIN"), hero);
     totalCaption->setObjectName("heroCaption");
     totalLayout->addWidget(totalCaption);
     heroBalance = new QLabel(ui->labelTotal->text(), hero);
     heroBalance->setObjectName("heroTotal");
     heroBalance->setTextInteractionFlags(Qt::TextSelectableByMouse);
     totalLayout->addWidget(heroBalance);
-    QLabel* balanceHint = new QLabel(tr("See spendable and pending amounts below."), hero);
+    QLabel* balanceHint = new QLabel(tr("Total balance · Spendable and pending amounts are shown below."), hero);
     balanceHint->setObjectName("balanceHint");
     balanceHint->setWordWrap(true);
     totalLayout->addWidget(balanceHint);
     heroLayout->addLayout(totalLayout, 1);
     QLabel* coin = new QLabel(hero);
-    coin->setPixmap(QPixmap(":/icons/babacoin").scaled(86, 86, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    const QPixmap brand(":/images/babacoin_brand_gold");
+    const qreal ratio = devicePixelRatioF();
+    QPixmap coinImage = (brand.isNull() ? QPixmap(":/icons/babacoin") : brand.copy(0, 0, brand.height(), brand.height()))
+        .scaled(qRound(104 * ratio), qRound(104 * ratio), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    coinImage.setDevicePixelRatio(ratio);
+    coin->setPixmap(coinImage);
+    coin->setFixedSize(104, 104);
     heroLayout->addWidget(coin);
     ui->topLayout->insertWidget(1, hero);
+
+    auto* networkStrip = new QWidget(this);
+    auto* networkLayout = new QHBoxLayout(networkStrip);
+    networkLayout->setContentsMargins(0, 0, 0, 0);
+    networkLayout->setSpacing(14);
+    auto addMetric = [&](const QString& title, const QString& name) {
+        auto* card = new QFrame(networkStrip);
+        card->setObjectName("networkMetricCard");
+        auto* layout = new QVBoxLayout(card);
+        layout->setContentsMargins(18, 14, 18, 14);
+        auto* caption = new QLabel(title, card);
+        caption->setObjectName("metricCaption");
+        auto* value = new QLabel(tr("Waiting..."), card);
+        value->setObjectName(name);
+        value->setWordWrap(true);
+        value->setTextFormat(Qt::PlainText);
+        layout->addWidget(caption);
+        layout->addWidget(value);
+        GUIUtil::setFont({caption}, GUIUtil::FontWeight::Normal, 9);
+        GUIUtil::setFont({value}, GUIUtil::FontWeight::Bold, 13);
+        networkLayout->addWidget(card, 1);
+        return value;
+    };
+    connectionValue = addMetric(tr("CONNECTION"), "connectionValue");
+    blockHeightValue = addMetric(tr("BLOCK HEIGHT"), "blockHeightValue");
+    syncValue = addMetric(tr("SYNCHRONIZATION"), "syncValue");
+    ui->topLayout->insertWidget(2, networkStrip);
 
     QFrame* activity = new QFrame(this);
     activity->setObjectName("activityCard");
@@ -212,6 +314,20 @@ OverviewPage::OverviewPage(QWidget* parent) :
     activityGraph = new WalletActivityGraph(activity);
     activityGraph->setToolTip(tr("Credits appear above the line; debits below. Exact amounts are shown in recent transactions."));
     activityLayout->addWidget(activityGraph);
+    auto* legend = new QHBoxLayout;
+    auto* incoming = new QLabel(tr("↓ Incoming"), activity);
+    incoming->setObjectName("activityCreditLegend");
+    auto* outgoing = new QLabel(tr("↑ Outgoing"), activity);
+    outgoing->setObjectName("activityDebitLegend");
+    legend->addWidget(incoming);
+    legend->addWidget(outgoing);
+    legend->addStretch();
+    activityLayout->addLayout(legend);
+    GUIUtil::setFont({incoming, outgoing}, GUIUtil::FontWeight::Normal, 9);
+    // Retire the old expanding spacer between the two dashboard cards.
+    ui->verticalLayout_2->removeItem(ui->verticalSpacer);
+    delete ui->verticalSpacer;
+    ui->verticalSpacer = nullptr;
     ui->verticalLayout_2->addWidget(activity);
     ui->verticalLayout_2->setSpacing(18);
 
@@ -227,7 +343,7 @@ OverviewPage::OverviewPage(QWidget* parent) :
     ui->verticalLayout->addWidget(emptyTransactions, 1);
     ui->listTransactions->hide();
 
-    GUIUtil::setFont({heroBalance}, GUIUtil::FontWeight::Bold, 24);
+    GUIUtil::setFont({heroBalance}, GUIUtil::FontWeight::Bold, 30);
     GUIUtil::setFont({totalCaption}, GUIUtil::FontWeight::Normal, 10);
     GUIUtil::setFont({balanceHint}, GUIUtil::FontWeight::Normal, 9);
     GUIUtil::setFont({activityTitle}, GUIUtil::FontWeight::Bold, 12);
@@ -272,6 +388,8 @@ OverviewPage::OverviewPage(QWidget* parent) :
 
     // Recent transactions
     ui->listTransactions->setItemDelegate(txdelegate);
+    ui->listTransactions->setResizeMode(QListView::Adjust);
+    ui->listTransactions->setMouseTracking(true);
     // Note: minimum height of listTransactions will be set later in updateAdvancedCJUI() to reflect actual settings
     ui->listTransactions->setAttribute(Qt::WA_MacShowFocusRect, false);
 
@@ -372,7 +490,18 @@ void OverviewPage::updateWatchOnlyLabels(bool showWatchOnly)
 
 void OverviewPage::setClientModel(ClientModel *model)
 {
+    if (clientModel) disconnect(clientModel, nullptr, this, nullptr);
     this->clientModel = model;
+    dashboardHeight = model ? model->node().getNumBlocks() : -1;
+    if (model) {
+        connect(model, &ClientModel::numConnectionsChanged, this, [this](int) { updateNetworkOverview(); });
+        connect(model, &ClientModel::networkActiveChanged, this, [this](bool) { updateNetworkOverview(); });
+        connect(model, &ClientModel::numBlocksChanged, this,
+            [this](int count, const QDateTime&, const QString&, double, bool header) {
+                if (!header) { dashboardHeight = count; updateNetworkOverview(); }
+            });
+    }
+    updateNetworkOverview();
     if(model)
     {
         // Show warning if this is a prerelease version
@@ -446,9 +575,26 @@ void OverviewPage::updateAlerts(const QString &warnings)
 
 void OverviewPage::showOutOfSyncWarning(bool fShow)
 {
+    outOfSync = fShow;
+    updateNetworkOverview();
     ui->labelWalletStatus->setVisible(fShow);
     ui->labelCoinJoinSyncStatus->setVisible(fShow);
     ui->labelTransactionsStatus->setVisible(fShow);
+}
+
+void OverviewPage::updateNetworkOverview()
+{
+    if (!clientModel) {
+        connectionValue->setText(tr("Initializing"));
+        blockHeightValue->setText(QString::fromUtf8("—"));
+        syncValue->setText(tr("Checking..."));
+        return;
+    }
+    const bool active = clientModel->node().getNetworkActive();
+    const int peers = clientModel->getNumConnections();
+    connectionValue->setText(!active ? tr("Network paused") : peers == 0 ? tr("Connecting...") : tr("%n peer(s)", "", peers));
+    blockHeightValue->setText(QLocale::system().toString(dashboardHeight));
+    syncValue->setText(!active ? tr("Offline view") : peers == 0 ? tr("Waiting for peers") : outOfSync ? tr("Catching up") : tr("Up to date"));
 }
 
 void OverviewPage::updateCoinJoinProgress()

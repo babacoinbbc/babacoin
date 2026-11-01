@@ -68,6 +68,7 @@ using namespace boost::placeholders;
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPointer>
 #ifdef ENABLE_WALLET
 #include <qt/smartnodewizard.h>
@@ -788,19 +789,55 @@ void BitcoinGUI::createToolBars()
             toolbar->addWidget(button);
         }
 
-        auto setNavigationIcon = [](QToolButton* button, const QString& name) {
+        auto setNavigationIcon = [this](QToolButton* button, const QString& name) {
             // Widgets added with addWidget() do not inherit QToolBar's action style.
             button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-            QPixmap source(":/icons/" + name);
-            source = source.scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            const qreal ratio = devicePixelRatioF();
             QIcon icon;
             for (int state = 0; state < 2; ++state) {
-                QPixmap image(20, 20);
+                QPixmap image(qRound(20 * ratio), qRound(20 * ratio));
+                image.setDevicePixelRatio(ratio);
                 image.fill(Qt::transparent);
                 QPainter painter(&image);
-                painter.drawPixmap(0, 0, source);
-                painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-                painter.fillRect(image.rect(), state ? QColor("#14232a") : QColor("#b3c4ca"));
+                painter.setRenderHint(QPainter::Antialiasing);
+                painter.setPen(QPen(state ? QColor("#14232a") : QColor("#b3c4ca"), 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+                painter.setBrush(Qt::NoBrush);
+                if (name == "tx_inout") {
+                    for (int x : {3, 11}) for (int y : {3, 11})
+                        painter.drawRoundedRect(QRectF(x, y, 6, 6), 1.5, 1.5);
+                } else if (name == "send" || name == "receive") {
+                    const bool send = name == "send";
+                    painter.drawLine(QPointF(5, 15), QPointF(15, 5));
+                    QPainterPath arrow;
+                    if (send) { arrow.moveTo(7, 5); arrow.lineTo(15, 5); arrow.lineTo(15, 13); }
+                    else { arrow.moveTo(5, 7); arrow.lineTo(5, 15); arrow.lineTo(13, 15); }
+                    painter.drawPath(arrow);
+                } else if (name == "transaction_0") {
+                    painter.drawEllipse(QRectF(2.5, 2.5, 15, 15));
+                    QPainterPath hand; hand.moveTo(10, 5.5); hand.lineTo(10, 10); hand.lineTo(13.5, 12);
+                    painter.drawPath(hand);
+                } else if (name == "connect_4") {
+                    painter.drawEllipse(QRectF(2.5, 2.5, 15, 15));
+                    painter.drawEllipse(QRectF(6.5, 2.5, 7, 15));
+                    painter.drawLine(QPointF(3, 10), QPointF(17, 10));
+                } else if (name == "synced") {
+                    painter.drawLine(QPointF(10, 5), QPointF(4, 15));
+                    painter.drawLine(QPointF(10, 5), QPointF(16, 15));
+                    painter.drawLine(QPointF(4, 15), QPointF(16, 15));
+                    for (const QPointF& point : {QPointF(10, 4), QPointF(4, 15), QPointF(16, 15)}) {
+                        painter.setBrush(state ? QColor("#e4be60") : QColor("#102028"));
+                        painter.drawEllipse(point, 2.5, 2.5);
+                    }
+                } else if (name == "appearance") {
+                    painter.drawEllipse(QRectF(3, 3, 14, 14));
+                    painter.setBrush(state ? QColor("#14232a") : QColor("#b3c4ca"));
+                    painter.drawPie(QRectF(3, 3, 14, 14), 90 * 16, 180 * 16);
+                } else {
+                    painter.drawArc(QRectF(3, 3, 14, 14), 35 * 16, 130 * 16);
+                    painter.drawArc(QRectF(3, 3, 14, 14), 215 * 16, 130 * 16);
+                    painter.drawLine(QPointF(3, 3), QPointF(3, 8));
+                    painter.drawLine(QPointF(17, 12), QPointF(17, 17));
+                }
                 painter.end();
                 icon.addPixmap(image, QIcon::Normal, state ? QIcon::On : QIcon::Off);
             }
@@ -843,6 +880,7 @@ void BitcoinGUI::createToolBars()
         QToolButton* appearanceButton = new QToolButton(toolbar);
         appearanceButton->setObjectName("themeToggle");
         appearanceButton->setText(tr("Day / Night"));
+        setNavigationIcon(appearanceButton, "appearance");
         appearanceButton->setToolTip(tr("Switch between day and night mode (Ctrl+Shift+L)"));
         appearanceButton->setAccessibleName(tr("Switch between day and night mode"));
         appearanceButton->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_L));

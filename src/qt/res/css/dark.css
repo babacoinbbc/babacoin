@@ -1085,6 +1085,14 @@ QFrame#webWalletCard, QWidget#OverviewPage QFrame#activityCard, QWidget#Overview
 }
 QWidget#OverviewPage QLabel#label_4, QWidget#OverviewPage QLabel#label_5,
 QLabel#activityTitle { color: #e3edf0; }
+QFrame#networkMetricCard { background: #15232b; border-color: #2b414b; }
+QFrame#networkMetricCard:hover { border-color: #76663e; }
+QLabel#metricCaption { color: #96aeb9; }
+QLabel#connectionValue, QLabel#blockHeightValue, QLabel#syncValue { color: #edf4f5; }
+QLabel#activityCreditLegend { color: #65d3b2; }
+QLabel#activityDebitLegend { color: #f08b9a; }
+QWidget#OverviewPage QFrame#frame:hover, QWidget#OverviewPage QFrame#frame_2:hover,
+QWidget#OverviewPage QFrame#activityCard:hover { border-color: #48616a; }
 QWidget#OverviewPage QListView::item { border-bottom-color: #2b414b; }
 QAbstractItemView { selection-background-color: #e4be60; selection-color: #14232a; }
 

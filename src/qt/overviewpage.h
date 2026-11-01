@@ -61,6 +61,11 @@ private:
     QLabel* emptyTransactions;
     QLabel* historyLoadingNotice;
     QLabel* heroBalance;
+    QLabel* connectionValue;
+    QLabel* blockHeightValue;
+    QLabel* syncValue;
+    bool outOfSync{true};
+    int dashboardHeight{-1};
     std::unique_ptr<TransactionFilterProxy> filter;
 
     void SetupTransactionList(int nNumItems);
@@ -69,6 +74,7 @@ private:
 private Q_SLOTS:
     void updateRecentActivity();
     void updateHistoryLoading();
+    void updateNetworkOverview();
     void toggleCoinJoin();
     void updateDisplayUnit();
     void updateCoinJoinProgress();
