@@ -134,7 +134,7 @@ void StartupPanel::setPhase(const QString& message)
 void StartupPanel::setProgress(const QString& title, int progress)
 {
     if (m_stopping) return;
-    m_phase->setText(title);
+    m_phase->setText(tr("%1 — %2%").arg(title).arg(qBound(0, progress, 100)));
     m_phase->setTextFormat(Qt::PlainText);
     m_progress->setRange(0, 100);
     m_progress->setFormat("%p%");
@@ -156,8 +156,10 @@ void StartupPanel::setWalletScanProgress(const QString& wallet, int start, int c
     m_progress->setRange(0, 10000);
     m_progress->setValue(value);
     m_progress->setFormat(percent);
-    m_scanSummary->setText(tr("Blocks checked: %1 / %2 · Current height: %3 / %4")
-        .arg(locale.toString(qlonglong(scan.scannedBlocks())), locale.toString(qlonglong(scan.totalBlocks())),
+    // Theme progress bars deliberately hide their text. Keep the percentage in
+    // a normal label so it stays readable in either theme and at every scale.
+    m_scanSummary->setText(tr("%1 complete · Blocks checked: %2 / %3\nCurrent height: %4 / %5")
+        .arg(percent, locale.toString(qlonglong(scan.scannedBlocks())), locale.toString(qlonglong(scan.totalBlocks())),
             locale.toString(qlonglong(current)), locale.toString(qlonglong(target))));
     m_scanSummary->show();
 }

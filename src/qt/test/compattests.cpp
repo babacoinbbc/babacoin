@@ -219,6 +219,7 @@ void CompatTests::startupPanel()
     auto* summary = panel.findChild<QLabel*>("startupScanSummary");
     QVERIFY(summary && !summary->isHidden());
     QVERIFY(summary->text().contains("119"));
+    QVERIFY(summary->text().contains(progress->format()));
     panel.setWalletScanProgress("test", 100, 199, 199, false);
     QCOMPARE(progress->value(), 9999);
     panel.setWalletScanProgress("test", 100, 199, 199, true);
