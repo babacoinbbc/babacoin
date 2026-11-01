@@ -95,7 +95,9 @@ def main():
                     raise ValueError('Missing isolated GUI launcher')
         if source != args.source_commit:
             raise ValueError('Mixed source revisions in release: ' + name)
-        published = 'babacoin-' + args.tag + '-' + name[len('babacoin-'):]
+        # Input artifacts carry a test suffix; stable end-user archives do not.
+        package_name = name[len('babacoin-'):].replace('-test.', '.')
+        published = 'babacoin-' + args.tag + '-' + package_name
         shutil.copyfile(archive, args.output / published)
         (args.output / (published + '.sha256')).write_text(checksum + '  ' + published + '\n', encoding='ascii')
         manifest['packages'].append({'name': published, 'sha256': checksum, 'format': kind,

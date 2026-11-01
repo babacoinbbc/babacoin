@@ -17,6 +17,7 @@
 #include <qt/walletmodel.h>
 
 #include <coinjoin/coinjoin-client-options.h>
+#include <validation.h>
 
 #include <QAbstractItemDelegate>
 #include <QPainter>
@@ -611,6 +612,10 @@ void OverviewPage::updateNetworkOverview()
 void OverviewPage::updateCoinJoinProgress()
 {
     if (!walletModel || !clientModel || clientModel->node().shutdownRequested() || !clientModel->smartnodeSync().isBlockchainSynced()) return;
+    // Statistics may query wallet/chain state. Keep the last display while a
+    // header batch holds the chain lock; the normal refresh retries later.
+    TRY_LOCK(cs_main, locked_chain);
+    if (!locked_chain) return;
 
     QString strAmountAndRounds;
     QString strCoinJoinAmount = BitcoinUnits::formatHtmlWithUnit(nDisplayUnit, clientModel->coinJoinOptions().getAmount() * COIN, false, BitcoinUnits::separatorAlways);

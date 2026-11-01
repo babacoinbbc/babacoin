@@ -13,6 +13,7 @@
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
 #include <qt/smartnodewizard.h>
+#include <qt/smartnodelist.h>
 #include <qt/webwalletpage.h>
 #include <qt/rpcconsole.h>
 #include <qt/modaloverlay.h>
@@ -333,6 +334,12 @@ void TestGUI()
                 QCOMPARE(transactionTableModel->rowCount({}), 0);
             }
         });
+    SmartnodeList smartnodes;
+    smartnodes.setClientModel(&clientModel);
+    smartnodes.setWalletModel(&walletModel);
+    auto* mySmartnodes = smartnodes.findChild<QCheckBox*>("checkBoxMySmartnodesOnly");
+    QVERIFY(mySmartnodes);
+    mySmartnodes->setChecked(true);
     heartbeat.start(0);
     std::atomic<bool> historyLockHeld{false}, releaseHistoryLock{false}, historyWaitTimedOut{false};
     std::thread headerBatch([&] {
@@ -349,11 +356,20 @@ void TestGUI()
     while (!historyLockHeld.load()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
     bool historyHeartbeatWhileLocked = false;
     QTimer::singleShot(1, [&] { historyHeartbeatWhileLocked = !releaseHistoryLock.load(); });
+    // The owner-only Smartnode filter also performs periodic UTXO queries.
+    // It must retry with its refresh request intact while validation is busy.
+    QMetaObject::invokeMethod(&smartnodes, "on_checkBoxMySmartnodesOnly_stateChanged", Qt::DirectConnection,
+        Q_ARG(int, int(Qt::Checked)));
+    QMetaObject::invokeMethod(&smartnodes, "updateDIP3ListScheduled", Qt::DirectConnection);
     QTest::qWait(100);
     releaseHistoryLock.store(true);
     headerBatch.join();
     QVERIFY2(!historyWaitTimedOut.load(), "History loading waited for the validation lock on the GUI thread");
     QVERIFY(historyHeartbeatWhileLocked);
+    QMetaObject::invokeMethod(&smartnodes, "updateDIP3ListScheduled", Qt::DirectConnection);
+    auto* nodeCount = smartnodes.findChild<QLabel*>("countLabelDIP3");
+    QVERIFY(nodeCount);
+    QCOMPARE(nodeCount->text(), QString("0"));
     QVERIFY(transactionTableModel->isLoadingHistory());
     QCOMPARE(transactionTableModel->rowCount({}), 0);
     QTRY_VERIFY(!transactionTableModel->isLoadingHistory());

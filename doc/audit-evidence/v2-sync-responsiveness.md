@@ -27,6 +27,15 @@ deferred history completion and successful replay after the lock is released.
 Another check defers a live display update and confirms it is applied after
 release. These changes affect display scheduling, not wallet records or spending.
 
+The Smartnode table's owner-only filter also queried collateral through the
+chain lock from its GUI timer. It now takes one nonblocking read-only collateral
+snapshot, releases the chain lock before building table rows, and retains the
+refresh request if the snapshot was busy. The same held-lock fixture exercises
+the owner-only filter and verifies that its deferred refresh completes. Optional
+CoinJoin progress statistics likewise keep their last display while the chain
+lock is busy. Mixing, registration and transaction submission rules are unchanged.
+Filtered-out Smartnode rows free their temporary items before returning.
+
 ## Observer-only changes to protected validation files
 
 `src/validation.h` adds an optional read-only progress callback to

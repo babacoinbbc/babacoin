@@ -74,7 +74,7 @@ private:
 
     CDeterministicMNCPtr GetSelectedDIP3MN();
 
-    void updateDIP3List();
+    bool updateDIP3List();
 
 Q_SIGNALS:
     void setupRequested();
