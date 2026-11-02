@@ -33,6 +33,21 @@ separate operator coordination and review.
 
 ## What changes in V2
 
+### Automatic Linux full-node setup
+
+Ubuntu/Debian users can install the native runtime libraries and the latest
+stable node package with the [automatic setup/update tool](doc/linux-node-setup.md).
+It detects the exact OS/architecture, verifies downloads, optionally imports
+bootstrap, and gracefully upgrades/restarts a selected running daemon while
+retaining its data and configuration. It also creates simple start/stop/CLI
+Bash launchers. Read the guide before running this administration script:
+
+```bash
+curl -fL --proto '=https' --proto-redir '=https' \
+  https://raw.githubusercontent.com/babacoinbbc/babacoin/main/install-node.sh \
+  -o install-node.sh && bash install-node.sh
+```
+
 ![Babacoin V2 desktop wallet in night mode](doc/images/v2-wallet-night.jpg)
 
 [View the day theme](doc/images/v2-wallet-day.jpg)

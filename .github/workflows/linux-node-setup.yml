@@ -1,0 +1,58 @@
+name: Linux node setup and graceful upgrade
+on:
+  pull_request:
+    paths: ['install-node.sh', 'contrib/linux-node-setup.py', 'contrib/verify-release-archive.py', 'test/util/linux_node_setup_test.py', 'ci/linux-node-setup-smoke.py', '.github/workflows/linux-node-setup.yml']
+  push:
+    branches: [main]
+    paths: ['install-node.sh', 'contrib/linux-node-setup.py', 'contrib/verify-release-archive.py', 'test/util/linux_node_setup_test.py', 'ci/linux-node-setup-smoke.py', '.github/workflows/linux-node-setup.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safety:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash -n install-node.sh
+      - run: python3 test/util/linux_node_setup_test.py
+      - run: python3 test/util/release_archive_safety_test.py
+      - run: python3 test/lint/check-network-compatibility.py
+  clean-install-upgrade:
+    needs: safety
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['ubuntu:18.04', 'ubuntu:20.04', 'ubuntu:22.04', 'ubuntu:24.04', 'ubuntu:26.04', 'debian:12', 'debian:13']
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install missing native libraries and upgrade an offline live node
+        run: |
+          docker run --rm --init -e BBC_DISPOSABLE_BUILD=1 \
+            --mount "type=bind,source=$PWD,target=/src,readonly" \
+            '${{ matrix.image }}' bash -c 'bash /src/install-node.sh --help && apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates && python3 /src/ci/linux-node-setup-smoke.py'
+  systemd-upgrade:
+    needs: safety
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserve a real service and its unprivileged wallet owner
+        env:
+          BBC_DISPOSABLE_BUILD: '1'
+          BBC_SYSTEMD_SMOKE: '1'
+        run: python3 ci/linux-node-setup-smoke.py
+  standalone-download:
+    needs: safety
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the single downloaded Bash file with pinned remote helpers
+        run: |
+          docker run --rm --init -e BBC_DISPOSABLE_BUILD=1 -e BBC_STANDALONE_SMOKE=1 \
+            -e 'BBC_SETUP_SOURCE=${{ github.event.pull_request.head.sha || github.sha }}' \
+            --mount "type=bind,source=$PWD,target=/src,readonly" \
+            ubuntu:24.04 bash -c 'apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates && python3 /src/ci/linux-node-setup-smoke.py'
