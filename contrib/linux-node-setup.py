@@ -471,7 +471,13 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
             if full['payload_bytes'] > 16*1024**3: fail('Bootstrap exceeds installer safety limit.')
             data_parent = data if data.exists() else next(p for p in data.parents if p.exists())
             if shutil.disk_usage(str(data_parent)).free < full['payload_bytes']+512*1024**2: fail('Insufficient space for bootstrap and validation. Use --bootstrap never or a larger data disk.')
-            if shutil.disk_usage(str(root)).free < full['archive_bytes']+full['payload_bytes']+512*1024**2: fail('Insufficient staging space for bootstrap.')
+            # Archive, extracted staging input and the data-directory copy all
+            # coexist until installation completes. Count BOTH payload copies
+            # when program staging and node data share one filesystem.
+            staging_bytes = full['archive_bytes']+full['payload_bytes']
+            if root.stat().st_dev == data_parent.stat().st_dev:
+                staging_bytes += full['payload_bytes']
+            if shutil.disk_usage(str(root)).free < staging_bytes+512*1024**2: fail('Insufficient space for bootstrap staging and data copies. Use --bootstrap never or a larger disk; the daemon has not been stopped.')
             print('Downloading the verified full bootstrap. Normal consensus validation still runs.', flush=True)
             zipped = fetch_asset(release, 'bootstrap.zip', work, full['archive_sha256'], limit=8*1024**3)
             if zipped.stat().st_size != full['archive_bytes']: fail('Bootstrap archive size mismatch.')
