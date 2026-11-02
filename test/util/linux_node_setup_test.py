@@ -51,18 +51,15 @@ class NodeSetupTests(unittest.TestCase):
         with patch.object(setup, 'download', return_value=path), patch.object(Path, 'read_text', enforce_utf8):
             self.assertEqual(setup.get_json('https://example.invalid', self.root, 'ignored')['body'], '\u2014 Babacoin')
 
-    def test_asset_origin_unique_and_exact(self):
-        release = {'tag_name':'v2.0.2','assets':[{'name':'x','browser_download_url':'https://github.com/babacoinbbc/babacoin/releases/download/v2.0.2/x'}]}
-        self.assertEqual(setup.asset(release, 'x')['name'], 'x')
-        release['assets'].append(release['assets'][0])
-        with self.assertRaises(RuntimeError): setup.asset(release, 'x')
-        release['assets'] = [{'name':'x','browser_download_url':'https://attacker.invalid/x'}]
-        with self.assertRaises(RuntimeError): setup.asset(release, 'x')
+    def test_asset_origin_stable_tag_and_exact_path(self):
+        self.assertEqual(setup.asset_url('v2.0.2', 'x'), 'https://github.com/babacoinbbc/babacoin/releases/download/v2.0.2/x')
+        for tag, name in [('v2.0.2-rc.1','x'),('main','x'),('v2.0.2','../wallet.dat'),('v2.0.2','https://attacker.invalid/x')]:
+            with self.assertRaises(RuntimeError): setup.asset_url(tag, name)
 
     def test_wrong_checksum_rejected(self):
-        release = {'tag_name':'v2.0.2','assets':[{'name':'x','size':1,'digest':'sha256:'+'b'*64,'browser_download_url':'https://github.com/babacoinbbc/babacoin/releases/download/v2.0.2/x'}]}
+        release = {'tag_name':'v2.0.2'}
         with patch.object(setup, 'download') as download:
-            with self.assertRaises(RuntimeError): setup.fetch_asset(release, 'x', self.root, 'a'*64)
+            with self.assertRaises(RuntimeError): setup.fetch_asset(release, 'x', self.root, 'not-a-sha256')
             download.assert_not_called()
 
     def test_multiple_nodes_require_explicit_selection(self):

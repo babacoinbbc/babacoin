@@ -22,7 +22,7 @@ import urllib.request
 import zipfile
 
 REPO = 'babacoinbbc/babacoin'
-API = 'https://api.github.com/repos/' + REPO
+STABLE_TAG = r'v[2-9][0-9]*\.[0-9]+\.[0-9]+(?:\.[0-9]+)?'
 GENESIS = '84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854'
 PROGRAMS = ('babacoind', 'babacoin-cli', 'babacoin-tx')
 PROFILES = {
@@ -99,22 +99,15 @@ def get_json(url, directory, name, limit=8*1024*1024):
     return json.loads(download(url, directory/name, limit).read_text(encoding='utf-8'))
 
 
-def asset(release, name):
-    found = [a for a in release.get('assets', []) if a.get('name') == name]
-    if len(found) != 1: fail('Release is missing a unique asset: '+name)
-    a = found[0]
-    expected = 'https://github.com/'+REPO+'/releases/download/'+release['tag_name']+'/'+name
-    if a.get('browser_download_url') != expected: fail('Unexpected release asset origin.')
-    return a
+def asset_url(tag, name):
+    if not re.fullmatch(STABLE_TAG, tag): fail('Invalid stable release tag.')
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', name) or '..' in name: fail('Invalid release asset name.')
+    return 'https://github.com/'+REPO+'/releases/download/'+tag+'/'+name
 
 
 def fetch_asset(release, name, work, sha=None, limit=None):
-    a = asset(release, name)
-    size = a['size']
-    if not isinstance(size, int) or size < 1 or (limit and size > limit): fail('Invalid asset size.')
-    declared = a.get('digest')
-    if declared and sha and declared != 'sha256:'+sha: fail('Release checksum disagreement.')
-    return download(a['browser_download_url'], work/name, size, sha)
+    if sha is not None and not re.fullmatch(r'[a-f0-9]{64}', sha): fail('Invalid release SHA-256.')
+    return download(asset_url(release['tag_name'], name), work/name, limit or 2*1024**3, sha)
 
 
 def option(args, name):
@@ -388,12 +381,13 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
     print('Platform: {} {} {}; data: {}'.format(os_id, version, arch, data), flush=True)
     with tempfile.TemporaryDirectory(prefix='.download-', dir=str(root)) as temporary:
         work = Path(temporary)
-        release = get_json(API+'/releases/latest', work, 'release.json')
-        tag = release['tag_name']
-        if release.get('draft') or release.get('prerelease') or not re.fullmatch(r'v[2-9][0-9]*\.[0-9]+\.[0-9]+(?:\.[0-9]+)?', tag): fail('Latest release is not a supported stable V2+ release.')
+        # GitHub's stable-release download redirect avoids anonymous REST API
+        # quotas. Pin ALL remaining downloads to the tag inside this manifest.
+        manifest = get_json('https://github.com/'+REPO+'/releases/latest/download/RELEASE-MANIFEST.json', work, 'RELEASE-MANIFEST.json')
+        tag = manifest['tag']
+        if not re.fullmatch(STABLE_TAG, tag): fail('Latest release is not a supported stable V2+ release.')
+        release = dict(tag_name=tag)
         name = 'babacoin-{}-{}-{}-{}.tar.gz'.format(tag, os_id, version, arch)
-        asset(release, name)  # Reject unsupported release/ABI BEFORE apt or shutdown.
-        manifest = json.loads(fetch_asset(release, 'RELEASE-MANIFEST.json', work, limit=8*1024*1024).read_text(encoding='utf-8'))
         if manifest['tag'] != tag or not re.fullmatch(r'[a-f0-9]{40}', manifest['source_commit']): fail('Invalid release source manifest.')
         records = [p for p in manifest['packages'] if p['name'] == name]
         if len(records) != 1: fail('Package is not uniquely pinned in the release manifest.')
@@ -413,8 +407,14 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
         print(subprocess.check_output([str(unpacked/'babacoind'), '--version'], universal_newlines=True, encoding='utf-8', errors='replace').splitlines()[0], flush=True)
         bootstrap = None
         need_bootstrap = args.bootstrap == 'always' or (args.bootstrap == 'auto' and not (data/'blocks').exists() and not (data/'chainstate').exists())
+        bm = None
         if need_bootstrap and not (data/'bootstrap.dat').exists() and not (data/'bootstrap.dat.old').exists():
-            bm = json.loads(fetch_asset(release, 'BOOTSTRAP-MANIFEST.json', work, limit=8*1024*1024).read_text(encoding='utf-8'))
+            try:
+                bm = json.loads(fetch_asset(release, 'BOOTSTRAP-MANIFEST.json', work, limit=8*1024*1024).read_text(encoding='utf-8'))
+            except urllib.error.HTTPError as error:
+                if error.code != 404 or args.bootstrap != 'auto': raise
+                print('No bootstrap published for this stable release; normal peer synchronization will be used.', flush=True)
+        if bm is not None:
             full = [r for r in bm['archives'] if r['archive_name'] == 'bootstrap.zip' and r['first_height'] == 0]
             if len(full) != 1: fail('No unique full bootstrap archive.')
             full = full[0]
@@ -424,6 +424,7 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
             if shutil.disk_usage(str(root)).free < full['archive_bytes']+full['payload_bytes']+512*1024**2: fail('Insufficient staging space for bootstrap.')
             print('Downloading the verified full bootstrap. Normal consensus validation still runs.', flush=True)
             zipped = fetch_asset(release, 'bootstrap.zip', work, full['archive_sha256'], limit=8*1024**3)
+            if zipped.stat().st_size != full['archive_bytes']: fail('Bootstrap archive size mismatch.')
             bootstrap = work/'bootstrap.dat'; unpack_bootstrap(zipped, full, bootstrap)
         backup = root/('backups/'+time.strftime('%Y%m%d-%H%M%S')+'-'+str(os.getpid()))
         make_owned_directory(backup, account.pw_uid, account.pw_gid)
