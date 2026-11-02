@@ -33,3 +33,14 @@ jobs:
           docker run --rm --init -e BBC_DISPOSABLE_BUILD=1 \
             --mount "type=bind,source=$PWD,target=/src,readonly" \
             '${{ matrix.image }}' bash -c 'bash /src/install-node.sh --help && apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates && python3 /src/ci/linux-node-setup-smoke.py'
+  systemd-upgrade:
+    needs: safety
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserve a real service and its unprivileged wallet owner
+        env:
+          BBC_DISPOSABLE_BUILD: '1'
+          BBC_SYSTEMD_SMOKE: '1'
+        run: python3 ci/linux-node-setup-smoke.py

@@ -304,7 +304,7 @@ def write_launchers(root, binary_dir, data, args, user, unit):
     if '-datadir' in args: fail('Use the standard -datadir=PATH syntax for upgrades.')
     daemon_args = ['-datadir='+str(data), '-daemon=1', '-server=1']+filtered
     rpc_args = ['-datadir='+str(data), '-rpcconnect=127.0.0.1']
-    for name in ('-conf', '-rpcport'):
+    for name in ('-conf', '-rpcport', '-rpcuser', '-rpcpassword'):
         value = option(args, name)
         if value is not None: rpc_args.append(name+'='+value)
     quote = lambda values: ' '.join(shlex.quote(str(v)) for v in values)
@@ -332,8 +332,12 @@ def start_node(node, binary_dir, data, args, user):
     env = os.environ.copy(); env['HOME'] = account.pw_dir
     def owner():
         os.initgroups(user, account.pw_gid); os.setgid(account.pw_gid); os.setuid(account.pw_uid)
-    subprocess.check_call([str(binary_dir/'babacoind')]+args, cwd=str(node['cwd'] if node else account.pw_dir),
-                          env=env, preexec_fn=owner)
+    try:
+        subprocess.check_call([str(binary_dir/'babacoind')]+args, cwd=str(node['cwd'] if node else account.pw_dir),
+                              env=env, preexec_fn=owner)
+    except subprocess.CalledProcessError:
+        # Command arguments can contain RPC credentials; never echo them.
+        fail('Daemon returned a startup error. Inspect its debug.log; command-line credentials were not printed.')
 
 
 def main():

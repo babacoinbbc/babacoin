@@ -41,6 +41,16 @@ class NodeSetupTests(unittest.TestCase):
         self.assertEqual(setup.read_os(path), ('ubuntu', '24.04'))
         self.assertFalse((self.root/'bad').exists())
 
+    def test_release_metadata_is_explicit_utf8(self):
+        path = self.root/'release.json'
+        path.write_bytes('{"body":"\u2014 Babacoin"}'.encode('utf-8'))
+        original = Path.read_text
+        def enforce_utf8(p, *args, **kwargs):
+            self.assertEqual(kwargs.get('encoding'), 'utf-8')
+            return original(p, *args, **kwargs)
+        with patch.object(setup, 'download', return_value=path), patch.object(Path, 'read_text', enforce_utf8):
+            self.assertEqual(setup.get_json('https://example.invalid', self.root, 'ignored')['body'], '\u2014 Babacoin')
+
     def test_asset_origin_unique_and_exact(self):
         release = {'tag_name':'v2.0.2','assets':[{'name':'x','browser_download_url':'https://github.com/babacoinbbc/babacoin/releases/download/v2.0.2/x'}]}
         self.assertEqual(setup.asset(release, 'x')['name'], 'x')

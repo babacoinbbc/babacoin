@@ -4,6 +4,8 @@ import base64
 import hashlib
 import json
 import os
+import pwd
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -21,8 +23,23 @@ subprocess.check_call(command+['--no-start'])
 state = json.loads((install/'INSTALLATION.json').read_text())
 binary = Path(state['binary_dir'])/'babacoind'
 sha = hashlib.sha256(binary.read_bytes()).hexdigest()
-subprocess.check_call([str(install/'start-babacoin.sh'), '-connect=0', '-listen=0', '-dnsseed=0',
-    '-discover=0', '-upnp=0', '-listenonion=0', '-maxconnections=0', '-walletbroadcast=0', '-keypool=2'])
+offline = ['-connect=0', '-listen=0', '-dnsseed=0', '-discover=0', '-upnp=0', '-listenonion=0',
+           '-maxconnections=0', '-walletbroadcast=0', '-keypool=2']
+unit_path = None
+unit_contents = None
+if os.environ.get('BBC_SYSTEMD_SMOKE') == '1':
+    user = pwd.getpwuid(os.getuid()).pw_name
+    unit = 'bbc-node-setup-qa-'+str(os.getpid())+'.service'
+    unit_path = Path('/etc/systemd/system')/unit
+    assert not unit_path.exists()
+    fixture = work/unit
+    unit_contents = '[Unit]\nDescription=Disposable Babacoin setup test\n[Service]\nType=simple\nUser='+user+'\nTimeoutStopSec=300\nExecStart='+' '.join(shlex.quote(str(v)) for v in [binary, '-datadir='+str(data), '-daemon=0', '-server=1']+offline)+'\n'
+    fixture.write_text(unit_contents)
+    subprocess.check_call(['sudo', 'install', '-m', '600', str(fixture), str(unit_path)])
+    subprocess.check_call(['sudo', 'systemctl', 'daemon-reload'])
+    subprocess.check_call(['sudo', 'systemctl', 'start', unit])
+else:
+    subprocess.check_call([str(install/'start-babacoin.sh')]+offline)
 
 def rpc(method, *params):
     auth = base64.b64encode((data/'.cookie').read_bytes().strip()).decode()
@@ -63,9 +80,17 @@ try:
     proof = json.loads((backup/'SHA256.json').read_text())
     assert 'wallet.dat' in proof and hashlib.sha256((backup/'wallet.dat').read_bytes()).hexdigest() == proof['wallet.dat']
     assert updated['data_dir'] == str(data)
+    if unit_path:
+        actual = subprocess.check_output(['sudo', 'cat', str(unit_path)], universal_newlines=True)
+        assert actual == unit_contents and updated['unit'] == unit
     print(json.dumps(dict(result='PASS', release=state['release'], version=after['version'],
         fresh_dependency_install=True, live_graceful_upgrade=True, wallet_ownership_preserved=True,
-        verified_wallet_backup=True, external_connections=0, source_unchanged=True)))
+        verified_wallet_backup=True, external_connections=0, source_unchanged=True,
+        systemd_unit_preserved=bool(unit_path))))
 finally:
     try: rpc('stop')
     except (OSError, RuntimeError, ValueError): pass
+    if unit_path:
+        subprocess.call(['sudo', 'systemctl', 'stop', unit])
+        subprocess.check_call(['sudo', 'rm', '--', str(unit_path)])
+        subprocess.check_call(['sudo', 'systemctl', 'daemon-reload'])
