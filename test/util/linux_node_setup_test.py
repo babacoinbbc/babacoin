@@ -44,6 +44,33 @@ class NodeSetupTests(unittest.TestCase):
         self.assertEqual(setup.read_os(path), ('ubuntu', '24.04'))
         self.assertFalse((self.root/'bad').exists())
 
+    def test_full_disk_stops_before_apt_or_signals(self):
+        with patch.object(setup.shutil, 'disk_usage', return_value=SimpleNamespace(free=0)), \
+             patch.object(setup.subprocess, 'check_call') as apt, patch.object(setup.os, 'kill') as kill:
+            with self.assertRaisesRegex(RuntimeError, 'Insufficient free space'):
+                setup.check_storage([('APT package lists', self.root/'not-created')])
+            apt.assert_not_called(); kill.assert_not_called()
+        self.assertFalse((self.root/'not-created').exists())
+
+    def test_full_inode_table_stops_read_only(self):
+        with patch.object(setup.shutil, 'disk_usage', return_value=SimpleNamespace(free=1024**3)), \
+             patch.object(setup.os, 'statvfs', create=True, return_value=SimpleNamespace(f_files=10000,f_favail=0)):
+            with self.assertRaisesRegex(RuntimeError, 'Insufficient free inodes'):
+                setup.check_storage([('APT package lists',self.root)])
+
+    def test_storage_checks_each_filesystem_once(self):
+        with patch.object(setup.shutil, 'disk_usage', return_value=SimpleNamespace(free=1024**3)) as space, \
+             patch.object(setup.os, 'statvfs', create=True, return_value=SimpleNamespace(f_files=10000,f_favail=9000)):
+            setup.check_storage([('APT lists',self.root),('cache',self.root/'not-created')])
+            self.assertEqual(space.call_count,1)
+
+    def test_apt_error_is_actionable_and_stops_before_install(self):
+        error=setup.subprocess.CalledProcessError(100,['apt-get','update'])
+        with patch.object(setup.subprocess,'check_call',side_effect=error) as apt:
+            with self.assertRaisesRegex(RuntimeError,'No daemon has been stopped'):
+                setup.install_dependencies(['libevent-pthreads-2.1-7'])
+            apt.assert_called_once_with(['apt-get','update'])
+
     def test_release_metadata_is_explicit_utf8(self):
         path = self.root/'release.json'
         path.write_bytes('{"body":"\u2014 Babacoin"}'.encode('utf-8'))

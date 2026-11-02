@@ -73,6 +73,39 @@ def read_os(path='/etc/os-release'):
     return values.get('ID', ''), values.get('VERSION_ID', '')
 
 
+def check_storage(paths, minimum_bytes=512*1024**2, minimum_inodes=4096):
+    """Read-only preflight, before apt, backups or daemon shutdown."""
+    checked = set()
+    for label, requested in paths:
+        path = Path(requested)
+        while not path.exists():
+            if path == path.parent: fail('Cannot inspect storage for '+label)
+            path = path.parent
+        device = path.stat().st_dev
+        if device in checked: continue
+        checked.add(device)
+        free = shutil.disk_usage(str(path)).free
+        if free < minimum_bytes:
+            fail('Insufficient free space for {} ({}): {} MiB available; at least {} MiB required before APT. '
+                 'Check df -h and df -i; apt-get clean can free package-download cache. '
+                 'Do not delete wallets, chain data or backups. The daemon has not been stopped.'
+                 .format(label, path, free//(1024**2), minimum_bytes//(1024**2)))
+        if hasattr(os, 'statvfs'):
+            info = os.statvfs(str(path))
+            if info.f_files > 0 and info.f_favail < minimum_inodes:
+                fail('Insufficient free inodes for {} ({}): {} available. Check df -i and storage quotas; '
+                     'no daemon was stopped and no wallet files were deleted.'.format(label, path, info.f_favail))
+
+
+def install_dependencies(packages):
+    try:
+        subprocess.check_call(['apt-get', 'update'])
+        subprocess.check_call(['apt-get', 'install', '-y', '--no-install-recommends']+packages)
+    except subprocess.CalledProcessError:
+        fail('APT preparation failed. Resolve the disk/inode/quota or repository error printed above, then rerun setup. '
+             'No daemon has been stopped or replaced. Wallet/chain files should not be deleted to retry installation.')
+
+
 class HTTPSRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if not newurl.startswith('https://'): fail('Non-HTTPS download redirect rejected.')
@@ -378,6 +411,8 @@ def main():
     data = data.resolve()
     validate_data_owner(data, account.pw_uid, bool(node))
     if root == data or root in data.parents or data in root.parents: fail('Program and wallet directories must be separate.')
+    check_storage([('APT package lists', Path('/var/lib/apt/lists')), ('APT package cache', Path('/var/cache/apt')),
+                   ('installer staging and backups', root), ('node data', data)])
     make_owned_directory(root, account.pw_uid, account.pw_gid)
     with (root/'setup.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -409,8 +444,7 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
         if len(records) != 1: fail('Package is not uniquely pinned in the release manifest.')
         record = records[0]
         print('Latest stable release: '+tag+'; installing native runtime dependencies.', flush=True)
-        subprocess.check_call(['apt-get', 'update'])
-        subprocess.check_call(['apt-get', 'install', '-y', '--no-install-recommends']+packages)
+        install_dependencies(packages)
         archive = fetch_asset(release, name, work, record['sha256'], limit=2*1024**3)
         spec = importlib.util.spec_from_file_location('bbc_archive', str(Path(__file__).with_name('verify-release-archive.py')))
         verifier = importlib.util.module_from_spec(spec); spec.loader.exec_module(verifier)

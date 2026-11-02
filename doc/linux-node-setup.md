@@ -83,6 +83,27 @@ backups available for diagnosis through `debug.log`.
 
 ## Bootstrap
 
+Before APT or daemon shutdown, setup checks free space (at least 512 MiB) and
+free inodes (at least 4,096 where the filesystem reports an inode limit) on the
+APT, staging/backup and node-data filesystems. This is an initial minimum, not
+the disk capacity required for the full blockchain. Bootstrap has additional
+size checks. Setup never deletes wallets, chain files, backups or system logs
+to make space. If a VPS reports space but writes still fail, check provider
+storage quotas as well.
+
+For `No space left on device`, start with these administrative diagnostics:
+
+```bash
+sudo apt-get clean
+df -h / /var /root
+df -i / /var /root
+```
+
+APT cache cleanup removes downloaded packages, not installed applications.
+Review large directories or expand the disk before retrying; do not delete
+wallet/chain files. Resolve separately reported repository connection errors
+without disabling package signature or TLS verification.
+
 Default `--bootstrap auto` downloads the verified full bootstrap only when
 neither `blocks/` nor `chainstate/` exists and no automatic bootstrap input or
 `.old` file is already present. It verifies both archive and raw payload hashes
