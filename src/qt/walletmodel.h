@@ -322,6 +322,8 @@ public:
     static bool isWalletEnabled();
 
     int getNumBlocks() const;
+    bool hasBalanceSnapshot() const { return balanceSnapshotReady; }
+    const interfaces::WalletBalances& getCachedBalances() const { return m_cached_balances; }
     int getNumISLocks() const;
 
     int getRealOutpointCoinJoinRounds(const COutPoint& outpoint) const;
@@ -359,6 +361,7 @@ private:
 
     // Cache some values to be able to detect changes
     interfaces::WalletBalances m_cached_balances;
+    bool balanceSnapshotReady{false};
     EncryptionStatus cachedEncryptionStatus;
     int cachedNumBlocks;
     int cachedNumISLocks;

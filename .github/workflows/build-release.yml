@@ -1,4 +1,4 @@
-name: Validated V2 release candidate
+name: Validated V2 release
 'on':
   workflow_dispatch:
     inputs:
@@ -12,9 +12,27 @@ permissions:
   contents: read
   actions: read
 jobs:
+  preflight:
+    name: Verify release identity before building
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Match the tag to the compiled version and release flag
+      env:
+        RELEASE_TAG: ${{ inputs.release_tag }}
+      run: python3 ci/release_policy.py --tag "$RELEASE_TAG"
+    - name: Preserve existing releases and source tags
+      uses: actions/github-script@v7
+      env:
+        RELEASE_TAG: ${{ inputs.release_tag }}
+      with:
+        script: |
+          await require(process.env.GITHUB_WORKSPACE + '/ci/check-release-tag.js')({github, context, tag: process.env.RELEASE_TAG});
   ubuntu-compatibility:
+    needs: preflight
     uses: ./.github/workflows/ubuntu-compatibility.yml
   debian-compatibility:
+    needs: preflight
     uses: ./.github/workflows/debian-compatibility.yml
   upload-release:
     name: Assemble tested draft release
@@ -30,26 +48,13 @@ jobs:
     - uses: actions/download-artifact@v4
       with:
         path: artifacts
-    - name: Preserve existing releases
+    - name: Preserve existing releases and source tags
       uses: actions/github-script@v7
       env:
         RELEASE_TAG: ${{ inputs.release_tag }}
       with:
         script: |
-          const tag = process.env.RELEASE_TAG;
-          if (!/^v2\.0\.0-rc\.[1-9][0-9]*$/.test(tag)) {
-            core.setFailed('This pipeline currently creates V2.0.0 release candidates only.');
-            return;
-          }
-          try {
-            await github.rest.repos.getReleaseByTag({
-              ...context.repo,
-              tag
-            });
-            core.setFailed('A release already exists for this tag. Refusing to replace it.');
-          } catch (error) {
-            if (error.status !== 404) throw error;
-          }
+          await require(process.env.GITHUB_WORKSPACE + '/ci/check-release-tag.js')({github, context, tag: process.env.RELEASE_TAG});
     - name: Verify the complete same-source release payload
       env:
         RELEASE_TAG: ${{ inputs.release_tag }}
@@ -70,7 +75,7 @@ jobs:
         target_commitish: ${{ github.sha }}
         name: Babacoin ${{ inputs.release_tag }}
         draft: true
-        prerelease: true
+        prerelease: false
         generate_release_notes: false
         body_path: dist/RELEASE-NOTES.md
         fail_on_unmatched_files: true
@@ -78,4 +83,5 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   desktop-compatibility:
+    needs: preflight
     uses: ./.github/workflows/build-missing.yml

@@ -23,6 +23,9 @@ jobs:
       - run: python3 test/util/wallet_backup_safety_test.py
       - run: python3 test/util/test_report_safety_test.py
       - run: python3 test/util/release_archive_safety_test.py
+      - run: python3 test/util/bootstrap_export_test.py
+      - run: python3 test/util/release_status_test.py
+      - run: node test/util/release_tag_test.js
 
   ubuntu:
     needs: source-safety

@@ -101,6 +101,8 @@ protected:
 
 private:
     void enableReadyActions();
+    void updateCachedBlockTip();
+    bool displayFileImportProgress();
     StartupPanel* m_startupPanel{nullptr};
     QStackedWidget* m_startupStack{nullptr};
     std::vector<std::pair<QPointer<QAction>, QList<QKeySequence>>> m_startupActionShortcuts;
@@ -251,6 +253,7 @@ public Q_SLOTS:
     void setNumBlocks(int count, const QDateTime& blockDate, const QString& blockHash, double nVerificationProgress, bool headers);
     /** Set additional data sync status shown in the UI */
     void setAdditionalDataSyncProgress(double nSyncProgress);
+    void setBlockImportProgress(int phase, qulonglong processed, qulonglong total, int newBlocks);
 
     /** Notify the user of an event from the core network or transaction handling code.
        @param[in] title     the message box / notification title

@@ -25,6 +25,7 @@ using namespace boost::placeholders;
 #include <wallet/coincontrol.h>
 #include <wallet/wallet.h>
 #include <spork.h>
+#include <validation.h>
 
 #include <stdint.h>
 
@@ -73,6 +74,14 @@ void WalletModel::updateStatus()
 
 void WalletModel::pollBalanceChanged()
 {
+    // The old loop recomputed every balance before deciding whether to use it.
+    // During header-only sync, height/rounds often do not change at all. Check
+    // that cheap condition first, using a nonblocking validation-lock attempt.
+    if (!fForceCheckBalanceChanged && cachedNumBlocks >= 0 &&
+        node().coinJoinOptions().getRounds() == cachedCoinJoinRounds) {
+        TRY_LOCK(cs_main, locked_chain);
+        if (!locked_chain || node().getNumBlocks() == cachedNumBlocks) return;
+    }
     // Try to get balances and return early if locks can't be acquired. This
     // avoids the GUI from getting stuck on periodical polls if the core is
     // holding the locks for a longer time - for example, during a wallet
@@ -99,8 +108,9 @@ void WalletModel::pollBalanceChanged()
 
 void WalletModel::checkBalanceChanged(const interfaces::WalletBalances& new_balances)
 {
-    if(new_balances.balanceChanged(m_cached_balances)) {
+    if(!balanceSnapshotReady || new_balances.balanceChanged(m_cached_balances)) {
         m_cached_balances = new_balances;
+        balanceSnapshotReady = true;
         Q_EMIT balanceChanged(new_balances);
     }
 }

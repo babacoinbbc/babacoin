@@ -162,39 +162,49 @@ void SmartnodeList::updateDIP3ListScheduled()
         ui->countLabelDIP3->setText(tr("Please wait...") + " " + QString::number(nSecondsToWait));
 
         if (nSecondsToWait <= 0) {
-            updateDIP3List();
-            fFilterUpdatedDIP3 = false;
+            if (updateDIP3List()) fFilterUpdatedDIP3 = false;
         }
     } else if (mnListChanged) {
         int64_t nMnListUpdateSecods = clientModel->smartnodeSync().isBlockchainSynced() ? SMARTNODELIST_UPDATE_SECONDS : SMARTNODELIST_UPDATE_SECONDS * 10;
         int64_t nSecondsToWait = nTimeUpdatedDIP3 - GetTime() + nMnListUpdateSecods;
 
         if (nSecondsToWait <= 0) {
-            updateDIP3List();
-            mnListChanged = false;
+            if (updateDIP3List()) mnListChanged = false;
         }
     }
 }
 
-void SmartnodeList::updateDIP3List()
+bool SmartnodeList::updateDIP3List()
 {
     if (!clientModel || clientModel->node().shutdownRequested()) {
-        return;
+        return false;
     }
 
     auto mnList = clientModel->getSmartnodeList();
     std::map<uint256, CTxDestination> mapCollateralDests;
+    std::map<uint256, CAmount> collateralValues;
+    std::set<COutPoint> setOutpts;
 
     {
+        TRY_LOCK(cs_main, locked_chain);
+        if (!locked_chain) return false;
         // Get all UTXOs for each MN collateral in one go so that we can reduce locking overhead for cs_main
         // We also do this outside of the below Qt list update loop to reduce cs_main locking time to a minimum
         mnList.ForEachMN(false, [&](const CDeterministicMNCPtr& dmn) {
             CTxDestination collateralDest;
             Coin coin;
-            if (clientModel->node().getUnspentOutput(dmn->collateralOutpoint, coin) && ExtractDestination(coin.out.scriptPubKey, collateralDest)) {
-                mapCollateralDests.emplace(dmn->proTxHash, collateralDest);
+            if (clientModel->node().getUnspentOutput(dmn->collateralOutpoint, coin)) {
+                if (ExtractDestination(coin.out.scriptPubKey, collateralDest)) {
+                    mapCollateralDests.emplace(dmn->proTxHash, collateralDest);
+                }
+                collateralValues.emplace(dmn->proTxHash, coin.out.nValue);
             }
         });
+        if (walletModel && ui->checkBoxMySmartnodesOnly->isChecked()) {
+            std::vector<COutPoint> vOutpts;
+            walletModel->wallet().listProTxCoins(vOutpts);
+            setOutpts.insert(vOutpts.begin(), vOutpts.end());
+        }
     }
 
     LOCK(cs_dip3list);
@@ -214,15 +224,6 @@ void SmartnodeList::updateDIP3List()
         nextPayments.emplace(dmn->proTxHash, mnList.GetHeight() + (int)i + 1);
     }
 
-    std::set<COutPoint> setOutpts;
-    if (walletModel && ui->checkBoxMySmartnodesOnly->isChecked()) {
-        std::vector<COutPoint> vOutpts;
-        walletModel->wallet().listProTxCoins(vOutpts);
-        for (const auto& outpt : vOutpts) {
-            setOutpts.emplace(outpt);
-        }
-    }
-
     mnList.ForEachMN(false, [&](const CDeterministicMNCPtr& dmn) {
         if (walletModel && ui->checkBoxMySmartnodesOnly->isChecked()) {
             bool fMySmartnode = setOutpts.count(dmn->collateralOutpoint) ||
@@ -236,12 +237,9 @@ void SmartnodeList::updateDIP3List()
         // Address, Protocol, Status, Active Seconds, Last Seen, Pub Key
         auto addr_key = dmn->pdmnState->addr.GetKey();
         QByteArray addr_ba(reinterpret_cast<const char*>(addr_key.data()), addr_key.size());
-        Coin coin;
-        //should this be call directly or use pcoinsTip->GetCoin(outpoint, coin) without locking cs_main
-        bool isValidUtxo = GetUTXOCoin(dmn->collateralOutpoint, coin);
-        SmartnodeCollaterals collaterals = Params().GetConsensus().nCollaterals;
-        int nHeight = chainActive.Tip() == nullptr ? 0 : chainActive.Tip()->nHeight;
-        QTableWidgetItem* collateralAmountItem = new QTableWidgetItem(!isValidUtxo ? tr("Invalid") : QString::number(coin.out.nValue / COIN));
+        const auto valueIt = collateralValues.find(dmn->proTxHash);
+        const bool isValidUtxo = valueIt != collateralValues.end();
+        QTableWidgetItem* collateralAmountItem = new QTableWidgetItem(!isValidUtxo ? tr("Invalid") : QString::number(valueIt->second / COIN));
         QTableWidgetItem* addressItem = new CSmartnodeListWidgetItem<QByteArray>(QString::fromStdString(dmn->pdmnState->addr.ToString()), addr_ba);
         QTableWidgetItem* statusItem = new QTableWidgetItem(mnList.IsMNValid(dmn) ? tr("ENABLED") : (mnList.IsMNPoSeBanned(dmn) ? tr("POSE_BANNED") : tr("UNKNOWN")));
         QTableWidgetItem* PoSeScoreItem = new CSmartnodeListWidgetItem<int>(QString::number(dmn->pdmnState->nPoSePenalty), dmn->pdmnState->nPoSePenalty);
@@ -309,7 +307,15 @@ void SmartnodeList::updateDIP3List()
                           ownerItem->text() + " " +
                           votingItem->text() + " " +
                           proTxHashItem->text();
-            if (!strToFilter.contains(strCurrentFilterDIP3)) return;
+            if (!strToFilter.contains(strCurrentFilterDIP3)) {
+                // These items have not been transferred to the table yet.
+                for (auto* item : {addressItem, statusItem, PoSeScoreItem, registeredItem,
+                        lastPaidItem, nextPaymentItem, payeeItem, operatorRewardItem,
+                        collateralItem, collateralAmountItem, ownerItem, votingItem, proTxHashItem}) {
+                    delete item;
+                }
+                return;
+            }
         }
 
         ui->tableWidgetSmartnodesDIP3->insertRow(0);
@@ -330,6 +336,7 @@ void SmartnodeList::updateDIP3List()
 
     ui->countLabelDIP3->setText(QString::number(ui->tableWidgetSmartnodesDIP3->rowCount()));
     ui->tableWidgetSmartnodesDIP3->setSortingEnabled(true);
+    return true;
 }
 
 void SmartnodeList::on_filterLineEditDIP3_textChanged(const QString& strFilterIn)

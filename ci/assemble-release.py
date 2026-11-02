@@ -8,6 +8,7 @@ import re
 import shutil
 import tarfile
 import zipfile
+from release_policy import check_source
 
 
 def digest(path):
@@ -25,6 +26,7 @@ def main():
     parser.add_argument('--tag', required=True)
     parser.add_argument('--source-commit', required=True)
     args = parser.parse_args()
+    check_source(args.tag)
     if not re.fullmatch(r'v[0-9][A-Za-z0-9._-]*', args.tag):
         raise ValueError('Invalid release tag')
     if not re.fullmatch(r'[0-9a-f]{40}', args.source_commit):
@@ -93,7 +95,9 @@ def main():
                     raise ValueError('Missing isolated GUI launcher')
         if source != args.source_commit:
             raise ValueError('Mixed source revisions in release: ' + name)
-        published = 'babacoin-' + args.tag + '-' + name[len('babacoin-'):]
+        # Input artifacts carry a test suffix; stable end-user archives do not.
+        package_name = name[len('babacoin-'):].replace('-test.', '.')
+        published = 'babacoin-' + args.tag + '-' + package_name
         shutil.copyfile(archive, args.output / published)
         (args.output / (published + '.sha256')).write_text(checksum + '  ' + published + '\n', encoding='ascii')
         manifest['packages'].append({'name': published, 'sha256': checksum, 'format': kind,

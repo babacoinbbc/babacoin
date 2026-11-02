@@ -403,6 +403,14 @@ class NodeImpl : public Node
     {
         return MakeHandler(::uiInterface.NotifyWalletScanProgress.connect(fn));
     }
+    std::unique_ptr<Handler> handleBlockImportProgress(BlockImportProgressFn fn) override
+    {
+        return MakeHandler(::uiInterface.NotifyBlockImportProgress.connect(fn));
+    }
+    BlockImportProgress getBlockImportProgress() override
+    {
+        return ::uiInterface.GetBlockImportProgress();
+    }
     std::unique_ptr<Handler> handleLoadWallet(LoadWalletFn fn) override
     {
         CHECK_WALLET(

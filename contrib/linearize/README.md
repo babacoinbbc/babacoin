@@ -1,10 +1,11 @@
 # Linearize
 Construct a linear, no-fork, best version of the Babacoin blockchain. The scripts
-run using Python 3 but are compatible with Python 2.
+require Python 3 and use only its standard library.
 
-## Step 0: Install babacoin_hash
+Block IDs are SHA256d header hashes, matching `CBlockHeader::GetHash`.
+GhostRider proof-of-work hashes are different and must not be used as block IDs.
 
-https://github.com/babacoin/babacoin_hash
+For pinned, Merkle-checked full/update release archives, see [bootstrap guidance](../../doc/bootstrap.md).
 
 ## Step 1: Download hash list
 
@@ -16,7 +17,7 @@ Required configuration file settings for linearize-hashes:
 
 Optional config file setting for linearize-hashes:
 * RPC: `host`  (Default: `127.0.0.1`)
-* RPC: `port`  (Default: `9998`)
+* RPC: `port`  (Default: `17668`)
 * Blockchain: `min_height`, `max_height`
 * `rev_hash_bytes`: If true, the written block hash list will be
 byte-reversed. (In other words, the hash returned by getblockhash will have its
@@ -42,13 +43,13 @@ will be printed.
 * `file_timestamp`: Set each file's last-accessed and last-modified times,
 respectively, to the current time and to the timestamp of the most recent block
 written to the script's blockchain.
-* `genesis`: The hash of the genesis block in the blockchain. (default is '00000ffd590b1485b3caadc19b22e6379c733355108f107a430458cdf3407ab6', mainnet)
+* `genesis`: The hash of the genesis block in the blockchain. (default is '84de4877419c696744198422de2628087ae2270c73fb370ab4cfe2fe01061854', mainnet)
 * `input`: babacoind blocks/ directory containing blkNNNNN.dat
 * `hashlist`: text file containing list of block hashes created by
 linearize-hashes.py.
 * `max_out_sz`: Maximum size for files created by the `output_file` option.
 (Default: `1000*1000*1000 bytes`)
-* `netmagic`: Network magic number. (default is 'bf0c6bbd', mainnet)
+* `netmagic`: Network magic number. (default is '035dd72f', mainnet)
 * `out_of_order_cache_sz`: If out-of-order blocks are being read, the block can
 be written to a cache so that the blockchain doesn't have to be sought again.
 This option specifies the cache size. (Default: `100*1000*1000 bytes`)

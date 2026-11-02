@@ -17,6 +17,7 @@
 #include <qt/walletmodel.h>
 
 #include <coinjoin/coinjoin-client-options.h>
+#include <validation.h>
 
 #include <QAbstractItemDelegate>
 #include <QPainter>
@@ -492,7 +493,7 @@ void OverviewPage::setClientModel(ClientModel *model)
 {
     if (clientModel) disconnect(clientModel, nullptr, this, nullptr);
     this->clientModel = model;
-    dashboardHeight = model ? model->node().getNumBlocks() : -1;
+    dashboardHeight = model ? model->getCachedBlockTip().height : -1;
     if (model) {
         connect(model, &ClientModel::numConnectionsChanged, this, [this](int) { updateNetworkOverview(); });
         connect(model, &ClientModel::networkActiveChanged, this, [this](bool) { updateNetworkOverview(); });
@@ -519,8 +520,18 @@ void OverviewPage::setWalletModel(WalletModel *model)
         updateDisplayUnit();
         // Keep up to date with wallet
         interfaces::Wallet& wallet = model->wallet();
-        interfaces::WalletBalances balances = wallet.getBalances();
-        setBalance(balances);
+        if (model->hasBalanceSnapshot()) {
+            setBalance(model->getCachedBalances());
+        } else {
+            // Initial verification may hold cs_main. Display an explicit
+            // pending state and wait for the nonblocking balance poll.
+            heroBalance->setText(tr("Checking balance..."));
+            for (auto* label : {ui->labelBalance, ui->labelUnconfirmed, ui->labelImmature,
+                               ui->labelTotal, ui->labelWatchAvailable, ui->labelWatchPending,
+                               ui->labelWatchImmature, ui->labelWatchTotal}) {
+                label->setText(QString::fromUtf8("—"));
+            }
+        }
         connect(model, SIGNAL(balanceChanged(interfaces::WalletBalances)), this, SLOT(setBalance(interfaces::WalletBalances)));
         connect(model->getTransactionTableModel(), &TransactionTableModel::historyLoadProgress, this, [this](int, int) { updateHistoryLoading(); });
         connect(model->getTransactionTableModel(), &TransactionTableModel::historyLoadFinished, this, &OverviewPage::updateHistoryLoading);
@@ -593,13 +604,18 @@ void OverviewPage::updateNetworkOverview()
     const bool active = clientModel->node().getNetworkActive();
     const int peers = clientModel->getNumConnections();
     connectionValue->setText(!active ? tr("Network paused") : peers == 0 ? tr("Connecting...") : tr("%n peer(s)", "", peers));
-    blockHeightValue->setText(QLocale::system().toString(dashboardHeight));
+    blockHeightValue->setText(dashboardHeight >= 0
+        ? QLocale::system().toString(dashboardHeight) : QString::fromUtf8("—"));
     syncValue->setText(!active ? tr("Offline view") : peers == 0 ? tr("Waiting for peers") : outOfSync ? tr("Catching up") : tr("Up to date"));
 }
 
 void OverviewPage::updateCoinJoinProgress()
 {
     if (!walletModel || !clientModel || clientModel->node().shutdownRequested() || !clientModel->smartnodeSync().isBlockchainSynced()) return;
+    // Statistics may query wallet/chain state. Keep the last display while a
+    // header batch holds the chain lock; the normal refresh retries later.
+    TRY_LOCK(cs_main, locked_chain);
+    if (!locked_chain) return;
 
     QString strAmountAndRounds;
     QString strCoinJoinAmount = BitcoinUnits::formatHtmlWithUnit(nDisplayUnit, clientModel->coinJoinOptions().getAmount() * COIN, false, BitcoinUnits::separatorAlways);
@@ -773,7 +789,8 @@ void OverviewPage::coinJoinStatus(bool fForce)
     };
 
     static int64_t nLastDSProgressBlockTime = 0;
-    int nBestHeight = clientModel->node().getNumBlocks();
+    int nBestHeight = clientModel->getCachedBlockTip().height;
+    if (nBestHeight < 0) return;
 
     // We are processing more than 1 block per second, we'll just leave
     if (nBestHeight > walletModel->coinJoin().getCachedBlocks() && GetTime() - nLastDSProgressBlockTime <= 1) return;

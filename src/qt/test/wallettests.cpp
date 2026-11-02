@@ -13,7 +13,10 @@
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
 #include <qt/smartnodewizard.h>
+#include <qt/smartnodelist.h>
 #include <qt/webwalletpage.h>
+#include <qt/rpcconsole.h>
+#include <qt/modaloverlay.h>
 #include <wallet/rpcwallet.h>
 #include <rpc/server.h>
 #include <validationinterface.h>
@@ -28,6 +31,10 @@
 #include <qt/receiverequestdialog.h>
 
 #include <memory>
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <limits>
 
 #include <QAbstractButton>
 #include <QAction>
@@ -46,6 +53,115 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <QRegularExpression>
+#include <QProgressBar>
+#include <QLabel>
+#include <ui_interface.h>
+
+void WalletTests::syncUiResponsiveness()
+{
+    TestChain100Setup chain;
+    auto node = interfaces::MakeNode();
+    OptionsModel options(*node);
+    ClientModel model(*node, &options);
+    RPCConsole console(*node, nullptr, Qt::WindowFlags());
+    OverviewPage page;
+    ModalOverlay overlay(nullptr);
+    auto* hide = overlay.findChild<QPushButton*>("closeButton");
+    QVERIFY(hide);
+    overlay.showHide(false, true);
+
+    // Simulate a header batch/import holding the validation lock. A finite
+    // fallback makes the old GUI fail this test instead of hanging CI forever.
+    model.cachedBestHeaderHeight = -1;
+    model.cachedBestHeaderTime = -1;
+    std::atomic<bool> held{false}, release{false}, timedOut{false};
+    std::thread validation([&] {
+        LOCK(cs_main);
+        held.store(true);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!release.load() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        timedOut.store(!release.load());
+        held.store(false);
+    });
+    while (!held.load()) QTest::qWait(1);
+    bool hideWorkedWhileLocked = false;
+    int heartbeatsWhileLocked = 0;
+    QTimer heartbeat;
+    QObject::connect(&heartbeat, &QTimer::timeout, [&] {
+        if (held.load()) ++heartbeatsWhileLocked;
+    });
+    heartbeat.start(1);
+    QTimer::singleShot(0, &overlay, [&] {
+        hide->click();
+        hideWorkedWhileLocked = held.load() && !overlay.isLayerVisible();
+    });
+    model.getHeaderTipHeight();
+    model.getHeaderTipTime();
+    model.updateTimer();
+    model.refreshSmartnodeList();
+    console.setClientModel(&model);
+    page.setClientModel(&model);
+    QTest::qWait(100);
+    release.store(true);
+    validation.join();
+    heartbeat.stop();
+    // Tear down the RPC executor before an assertion can return from the test.
+    console.setClientModel(nullptr);
+    page.setClientModel(nullptr);
+    QVERIFY2(!timedOut.load(), "GUI waited for the validation lock during header sync/import");
+    QVERIFY(heartbeatsWhileLocked > 0);
+    QVERIFY(hideWorkedWhileLocked);
+
+    auto* progress = overlay.findChild<QProgressBar*>("progressBar");
+    auto* caption = overlay.findChild<QLabel*>("labelSyncDone");
+    auto* info = overlay.findChild<QLabel*>("infoTextStrong");
+    QVERIFY(progress && caption && info);
+    const QDateTime now = QDateTime::currentDateTime();
+    overlay.setKnownBestHeight(750, now.addSecs(-250 * Params().GetConsensus().nPowTargetSpacing));
+    overlay.tipUpdate(700, now, 1.0); // stale transaction estimate said 100%
+    QCOMPARE(progress->maximum(), 10000);
+    QCOMPARE(progress->value(), 7500);
+    QVERIFY(caption->text().contains("Header"));
+    overlay.setKnownBestHeight(1000, now);
+    QCOMPARE(progress->value(), 7000);
+    overlay.tipUpdate(999, now, 1.0);
+    QVERIFY(progress->value() < progress->maximum());
+    overlay.tipUpdate(1000, now, 1.0);
+    QCOMPARE(progress->value(), progress->maximum());
+    overlay.tipUpdate(999, now, std::numeric_limits<double>::quiet_NaN());
+    QCOMPARE(progress->value(), 0);
+    const QString warning = info->text();
+    overlay.setImporting(true);
+    QVERIFY(info->text().contains(warning));
+    QVERIFY(info->text().contains("Importing blocks from disk"));
+    overlay.setImporting(false);
+    QCOMPARE(info->text(), warning);
+
+    // Exercise the real core -> node interface -> queued GUI progress bridge.
+    QObject::connect(&model, &ClientModel::blockImportProgress, &overlay, &ModalOverlay::setImportProgress);
+    uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::READING, 128, 256, 10));
+    QTRY_COMPARE(progress->value(), 5000);
+    QVERIFY(caption->text().contains("Reading blockchain file"));
+    {
+        // Import may begin before the GUI/model is constructed. A retained
+        // snapshot must survive attachment, and delayed older events lose.
+        ClientModel lateModel(*node, &options);
+        QCOMPARE(lateModel.getCachedImportProgress().processed, qulonglong(128));
+        const auto snapshot = uiInterface.GetBlockImportProgress();
+        QVERIFY(snapshot.sequence > 0);
+        lateModel.updateBlockImportProgress(BlockImportProgress::IDLE, 0, 0, 0, snapshot.sequence - 1);
+        QCOMPARE(lateModel.getCachedImportProgress().phase, int(BlockImportProgress::READING));
+    }
+    overlay.setKnownBestHeight(2000, now); // headers must not overwrite file progress
+    QCOMPARE(progress->value(), 5000);
+    uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::VALIDATING));
+    QTRY_VERIFY(caption->text().contains("Validating imported blocks"));
+    QVERIFY(progress->value() < progress->maximum());
+    uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::IDLE));
+    QTRY_COMPARE(info->text(), warning);
+}
 
 void WalletTests::smartnodeFundingSafety()
 {
@@ -163,6 +279,10 @@ void TestGUI()
     }
     std::shared_ptr<CWallet> wallet = std::make_shared<CWallet>(WalletLocation(), WalletDatabase::CreateMock());
     AddWallet(wallet);
+    struct RegisteredWalletCleanup {
+        std::shared_ptr<CWallet> wallet;
+        ~RegisteredWalletCleanup() { RemoveWallet(wallet); }
+    } registeredWalletCleanup{wallet};
     bool firstRun;
     wallet->LoadWallet(firstRun);
     {
@@ -214,12 +334,50 @@ void TestGUI()
                 QCOMPARE(transactionTableModel->rowCount({}), 0);
             }
         });
+    SmartnodeList smartnodes;
+    smartnodes.setClientModel(&clientModel);
+    smartnodes.setWalletModel(&walletModel);
+    auto* mySmartnodes = smartnodes.findChild<QCheckBox*>("checkBoxMySmartnodesOnly");
+    QVERIFY(mySmartnodes);
+    mySmartnodes->setChecked(true);
     heartbeat.start(0);
+    std::atomic<bool> historyLockHeld{false}, releaseHistoryLock{false}, historyWaitTimedOut{false};
+    std::thread headerBatch([&] {
+        LOCK(cs_main);
+        historyLockHeld.store(true);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!releaseHistoryLock.load() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        historyWaitTimedOut.store(!releaseHistoryLock.load());
+    });
+    // No event processing until the lock is held: the first history batch
+    // must meet contention rather than completing before the test starts.
+    while (!historyLockHeld.load()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    bool historyHeartbeatWhileLocked = false;
+    QTimer::singleShot(1, [&] { historyHeartbeatWhileLocked = !releaseHistoryLock.load(); });
+    // The owner-only Smartnode filter also performs periodic UTXO queries.
+    // It must retry with its refresh request intact while validation is busy.
+    QMetaObject::invokeMethod(&smartnodes, "on_checkBoxMySmartnodesOnly_stateChanged", Qt::DirectConnection,
+        Q_ARG(int, int(Qt::Checked)));
+    QMetaObject::invokeMethod(&smartnodes, "updateDIP3ListScheduled", Qt::DirectConnection);
+    QTest::qWait(100);
+    releaseHistoryLock.store(true);
+    headerBatch.join();
+    QVERIFY2(!historyWaitTimedOut.load(), "History loading waited for the validation lock on the GUI thread");
+    QVERIFY(historyHeartbeatWhileLocked);
+    QMetaObject::invokeMethod(&smartnodes, "updateDIP3ListScheduled", Qt::DirectConnection);
+    auto* nodeCount = smartnodes.findChild<QLabel*>("countLabelDIP3");
+    QVERIFY(nodeCount);
+    QCOMPARE(nodeCount->text(), QString("0"));
+    QVERIFY(transactionTableModel->isLoadingHistory());
+    QCOMPARE(transactionTableModel->rowCount({}), 0);
     QTRY_VERIFY(!transactionTableModel->isLoadingHistory());
     heartbeat.stop();
     QVERIFY(eventLoopResponsive);
     QVERIFY(sawPartialHistory);
     QCOMPARE(transactionTableModel->rowCount({}), 105);
+    QTRY_VERIFY(walletModel.hasBalanceSnapshot());
     // Destruction cancels scheduled batches before they access model state.
     auto* cancelledHistory = new TransactionTableModel(&walletModel);
     QVERIFY(cancelledHistory->isLoadingHistory());
@@ -230,6 +388,32 @@ void TestGUI()
     QCOMPARE(transactionTableModel->rowCount({}), 107);
     QVERIFY(FindTx(*transactionTableModel, txid1).isValid());
     QVERIFY(FindTx(*transactionTableModel, txid2).isValid());
+
+    // A live notification also retries without losing a deferred update.
+    std::atomic<bool> updateLockHeld{false}, releaseUpdateLock{false}, updateWaitTimedOut{false};
+    std::thread updateBatch([&] {
+        LOCK(cs_main);
+        updateLockHeld.store(true);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!releaseUpdateLock.load() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        updateWaitTimedOut.store(!releaseUpdateLock.load());
+    });
+    while (!updateLockHeld.load()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    QMetaObject::invokeMethod(transactionTableModel, "updateTransaction", Qt::DirectConnection,
+        Q_ARG(QString, QString::fromStdString(txid1.ToString())), Q_ARG(int, int(CT_UPDATED)), Q_ARG(bool, false));
+    QTest::qWait(100);
+    const int rowsWhileBusy = transactionTableModel->rowCount({});
+    releaseUpdateLock.store(true);
+    updateBatch.join();
+    QVERIFY(!updateWaitTimedOut.load());
+    QCOMPARE(rowsWhileBusy, 107);
+    QTRY_COMPARE(transactionTableModel->rowCount({}), 106);
+    QMetaObject::invokeMethod(transactionTableModel, "updateTransaction", Qt::DirectConnection,
+        Q_ARG(QString, QString::fromStdString(txid1.ToString())), Q_ARG(int, int(CT_UPDATED)), Q_ARG(bool, true));
+    QTRY_COMPARE(transactionTableModel->rowCount({}), 107);
+    QVERIFY(FindTx(*transactionTableModel, txid1).isValid());
 
     // Check current balance on OverviewPage
     OverviewPage overviewPage;
@@ -249,7 +433,7 @@ void TestGUI()
     QVERIFY(height && connection && synchronization);
     const int validatedHeight = node->getNumBlocks();
     const QString originalHeight = QLocale::system().toString(validatedHeight);
-    QCOMPARE(height->text(), originalHeight);
+    QTRY_COMPARE(height->text(), originalHeight);
     Q_EMIT clientModel.numBlocksChanged(validatedHeight + 1000, QDateTime(), QString(), 1.0, true);
     QCOMPARE(height->text(), originalHeight);
     Q_EMIT clientModel.numBlocksChanged(validatedHeight + 1, QDateTime(), QString(), 1.0, false);
@@ -319,7 +503,6 @@ void TestGUI()
     QPushButton* removeRequestButton = receiveCoinsDialog.findChild<QPushButton*>("removeRequestButton");
     removeRequestButton->click();
     QCOMPARE(requestTableModel->rowCount({}), currentRowCount-1);
-    RemoveWallet(wallet);
 }
 
 }

@@ -7,11 +7,11 @@
 [Migration and settings](doc/v2-migration.md) ·
 [Platform support](doc/platform-support.md)
 
-## V2.0.0 Release Candidate 4
+## V2.0.1 Mainnet Release
 
 V2 combines a redesigned day/night desktop wallet, safer wallet handling and a
 larger, test-gated platform matrix. Download the matching package from the
-[V2.0.0-rc.3 release page](https://github.com/babacoinbbc/babacoin/releases/tag/v2.0.0-rc.4).
+[V2.0.1 mainnet release page](https://github.com/babacoinbbc/babacoin/releases/latest).
 Read its release status, checksums, source manifest and migration notes first.
 Release assets are assembled only after every required platform job passes.
 
@@ -21,9 +21,8 @@ Smartnode registration without an opening block; V1 can reject its first block.
 The 1,800,000 BBC tier stops qualifying for rewards at block 1,250,000.
 Read the [exchange, pool and wallet upgrade notice](doc/release/mandatory-network-upgrade.md).
 
-This is a **release candidate**, not a claim that all historical node versions
-agree or that software is free of defects. V1 and the earlier V2 test release
-remain preserved. Publishing a candidate does not remotely upgrade nodes or
+This is the final V2 build, not a claim that all historical node versions
+agree or that software is free of defects. The Releases page retains V1 and the current V2 release. Publishing a release does not remotely upgrade nodes or
 activate a new blockchain. Production adoption and network-rule changes require
 separate operator coordination and review.
 
@@ -35,7 +34,7 @@ separate operator coordination and review.
 
 *Windows development preview with isolated regtest data and test coins. The
 supplied gold artwork is retained unchanged and rendered at the sidebar's
-display density. Final release candidates also display the pre-release notice.*
+display density. The final V2 build does not display the old RC prerelease notice.*
 
 - **Day and night themes:** persistent appearance, keyboard switching and a
   gold-and-teal balance panel, high-DPI line icons, clearer transaction rows
@@ -65,6 +64,10 @@ display density. Final release candidates also display the pre-release notice.*
 - **Readable amounts:** balances and transaction lists use the operating system's
   decimal and thousands separators, including `1.234.567,89 BBC` in Turkish and
   `1,234,567.89 BBC` in US English. Amount calculations retain integer precision.
+- **Responsive synchronization:** header and block display uses cached snapshots;
+  background polling retries busy validation locks. File imports show actual byte
+  progress followed by a separate validation stage. Header progress is labelled
+  as an estimate and cannot stand in for validated blocks.
 - **Responsive history:** large transaction lists load in bounded batches with
   visible progress; export waits until history is complete. Splash artwork uses
   a fixed logical rectangle so high-DPI scaling cannot overlap the title.
@@ -111,7 +114,7 @@ systems still require appropriate vendor security maintenance.
 ## Windows package and DLL files
 
 For the guided installation, download the release's
-`babacoin-v2.0.0-rc.4-windows-x86_64-setup.exe` and verify its `.sha256` file.
+`babacoin-v2.0.1-windows-x86_64-setup.exe` and verify its `.sha256` file.
 It installs for the current user without an administrator account. Leave the
 normal data settings selected, or choose an existing data folder deliberately;
 the program folder and wallet data folder must be separate. Close Babacoin
@@ -119,7 +122,7 @@ normally before upgrading. The installer refuses running wallets rather than
 terminating them. The Finish-page launch option is unchecked by default.
 `INSTALLER-MANIFEST.json` identifies the exact portable payload and source;
 `INSTALLER-TESTS.json` records the matching x64 and ARM64-host installer tests.
-Back up a production wallet before using a new release candidate.
+Back up a production wallet before upgrading.
 
 The portable alternative is the complete ZIP:
 Download the complete Windows ZIP and extract **all** its contents into a new
@@ -218,7 +221,7 @@ The verified Linux download helper is optional and **fresh-install only**:
 
 ```sh
 # Review the tagged source and select the release explicitly.
-BBC_VERSION=v2.0.0-rc.4 bash contrib/install.sh
+BBC_VERSION=v2.0.1 bash contrib/install.sh
 ```
 
 It verifies the exact distribution/architecture package and SHA256, rejects
@@ -276,15 +279,19 @@ promised by this roadmap.
 
 ## Build, contribute and review
 
+- [Full and incremental blockchain bootstrap](doc/bootstrap.md)
 - [Ubuntu build guide](doc/ubuntu-compatibility.md)
 - [Desktop validation](doc/wallet-desktop-validation.md)
-- [V2 release notes](doc/release/v2.0.0-rc.4.md)
+- [V2 release notes](doc/release/v2.0.1.md)
+- [Short upgrade announcement](doc/release/v2-announcement.md)
+- [Discord coin information](doc/community/discord-coin-information.md)
 - [Contribution guide](CONTRIBUTING.md)
 
 Use disposable build environments and `make check`. Do not disable tests to
 obtain release artifacts or run source-build experiments on a production node.
-The protected `main` branch requires an independent approving review. That
-protection is retained; passing CI does not replace human review.
+The protected `main` branch requests independent approving review. Its existing
+administrator exception remains enabled; owner-authorized main integration used
+that exception. Passing CI does not establish independent human review.
 
 Babacoin Core is distributed under the [MIT license](COPYING). Project resources:
 [website](https://babacoin.network), [explorer](https://explorer.babacoin.network),

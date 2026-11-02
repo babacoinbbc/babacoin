@@ -13,6 +13,7 @@ private Q_SLOTS:
     void smartnodeFundingSafety();
     void smartnodeRegistrationWorkflow();
     void legacyConfigExportSafety();
+    void syncUiResponsiveness();
 };
 
 #endif // BITCOIN_QT_TEST_WALLETTESTS_H

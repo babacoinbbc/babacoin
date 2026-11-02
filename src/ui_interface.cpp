@@ -7,6 +7,27 @@
 
 CClientUIInterface uiInterface;
 
+void CClientUIInterface::ShowBlockImportProgress(const BlockImportProgress& progress)
+{
+    BlockImportProgress snapshot = progress;
+    {
+        std::lock_guard<std::mutex> lock(m_import_mutex);
+        snapshot.sequence = m_import_progress.sequence + 1;
+        m_import_progress = snapshot;
+    }
+    try {
+        NotifyBlockImportProgress(snapshot);
+    } catch (const std::exception& e) {
+        LogPrintf("Block import display notification failed: %s\n", e.what());
+    }
+}
+
+BlockImportProgress CClientUIInterface::GetBlockImportProgress() const
+{
+    std::lock_guard<std::mutex> lock(m_import_mutex);
+    return m_import_progress;
+}
+
 bool InitError(const std::string& str)
 {
     uiInterface.ThreadSafeMessageBox(str, "", CClientUIInterface::MSG_ERROR);

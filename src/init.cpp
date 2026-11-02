@@ -755,6 +755,17 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     const CChainParams& chainparams = Params();
     RenameThread("babacoin-loadblk");
     ScheduleBatchPriority();
+    bool showImportProgress = false;
+    auto importFile = [&](FILE* file, const fs::path& path) {
+        showImportProgress = true;
+        boost::system::error_code error;
+        const uint64_t fileBytes = fs::file_size(path, error);
+        const uint64_t total = error ? 0 : fileBytes;
+        uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::READING, 0, total));
+        LoadExternalBlockFile(chainparams, file, nullptr, [total](uint64_t processed, int blocks) {
+            uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::READING, processed, total, blocks));
+        });
+    };
 
     {
     CImportingNow imp;
@@ -787,7 +798,7 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
         if (file) {
             fs::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
             LogPrintf("Importing bootstrap.dat...\n");
-            LoadExternalBlockFile(chainparams, file);
+            importFile(file, pathBootstrap);
             RenameOver(pathBootstrap, pathBootstrapOld);
         } else {
             LogPrintf("Warning: Could not open bootstrap file %s\n", pathBootstrap.string());
@@ -799,13 +810,14 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
         FILE *file = fsbridge::fopen(path, "rb");
         if (file) {
             LogPrintf("Importing blocks file %s...\n", path.string());
-            LoadExternalBlockFile(chainparams, file);
+            importFile(file, path);
         } else {
             LogPrintf("Warning: Could not open blocks file %s\n", path.string());
         }
     }
 
     // scan for better chains in the block chain database, that are not yet connected in the active best chain
+    if (showImportProgress) uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::VALIDATING));
     CValidationState state;
     if (!ActivateBestChain(state, chainparams)) {
         LogPrintf("Failed to connect best block (%s)\n", FormatStateMessage(state));
@@ -819,6 +831,7 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
         return;
     }
     } // End scope of CImportingNow
+    if (showImportProgress) uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::IDLE));
 
     // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN payments and budgets
     // but don't call it directly to prevent triggering of other listeners like zmq etc.
