@@ -76,11 +76,16 @@ void CompatTests::movedDataDirectoryRecovery()
     const QString missing = root.filePath("old disconnected drive");
     const QString moved = root.filePath(QString::fromUtf8("moved wallet \xc3\x96"));
     const QString empty = root.filePath("empty folder");
-    QVERIFY(QDir().mkpath(moved)); QVERIFY(QDir().mkpath(empty));
+    // Match the backend's explicit UTF-8 filesystem conversion, including on
+    // Qt 5.9 hosts whose QFile filename codec still follows a C locale.
+    QVERIFY(fs::create_directories(GUIUtil::qstringToBoostPath(moved)));
+    QVERIFY(QDir().mkpath(empty));
     const QByteArray marker("private test marker, not an actual wallet\n");
     auto writeMarker = [&](const QString& directory) {
-        QFile file(directory + "/wallet.dat");
-        return file.open(QIODevice::WriteOnly) && file.write(marker) == marker.size();
+        fs::ofstream file(GUIUtil::qstringToBoostPath(directory) / "wallet.dat", std::ios::binary);
+        file.write(marker.constData(), marker.size());
+        file.close();
+        return !file.fail();
     };
     QVERIFY(writeMarker(moved));
     auto node = interfaces::MakeNode();
@@ -138,7 +143,11 @@ void CompatTests::movedDataDirectoryRecovery()
     QVERIFY(QDir(empty).entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
 
     const auto selected = pick(moved, false);
-    QVERIFY(selected.shown && selected.recovery && selected.accepted && !selected.timedOut);
+    QVERIFY2(selected.shown && selected.recovery && selected.accepted && !selected.timedOut,
+        qPrintable(QString("shown=%1 recovery=%2 accepted=%3 timeout=%4 enabled=%5 wallet=%6")
+            .arg(selected.shown).arg(selected.recovery).arg(selected.accepted)
+            .arg(selected.timedOut).arg(selected.okEnabled)
+            .arg(fs::is_regular_file(GUIUtil::qstringToBoostPath(moved) / "wallet.dat"))));
     QCOMPARE(QString::fromStdString(gArgs.GetArg("-datadir", "")), QString::fromStdString(GUIUtil::qstringToBoostPath(moved).string()));
     QCOMPARE(settings.value("strDataDir").toString(), moved);
     QCOMPARE(currentDirectory(), moved);
@@ -187,7 +196,10 @@ void CompatTests::movedDataDirectoryRecovery()
     QVERIFY(acceptedNested.shown && acceptedNested.accepted && !acceptedNested.timedOut);
     QCOMPARE(currentDirectory(), nested);
 
-    QFile file(moved + "/wallet.dat"); QVERIFY(file.open(QIODevice::ReadOnly)); QCOMPARE(file.readAll(), marker);
+    fs::ifstream file(GUIUtil::qstringToBoostPath(moved) / "wallet.dat", std::ios::binary);
+    QVERIFY(file.is_open());
+    const std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    QCOMPARE(QByteArray(contents.data(), contents.size()), marker);
 }
 
 void CompatTests::pixelSizedFont()

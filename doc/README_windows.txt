@@ -22,7 +22,7 @@ See the Babacoin documentation at:
   https://docs.babacoin.network
 for more help and information.
 
-Moved or disconnected data drive (next maintenance update)
+Moved or disconnected data drive (v2.0.2 and later)
 --------------------------------------------------------
 If a saved data folder or a shortcut's -datadir path is unavailable, the
 desktop wallet asks you to locate the existing Babacoin data folder instead
