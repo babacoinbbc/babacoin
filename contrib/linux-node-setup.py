@@ -147,7 +147,11 @@ def discover(proc=Path('/proc')):
             for fd in (entry/'fd').iterdir():
                 try:
                     value = os.readlink(str(fd))
-                    if value.endswith('/.lock'): locks.append(Path(value).parent.resolve())
+                    if value.endswith('/.lock'):
+                        visible, held = Path(value).stat(), fd.stat()
+                        if (visible.st_dev, visible.st_ino) != (held.st_dev, held.st_ino):
+                            fail('Daemon data is in a different mount namespace. Manual reviewed upgrade required.')
+                        locks.append(Path(value).parent.resolve())
                 except OSError: pass
             locks = list(set(locks))
             if len(locks) != 1: fail('Cannot uniquely identify the running daemon data lock. Close it normally first.')
