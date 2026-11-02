@@ -20,6 +20,9 @@
 #include <QFileDialog>
 #include <QSettings>
 #include <QMessageBox>
+#include <QCryptographicHash>
+#include <QFileInfo>
+#include <QDir>
 
 #include <cmath>
 
@@ -30,6 +33,47 @@ static const uint64_t BLOCK_CHAIN_SIZE = 3;
 static const uint64_t CHAIN_STATE_SIZE = 1;
 /* Total required space (in GB) depending on user choice (prune, not prune) */
 static uint64_t requiredSpace;
+
+namespace {
+bool IsDataDirectory(const QString& directory)
+{
+    if (directory.isEmpty()) return false;
+    boost::system::error_code error;
+    return fs::is_directory(GUIUtil::qstringToBoostPath(directory), error);
+}
+
+// Recognize an existing wallet without opening, moving or rewriting it.
+bool HasExistingWalletData(const QString& directory)
+{
+    if (!IsDataDirectory(directory)) return false;
+    const auto path = GUIUtil::qstringToBoostPath(directory);
+    boost::system::error_code error;
+    const auto wallets = path / "wallets";
+    const auto walletBase = fs::is_directory(wallets, error) ? wallets : path;
+    if (fs::is_regular_file(walletBase / "wallet.dat", error)) return true;
+    for (const auto& name : gArgs.GetArgs("-wallet")) {
+        const fs::path relative(name);
+        // An absolute external wallet does not identify this data directory.
+        if (relative.is_absolute()) continue;
+        if (fs::is_regular_file(walletBase / relative, error) ||
+            fs::is_regular_file(walletBase / relative / "wallet.dat", error)) return true;
+    }
+#ifdef ENABLE_WALLET
+    if (!gArgs.GetBoolArg("-disablewallet", false)) return false;
+#endif
+    return fs::is_directory(path / "blocks", error) || fs::is_directory(path / "chainstate", error);
+}
+
+QString RelocationSetting(const QString& oldDirectory)
+{
+    QString normalized = QDir::cleanPath(QFileInfo(oldDirectory).absoluteFilePath());
+#ifdef Q_OS_WIN
+    normalized = normalized.toCaseFolded();
+#endif
+    return "DataDirectoryRelocations/" + QString::fromLatin1(
+        QCryptographicHash::hash(normalized.toUtf8(), QCryptographicHash::Sha256).toHex());
+}
+}
 
 /* Check free space asynchronously to prevent hanging the UI thread.
 
@@ -78,33 +122,38 @@ void FreespaceChecker::check()
     int replyStatus = ST_OK;
     QString replyMessage = tr("A new data directory will be created.");
 
-    /* Find first parent that exists, so that fs::space does not fail */
-    fs::path parentDir = dataDir;
-    fs::path parentDirOld = fs::path();
-    while(parentDir.has_parent_path() && !fs::exists(parentDir))
-    {
-        parentDir = parentDir.parent_path();
-
-        /* Check if we make any progress, break if not to prevent an infinite loop here */
-        if (parentDirOld == parentDir)
-            break;
-
-        parentDirOld = parentDir;
-    }
-
     try {
+        /* Find first parent that exists, so that fs::space does not fail. */
+        fs::path parentDir = dataDir;
+        fs::path parentDirOld;
+        while (parentDir.has_parent_path() && !fs::exists(parentDir)) {
+            parentDir = parentDir.parent_path();
+            if (parentDirOld == parentDir) break;
+            parentDirOld = parentDir;
+        }
+
         freeBytesAvailable = fs::space(parentDir).available;
         if(fs::exists(dataDir))
         {
             if(fs::is_directory(dataDir))
             {
                 QString separator = "<code>" + QDir::toNativeSeparators("/") + tr("name") + "</code>";
-                replyStatus = ST_OK;
-                replyMessage = tr("Directory already exists. Add %1 if you intend to create a new directory here.").arg(separator);
+                if (intro->recoveringDataDirectory && !HasExistingWalletData(dataDirStr)) {
+                    replyStatus = ST_ERROR;
+                    replyMessage = tr("Select the existing folder containing your wallet.dat or wallets directory. No new wallet will be created here.");
+                } else {
+                    replyStatus = ST_OK;
+                    replyMessage = intro->recoveringDataDirectory
+                        ? tr("Existing wallet data found. Files will stay in this location.")
+                        : tr("Directory already exists. Add %1 if you intend to create a new directory here.").arg(separator);
+                }
             } else {
                 replyStatus = ST_ERROR;
                 replyMessage = tr("Path already exists, and is not a directory.");
             }
+        } else if (intro->recoveringDataDirectory) {
+            replyStatus = ST_ERROR;
+            replyMessage = tr("This folder is unavailable. Reconnect the drive or browse to the moved wallet data.");
         }
     } catch (const fs::filesystem_error&)
     {
@@ -172,7 +221,7 @@ QString Intro::getDataDirectory()
 void Intro::setDataDirectory(const QString &dataDir)
 {
     ui->dataDirectory->setText(dataDir);
-    if(dataDir == getDefaultDataDirectory())
+    if(!recoveringDataDirectory && dataDir == getDefaultDataDirectory())
     {
         ui->dataDirDefault->setChecked(true);
         ui->dataDirectory->setEnabled(false);
@@ -184,6 +233,31 @@ void Intro::setDataDirectory(const QString &dataDir)
     }
 }
 
+void Intro::setRecoveryMode(const QString& previousDirectory, bool oldShortcut)
+{
+    recoveringDataDirectory = true;
+    setProperty("dataDirectoryRecovery", true);
+    setWindowTitle(tr("Locate your Babacoin data folder"));
+    ui->welcomeLabel->setText(tr("Your previous data location needs attention"));
+    ui->storageLabel->setTextFormat(Qt::PlainText);
+    ui->storageLabel->setText(tr("Previous location: %1\nThe drive may be disconnected or the folder may have moved. Select your existing Babacoin data folder to continue.")
+        .arg(QDir::toNativeSeparators(previousDirectory)));
+    QString explanation = tr("No files will be moved or deleted. Select your existing wallet data; a missing folder will not be replaced with a new empty wallet. Your selected location will be remembered.");
+    if (oldShortcut) explanation += " " + tr("This also repairs this old shortcut path. If its previous location becomes available again, you will be asked which folder to use.");
+    ui->sizeWarningLabel->setText(explanation);
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Use this folder"));
+    auto* recheck = ui->buttonBox->addButton(tr("Check again"), QDialogButtonBox::ActionRole);
+    recheck->setObjectName("recheckDataDirectory");
+    connect(recheck, &QPushButton::clicked, this, [this] {
+        on_dataDirectory_textChanged(getDataDirectory());
+    });
+    ui->dataDirDefault->setEnabled(false);
+    ui->dataDirCustom->setChecked(true);
+    ui->lblExplanation1->hide();
+    ui->lblExplanation2->hide();
+    ui->lblExplanation3->hide();
+}
+
 QString Intro::getDefaultDataDirectory()
 {
     return GUIUtil::boostPathToQString(GetDefaultDataDir());
@@ -192,24 +266,44 @@ QString Intro::getDefaultDataDirectory()
 bool Intro::pickDataDirectory(interfaces::Node& node)
 {
     QSettings settings;
-    /* If data directory provided on command line, no need to look at settings
-       or show a picking dialog */
-    if(!gArgs.GetArg("-datadir", "").empty())
-        return true;
+    const bool explicitDirectory = gArgs.IsArgSet("-datadir");
+    const QString commandDirectory = explicitDirectory
+        ? GUIUtil::boostPathToQString(fs::path(gArgs.GetArg("-datadir", ""))) : QString();
+    const bool chooseDirectory = gArgs.GetBoolArg("-choosedatadir", DEFAULT_CHOOSE_DATADIR);
+    const QString relocationKey = explicitDirectory ? RelocationSetting(commandDirectory) : QString();
+    const QString relocated = explicitDirectory ? settings.value(relocationKey).toString() : QString();
+    if (explicitDirectory && !chooseDirectory) {
+        if (relocated.isEmpty() && IsDataDirectory(commandDirectory)) return true;
+        if (!relocated.isEmpty() && !IsDataDirectory(commandDirectory) && HasExistingWalletData(relocated)) {
+            gArgs.ForceSetArg("-datadir", GUIUtil::qstringToBoostPath(relocated).string());
+            ClearDatadirCache();
+            return true;
+        }
+    }
     /* 1) Default data directory for operating system */
     QString dataDirDefaultCurrent = getDefaultDataDirectory();
     /* 2) Allow QSettings to override default dir */
     QString dataDir = settings.value("strDataDir", dataDirDefaultCurrent).toString();
+    if (explicitDirectory) dataDir = relocated.isEmpty() ? commandDirectory : relocated;
+    const bool recovery = explicitDirectory
+        ? !IsDataDirectory(commandDirectory) || !relocated.isEmpty()
+        : settings.contains("strDataDir") && !IsDataDirectory(dataDir);
     /* 3) Check to see if default datadir is the one we expect */
     QString dataDirDefaultSettings = settings.value("strDataDirDefault").toString();
 
-    if(!fs::exists(GUIUtil::qstringToBoostPath(dataDir)) || gArgs.GetBoolArg("-choosedatadir", DEFAULT_CHOOSE_DATADIR) || dataDirDefaultCurrent != dataDirDefaultSettings)
+    bool selected = false;
+    if(recovery || !IsDataDirectory(dataDir) || chooseDirectory || dataDirDefaultCurrent != dataDirDefaultSettings)
     {
         /* Let the user choose one */
         Intro intro;
         GUIUtil::disableMacFocusRect(&intro);
         GUIUtil::loadStyleSheet(true);
-        intro.setDataDirectory(dataDirDefaultCurrent);
+        if (recovery) intro.setRecoveryMode(explicitDirectory ? commandDirectory : dataDir, explicitDirectory);
+        if (recovery && !relocated.isEmpty()) {
+            intro.ui->storageLabel->setText(tr("Shortcut location: %1\nLast selected location: %2\nConfirm which existing wallet data folder to use. No location will be selected silently while the old folder is available.")
+                .arg(QDir::toNativeSeparators(commandDirectory), QDir::toNativeSeparators(relocated)));
+        }
+        intro.setDataDirectory(dataDir);
         intro.setWindowIcon(QIcon(":icons/babacoin"));
 
         while(true)
@@ -220,8 +314,13 @@ bool Intro::pickDataDirectory(interfaces::Node& node)
                 return false;
             }
             dataDir = intro.getDataDirectory();
+            if (recovery && !HasExistingWalletData(dataDir)) {
+                QMessageBox::warning(&intro, tr(PACKAGE_NAME),
+                    tr("Select an existing Babacoin wallet data folder. No new directory or wallet has been created."));
+                continue;
+            }
             try {
-                if (TryCreateDirectories(GUIUtil::qstringToBoostPath(dataDir))) {
+                if (!recovery && TryCreateDirectories(GUIUtil::qstringToBoostPath(dataDir))) {
                     // If a new data directory has been created, make wallets subdirectory too
                     TryCreateDirectories(GUIUtil::qstringToBoostPath(dataDir) / "wallets");
                 }
@@ -235,13 +334,23 @@ bool Intro::pickDataDirectory(interfaces::Node& node)
 
         settings.setValue("strDataDir", dataDir);
         settings.setValue("strDataDirDefault", dataDirDefaultCurrent);
+        selected = true;
+        if (explicitDirectory && recovery) {
+            if (RelocationSetting(dataDir) == relocationKey) settings.remove(relocationKey);
+            else settings.setValue(relocationKey, dataDir);
+        }
     }
     /* Only override -datadir if different from the default, to make it possible to
      * override -datadir in the babacoin.conf file in the default data directory
      * (to be consistent with babacoind behavior)
      */
-    if(dataDir != dataDirDefaultCurrent) {
+    if (explicitDirectory && selected) {
+        // Only an explicit GUI selection can replace an existing CLI value.
+        gArgs.ForceSetArg("-datadir", GUIUtil::qstringToBoostPath(dataDir).string());
+        ClearDatadirCache();
+    } else if(dataDir != dataDirDefaultCurrent) {
         node.softSetArg("-datadir", GUIUtil::qstringToBoostPath(dataDir).string()); // use OS locale for path setting
+        ClearDatadirCache();
     }
     return true;
 }
@@ -287,9 +396,11 @@ void Intro::on_dataDirectory_textChanged(const QString &dataDirStr)
 
 void Intro::on_ellipsisButton_clicked()
 {
-    QString dir = QDir::toNativeSeparators(QFileDialog::getExistingDirectory(0, "Choose data directory", ui->dataDirectory->text()));
-    if(!dir.isEmpty())
+    QString dir = QDir::toNativeSeparators(QFileDialog::getExistingDirectory(this, tr("Choose data directory"), ui->dataDirectory->text()));
+    if(!dir.isEmpty()) {
         ui->dataDirectory->setText(dir);
+        on_dataDirectory_textChanged(dir); // Also recheck an unchanged path after reconnecting a drive.
+    }
 }
 
 void Intro::on_dataDirDefault_clicked()

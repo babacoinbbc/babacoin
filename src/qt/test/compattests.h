@@ -19,6 +19,7 @@ private Q_SLOTS:
     void explorerPeerSafety();
     void localizedAmounts();
     void startupPanel();
+    void movedDataDirectoryRecovery();
 };
 
 #endif // BITCOIN_QT_TEST_COMPATTESTS_H
