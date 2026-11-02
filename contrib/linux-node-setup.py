@@ -256,6 +256,13 @@ def make_owned_directory(path, uid, gid):
         item.mkdir(mode=0o700); os.chown(str(item), uid, gid)
 
 
+def validate_data_owner(data, uid, running):
+    if data.exists():
+        if not data.is_dir(): fail('The data path must be a directory, not a wallet file.')
+        if not running and data.stat().st_uid != uid:
+            fail('Existing data belongs to another account. Run setup as its original owner; ownership will not be changed.')
+
+
 def atomic_copy(source, target, uid=None, gid=None):
     # Temporary files are created on the destination filesystem; existing
     # program files alone are replaced atomically. Never a wallet or directory.
@@ -365,6 +372,7 @@ def main():
         if stored.get('user') != account.pw_name: fail('Installation belongs to another account.')
     data = node['data'] if node else (explicit or Path(stored.get('data_dir', str(Path(account.pw_dir)/'.babacoin'))))
     data = data.resolve()
+    validate_data_owner(data, account.pw_uid, bool(node))
     if root == data or root in data.parents or data in root.parents: fail('Program and wallet directories must be separate.')
     make_owned_directory(root, account.pw_uid, account.pw_gid)
     with (root/'setup.lock').open('a') as lock:

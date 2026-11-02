@@ -71,6 +71,13 @@ class NodeSetupTests(unittest.TestCase):
         self.assertIs(setup.select_node([a,b], a['data']), a)
         with self.assertRaises(RuntimeError): setup.select_node([a,b], self.root/'c')
 
+    def test_closed_wallet_cannot_be_reopened_as_another_owner(self):
+        data = self.root/'data'; data.mkdir()
+        wallet = data/'wallet.dat'; wallet.write_bytes(b'EXISTING-KEYS')
+        with self.assertRaises(RuntimeError): setup.validate_data_owner(data, data.stat().st_uid+1, False)
+        with self.assertRaises(RuntimeError): setup.validate_data_owner(wallet, wallet.stat().st_uid, False)
+        self.assertEqual(wallet.read_bytes(), b'EXISTING-KEYS')
+
     def test_pid_reuse_never_signals(self):
         with patch.object(setup, 'identity', return_value='new'), patch.object(setup.os, 'kill') as kill:
             with self.assertRaises(RuntimeError): setup.stop_node({'pid':123,'token':'old','unit':None})
