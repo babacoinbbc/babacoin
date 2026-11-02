@@ -37,18 +37,75 @@
 #include <QTextStream>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QScrollArea>
+#include <QScreen>
+#include <QGuiApplication>
+#include <QWindow>
 #include <set>
 #include <algorithm>
 #include <climits>
 
 namespace {
-class CollateralPage final : public QWizardPage {
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+constexpr bool DESKTOP_LAYOUT = true;
+#else
+constexpr bool DESKTOP_LAYOUT = false;
+#endif
+class ScrollableSetupPage : public QWizardPage {
+    QWidget* m_body;
+public:
+    ScrollableSetupPage(const QString& title, const QString& description)
+    {
+#if !defined(Q_OS_WIN) && !defined(Q_OS_MAC)
+        setTitle(title);
+        setSubTitle(description);
+        m_body = this;
+        return;
+#endif
+        // Keep headings inside the themed, scrollable content. The native
+        // ModernStyle header paints a white panel with dark-theme text.
+        auto* outer = new QVBoxLayout(this);
+        outer->setContentsMargins(0, 0, 0, 0);
+        auto* scroll = new QScrollArea(this);
+        scroll->setObjectName("smartnodePageScroll");
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        auto* content = new QWidget;
+        content->setObjectName("smartnodePageContent");
+        auto* layout = new QVBoxLayout(content);
+        layout->setContentsMargins(20, 18, 20, 18);
+        layout->setSpacing(12);
+        auto* heading = new QLabel(title, content);
+        heading->setObjectName("smartnodePageTitle");
+        heading->setWordWrap(true);
+        auto* hint = new QLabel(description, content);
+        hint->setObjectName("smartnodePageDescription");
+        hint->setWordWrap(true);
+        layout->addWidget(heading);
+        layout->addWidget(hint);
+        m_body = new QWidget(content);
+        m_body->setObjectName("smartnodePageBody");
+        layout->addWidget(m_body, 1);
+        scroll->setWidget(content);
+        outer->addWidget(scroll);
+        setAccessibleName(title);
+        GUIUtil::setFont({heading}, GUIUtil::FontWeight::Bold, 16);
+        GUIUtil::setFont({hint}, GUIUtil::FontWeight::Normal, 10);
+    }
+    QWidget* body() const { return m_body; }
+};
+class CollateralPage final : public ScrollableSetupPage {
     bool m_ready{false};
 public:
+    using ScrollableSetupPage::ScrollableSetupPage;
     bool isComplete() const override { return m_ready; }
     void setReady(bool ready) { m_ready = ready; Q_EMIT completeChanged(); }
 };
-QString BBC(CAmount amount) { return BitcoinUnits::formatWithUnit(BitcoinUnits::BBC, amount); }
+QString BBC(CAmount amount) {
+    return DESKTOP_LAYOUT ? BitcoinUnits::formatLocalizedWithUnit(BitcoinUnits::BBC, amount)
+                          : BitcoinUnits::formatWithUnit(BitcoinUnits::BBC, amount);
+}
 UniValue ParamsArray() { return UniValue(UniValue::VARR); }
 QString Failure(const UniValue& error) {
     return error.isObject() && error.exists("message") ? QString::fromStdString(error["message"].get_str()) : QObject::tr("RPC request failed.");
@@ -82,15 +139,26 @@ SmartnodeWizard::SmartnodeWizard(WalletModel* wallet, FundCollateral fundCollate
 {
     setObjectName("smartnodeSetupWizard");
     setWindowTitle(tr("Smartnode setup wizard"));
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+    setProperty("desktopWizard", true);
+    setWizardStyle(QWizard::ClassicStyle);
+    setMinimumSize(420, 320);
+    QScreen* screen = parent && parent->windowHandle() ? parent->windowHandle()->screen() : QGuiApplication::primaryScreen();
+    resize(screen ? QSize(740, 580).boundedTo(screen->availableGeometry().size() - QSize(48, 64)) : QSize(740, 580));
+#else
     setWizardStyle(QWizard::ModernStyle);
     setMinimumSize(740, 580);
+#endif
     setOption(QWizard::NoBackButtonOnStartPage);
     setButtonText(QWizard::FinishButton, tr("Register smartnode"));
 
-    auto* collateralPage = new CollateralPage;
-    collateralPage->setTitle(tr("1. Check collateral and synchronization"));
-    collateralPage->setSubTitle(tr("Use an existing confirmed collateral output. Funding a new output uses the normal Send confirmation screen."));
-    auto* collateralLayout = new QVBoxLayout(collateralPage);
+    auto* collateralPage = new CollateralPage(tr("1. Check collateral and synchronization"),
+        tr("Use an existing confirmed collateral output. Funding a new output uses the normal Send confirmation screen."));
+    auto* collateralLayout = new QVBoxLayout(collateralPage->body());
+    if (DESKTOP_LAYOUT) {
+        collateralLayout->setContentsMargins(0, 0, 0, 0);
+        collateralLayout->setSpacing(12);
+    }
     m_readiness = new QLabel;
     m_readiness->setWordWrap(true);
     m_readiness->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -98,16 +166,28 @@ SmartnodeWizard::SmartnodeWizard(WalletModel* wallet, FundCollateral fundCollate
     m_collateralAmount = new QComboBox;
     m_collateralAmount->setObjectName("smartnodeCollateralAmount");
     m_collateralAmount->setAccessibleName(tr("Collateral amount"));
+    if (DESKTOP_LAYOUT) {
+        m_collateralAmount->setMinimumContentsLength(20);
+        m_collateralAmount->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        m_collateralAmount->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    }
     collateralLayout->addWidget(m_collateralAmount);
     connect(m_collateralAmount, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { refreshCollateral(); });
     m_collateral = new QComboBox;
     m_collateral->setObjectName("smartnodeCollateral");
     m_collateral->setMinimumContentsLength(25);
+    if (DESKTOP_LAYOUT) {
+        m_collateral->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        m_collateral->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    }
     collateralLayout->addWidget(m_collateral);
     auto* refresh = new QPushButton(tr("Refresh eligible outputs"));
+    if (DESKTOP_LAYOUT) refresh->setText(tr("Refresh outputs"));
     collateralLayout->addWidget(refresh);
     connect(refresh, &QPushButton::clicked, this, [this] { refreshCollateral(); });
     auto* fund = new QPushButton(tr("Prepare a collateral transfer in Send"));
+    fund->setToolTip(fund->text());
+    if (DESKTOP_LAYOUT) fund->setText(tr("Prepare collateral transfer"));
     fund->setObjectName("smartnodePrepareCollateral");
     collateralLayout->addWidget(fund);
     connect(fund, &QPushButton::clicked, this, [this] {
@@ -134,10 +214,15 @@ SmartnodeWizard::SmartnodeWizard(WalletModel* wallet, FundCollateral fundCollate
     collateralLayout->addStretch();
     addPage(collateralPage);
 
-    auto* detailsPage = new QWizardPage;
-    detailsPage->setTitle(tr("2. Server and public identities"));
-    detailsPage->setSubTitle(tr("Self-operated node, 0% operator reward. Keep the server's BLS secret on the server; paste only its public key here."));
-    auto* details = new QFormLayout(detailsPage);
+    auto* detailsPage = new ScrollableSetupPage(tr("2. Server and public identities"),
+        tr("Self-operated node, 0% operator reward. Keep the server's BLS secret on the server; paste only its public key here."));
+    auto* details = new QFormLayout(detailsPage->body());
+    if (DESKTOP_LAYOUT) {
+        details->setContentsMargins(0, 0, 0, 0);
+        details->setSpacing(12);
+        details->setRowWrapPolicy(QFormLayout::WrapLongRows);
+        details->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    }
     m_service = new QLineEdit;
     m_service->setObjectName("smartnodeService");
     m_service->setPlaceholderText(QString("203.0.113.10:%1").arg(Params().GetDefaultPort()));
@@ -154,6 +239,8 @@ SmartnodeWizard::SmartnodeWizard(WalletModel* wallet, FundCollateral fundCollate
     m_payout->setObjectName("smartnodePayout");
     details->addRow(tr("Reward payout address"), m_payout);
     auto* newAddresses = new QPushButton(tr("Create new owner and payout addresses in this wallet"));
+    newAddresses->setToolTip(newAddresses->text());
+    if (DESKTOP_LAYOUT) newAddresses->setText(tr("Create wallet addresses"));
     details->addRow(newAddresses);
     connect(newAddresses, &QPushButton::clicked, this, [this] {
         if (!m_wallet) return;
@@ -175,19 +262,28 @@ SmartnodeWizard::SmartnodeWizard(WalletModel* wallet, FundCollateral fundCollate
     serverHelp->setWordWrap(true);
     details->addRow(serverHelp);
     auto* serverTemplate = new QPushButton(tr("Save public server configuration template"));
+    serverTemplate->setToolTip(serverTemplate->text());
+    if (DESKTOP_LAYOUT) serverTemplate->setText(tr("Save server template"));
     details->addRow(serverTemplate);
     connect(serverTemplate, &QPushButton::clicked, this, [this] { exportServerTemplate(); });
     addPage(detailsPage);
 
-    auto* reviewPage = new QWizardPage;
-    reviewPage->setTitle(tr("3. Review the prepared registration"));
-    reviewPage->setSubTitle(tr("A signed transaction is prepared locally. Nothing is broadcast until the final confirmation."));
-    auto* reviewLayout = new QVBoxLayout(reviewPage);
+    auto* reviewPage = new ScrollableSetupPage(tr("3. Review the prepared registration"),
+        tr("A signed transaction is prepared locally. Nothing is broadcast until the final confirmation."));
+    auto* reviewLayout = new QVBoxLayout(reviewPage->body());
+    if (DESKTOP_LAYOUT) reviewLayout->setContentsMargins(0, 0, 0, 0);
     m_review = new QPlainTextEdit;
     m_review->setObjectName("smartnodeRegistrationReview");
     m_review->setReadOnly(true);
     reviewLayout->addWidget(m_review);
-    m_consent = new QCheckBox(tr("I reviewed the collateral, server, addresses and fee, and want to broadcast this registration."));
+    const QString consent = tr("I reviewed the collateral, server, addresses and fee, and want to broadcast this registration.");
+    if (DESKTOP_LAYOUT) {
+        auto* consentExplanation = new QLabel(consent);
+        consentExplanation->setWordWrap(true);
+        reviewLayout->addWidget(consentExplanation);
+    }
+    m_consent = new QCheckBox(DESKTOP_LAYOUT ? tr("Confirm registration") : consent);
+    m_consent->setAccessibleDescription(consent);
     m_consent->setObjectName("smartnodeRegistrationConsent");
     reviewLayout->addWidget(m_consent);
     addPage(reviewPage);

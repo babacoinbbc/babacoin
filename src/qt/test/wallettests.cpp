@@ -12,6 +12,10 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
+#include <qt/bitcoingui.h>
+#include <qt/networkstyle.h>
+#include <qt/guiutil.h>
+#include <qt/utilitydialog.h>
 #include <qt/smartnodewizard.h>
 #include <qt/smartnodelist.h>
 #include <qt/webwalletpage.h>
@@ -42,6 +46,14 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QTimer>
+#include <QThread>
+#include <QElapsedTimer>
+#include <QDebug>
+#include <QSettings>
+#include <QScrollArea>
+#include <QScrollBar>
+#include <QToolButton>
+#include <QDir>
 #include <QVBoxLayout>
 #include <QTextEdit>
 #include <QListView>
@@ -161,6 +173,193 @@ void WalletTests::syncUiResponsiveness()
     QVERIFY(progress->value() < progress->maximum());
     uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::IDLE));
     QTRY_COMPARE(info->text(), warning);
+}
+
+void WalletTests::balancePollResponsiveness()
+{
+    TestChain100Setup chain;
+    auto wallet = std::make_shared<CWallet>(WalletLocation(), WalletDatabase::CreateMock());
+    AddWallet(wallet);
+    struct Cleanup {
+        std::shared_ptr<CWallet> wallet;
+        ~Cleanup() { RemoveWallet(wallet); }
+    } cleanup{wallet};
+    bool firstRun;
+    wallet->LoadWallet(firstRun);
+    auto node = interfaces::MakeNode();
+    OptionsModel options(*node);
+    WalletModel model(std::move(node->getWallets()[0]), *node, &options);
+    model.pollTimer->stop();
+    QVERIFY(model.balancePollThread != QThread::currentThread());
+
+    // A deliberately slow worker task models an expensive balance traversal.
+    // The GUI must keep ticking and must not queue one traversal per timer tick.
+    std::atomic<bool> busy{false}, release{false}, timedOut{false};
+    QTimer::singleShot(0, model.balancePollWorker, [&] {
+        busy.store(true);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!release.load() && std::chrono::steady_clock::now() < deadline)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        timedOut.store(!release.load());
+        busy.store(false);
+    });
+    QTRY_VERIFY(busy.load());
+    int requests = 0, heartbeats = 0;
+    QObject::connect(&model, &WalletModel::requestedBalancePoll, [&] { ++requests; });
+    QTimer heartbeat;
+    QObject::connect(&heartbeat, &QTimer::timeout, [&] { if (busy.load()) ++heartbeats; });
+    heartbeat.start(1);
+    QElapsedTimer elapsed;
+    elapsed.start();
+    for (int i = 0; i < 100; ++i) model.pollBalanceChanged();
+    const auto scheduleMillis = elapsed.elapsed();
+    model.updateTransaction(); // must survive completion of an older request
+    QTest::qWait(100);
+    release.store(true);
+    QTRY_VERIFY(!model.balancePollInFlight);
+    heartbeat.stop();
+    QVERIFY(!timedOut.load());
+    QVERIFY(heartbeats > 0);
+    QVERIFY(scheduleMillis < 500);
+    QCOMPARE(requests, 1);
+    QVERIFY(!model.hasBalanceSnapshot()); // the older in-flight result was rejected
+    QVERIFY(model.fForceCheckBalanceChanged);
+    model.pollBalanceChanged();
+    QTRY_VERIFY(!model.balancePollInFlight);
+    QCOMPARE(requests, 2);
+    QVERIFY(model.hasBalanceSnapshot());
+    QCOMPARE(model.getCachedBalances().balance, wallet->GetBalance());
+    QVERIFY(!model.fForceCheckBalanceChanged);
+    // Unchanged height/options do not schedule another wallet traversal.
+    for (int i = 0; i < 100; ++i) model.pollBalanceChanged();
+    QCOMPARE(requests, 2);
+    qDebug() << "Balance poll: 100 requests scheduled in" << scheduleMillis
+             << "ms; GUI heartbeats during worker delay:" << heartbeats;
+
+    // Unloading with a queued result must join the worker and discard its
+    // receiver-bound completion rather than access a destroyed wallet/model.
+    auto* unloading = new WalletModel(std::move(node->getWallets()[0]), *node, &options);
+    unloading->pollTimer->stop();
+    unloading->pollBalanceChanged();
+    delete unloading;
+    QTest::qWait(20);
+}
+
+void WalletTests::desktopLayout()
+{
+#if !defined(Q_OS_WIN) && !defined(Q_OS_MAC)
+    QSKIP("Responsive desktop shell changes target Windows and macOS only");
+#else
+    struct RestoreAppearance {
+        QString applicationName{QApplication::applicationName()};
+        QVariant theme{QSettings().value("theme")};
+        int scale{GUIUtil::getFontScale()};
+        ~RestoreAppearance() {
+            QApplication::setApplicationName(applicationName);
+            if (theme.isValid()) QSettings().setValue("theme", theme);
+            else QSettings().remove("theme");
+            GUIUtil::setFontScale(scale);
+            GUIUtil::loadTheme(true);
+        }
+    } restore;
+    if (!GUIUtil::fontsLoaded()) { QVERIFY(GUIUtil::loadFonts()); GUIUtil::setApplicationFont(); }
+    TestChain100Setup chain;
+    auto wallet = std::make_shared<CWallet>(WalletLocation(), WalletDatabase::CreateMock());
+    AddWallet(wallet);
+    struct Cleanup { std::shared_ptr<CWallet> wallet; ~Cleanup() { RemoveWallet(wallet); } } cleanup{wallet};
+    bool firstRun;
+    wallet->LoadWallet(firstRun);
+    auto node = interfaces::MakeNode();
+    OptionsModel options(*node);
+    WalletModel model(std::move(node->getWallets()[0]), *node, &options);
+    ClientModel client(*node, &options);
+    std::unique_ptr<const NetworkStyle> networkStyle(NetworkStyle::instantiate("regtest"));
+    QSettings().setValue("fShowSmartnodesTab", true);
+    BitcoinGUI gui(*node, networkStyle.get());
+    struct DetachClient {
+        BitcoinGUI& gui;
+        ~DetachClient() { gui.removeAllWallets(); gui.setClientModel(nullptr); }
+    } detachClient{gui};
+    gui.setWindowTitle("Babacoin Desktop QA - isolated regtest");
+    gui.setClientModel(&client);
+    QVERIFY(gui.addWallet(&model));
+    QVERIFY(gui.setCurrentWallet(model.getWalletName()));
+    gui.finishStartup();
+    gui.show();
+    auto* dashboard = gui.findChild<QScrollArea*>("walletDashboardScroll");
+    auto* navigation = gui.findChild<QScrollArea*>("walletSidebarScroll");
+    auto* settingsButton = gui.findChild<QToolButton*>("walletSettings");
+    auto* content = gui.findChild<QScrollArea*>("walletContentScroll");
+    QVERIFY(dashboard && navigation && settingsButton && content);
+    const QString reviewDirectory = QString::fromLocal8Bit(qgetenv("BBC_UI_REVIEW_DIR"));
+    auto snapshot = [&](QWidget& widget, const QString& name) {
+        if (!reviewDirectory.isEmpty()) {
+            QDir().mkpath(reviewDirectory);
+            return widget.grab().save(QDir(reviewDirectory).filePath(name + ".png"));
+        }
+        return true;
+    };
+    for (const QString& theme : {QString("Dark"), QString("Light")}) {
+        QSettings().setValue("theme", theme);
+        QCOMPARE(GUIUtil::getActiveTheme(), theme);
+        GUIUtil::loadTheme(true);
+        for (int scale : {0, 50}) {
+            GUIUtil::setFontScale(scale);
+            for (const QSize size : {QSize(800, 600), QSize(1024, 640), QSize(1440, 900)}) {
+                gui.resize(size);
+                QTest::qWait(80);
+                qDebug() << "Desktop geometry" << theme << scale << size << gui.size()
+                         << "content" << content->viewport()->size() << content->widget()->minimumSizeHint()
+                         << "dashboard" << dashboard->viewport()->size()
+                         << dashboard->parentWidget()->minimumSizeHint();
+                if (content->horizontalScrollBar()->maximum() > 0) {
+                    for (auto* widget : content->widget()->findChildren<QWidget*>()) {
+                        const QString type = widget->metaObject()->className();
+                        if (type == "WalletView" || type == "OverviewPage" || type == "QStackedWidget")
+                            qDebug() << "Stack geometry" << type << widget->minimumSize()
+                                     << widget->minimumSizeHint() << widget->sizeHint();
+                    }
+                }
+                QVERIFY2(gui.width() <= size.width(), "Hidden forms forced the desktop window wider than requested");
+                QTRY_COMPARE(dashboard->horizontalScrollBar()->maximum(), 0);
+                QTRY_COMPARE(content->horizontalScrollBar()->maximum(), 0);
+                navigation->ensureWidgetVisible(settingsButton);
+                QTest::qWait(10);
+                QVERIFY(navigation->viewport()->rect().contains(settingsButton->mapTo(navigation->viewport(), settingsButton->rect().center())));
+                QVERIFY(snapshot(gui, QString("desktop-%1-%2-%3x%4").arg(theme).arg(scale).arg(size.width()).arg(size.height())));
+            }
+            SmartnodeWizard wizard(&model, {}, &gui);
+            wizard.resize(520, 400);
+            wizard.show();
+            QTest::qWait(80);
+            QVERIFY(wizard.width() <= 520);
+            QVERIFY(wizard.height() <= 400);
+            auto* pageScroll = wizard.currentPage()->findChild<QScrollArea*>("smartnodePageScroll");
+            QVERIFY(pageScroll);
+            QTRY_COMPARE(pageScroll->horizontalScrollBar()->maximum(), 0);
+            QVERIFY(!wizard.button(QWizard::NextButton)->isEnabled());
+            QVERIFY(snapshot(wizard, QString("wizard-%1-%2").arg(theme).arg(scale)));
+            wizard.reject();
+        }
+    }
+    HelpMessageDialog about(*node, &gui, HelpMessageDialog::about);
+    about.resize(600, 420);
+    about.show();
+    QTest::qWait(60);
+    auto* license = about.findChild<QLabel*>("aboutMessage");
+    QVERIFY(license);
+    QVERIFY(license->text().contains("https://github.com/babacoinbbc/babacoin"));
+    QVERIFY(!license->text().contains("Raptor3um"));
+    QCOMPARE(license->text().count("The Dash Core developers"), 1);
+    QVERIFY(license->height() >= license->heightForWidth(license->width()));
+    QVERIFY(snapshot(about, "about-source"));
+    auto* aboutScroll = about.findChild<QScrollArea*>("scrollArea");
+    QVERIFY(aboutScroll);
+    aboutScroll->verticalScrollBar()->setValue(aboutScroll->verticalScrollBar()->maximum());
+    QVERIFY(snapshot(about, "about-source-bottom"));
+    about.hide();
+    gui.hide();
+#endif
 }
 
 void WalletTests::smartnodeFundingSafety()

@@ -190,6 +190,7 @@ BITCOIN_QT_H = \
   qt/transactionview.h \
   qt/utilitydialog.h \
   qt/walletframe.h \
+  qt/currentpagestack.h \
   qt/walletmodel.h \
   qt/walletmodeltransaction.h \
   qt/walletmodelfuturestransaction.h \

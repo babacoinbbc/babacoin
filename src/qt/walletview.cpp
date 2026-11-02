@@ -35,7 +35,7 @@
 #include <QVBoxLayout>
 
 WalletView::WalletView(QWidget* parent) :
-    QStackedWidget(parent),
+    CurrentPageStack(parent),
     clientModel(0),
     walletModel(0)
 {

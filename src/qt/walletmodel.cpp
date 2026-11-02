@@ -32,6 +32,7 @@ using namespace boost::placeholders;
 #include <QDebug>
 #include <QSet>
 #include <QTimer>
+#include <QThread>
 
 
 WalletModel::WalletModel(std::unique_ptr<interfaces::Wallet> wallet, interfaces::Node& node, OptionsModel *_optionsModel, QObject *parent) :
@@ -50,7 +51,36 @@ WalletModel::WalletModel(std::unique_ptr<interfaces::Wallet> wallet, interfaces:
     transactionTableModel = new TransactionTableModel(this);
     recentRequestsTableModel = new RecentRequestsTableModel(this);
 
-    // This timer will be fired repeatedly to update the balance
+    // Acquiring locks without waiting does not bound the calculation itself:
+    // a large wallet can still take seconds to traverse. Only the completed
+    // snapshot belongs on the GUI thread. One request at a time avoids a
+    // growing queue when validation or a large wallet is busy.
+    balancePollThread = new QThread(this);
+    balancePollThread->setObjectName("walletBalancePollThread");
+    balancePollWorker = new QObject;
+    balancePollWorker->moveToThread(balancePollThread);
+    connect(balancePollThread, &QThread::finished, balancePollWorker, &QObject::deleteLater);
+    connect(this, &WalletModel::requestedBalancePoll, balancePollWorker, [this](int rounds, quint64 revision) {
+        interfaces::WalletBalances balances;
+        int height = -1;
+        const bool ready = m_wallet->tryGetBalances(balances, height);
+        QTimer::singleShot(0, this, [this, balances, height, rounds, ready, revision] {
+            balancePollInFlight = false;
+            if (!ready || revision != balancePollRevision) {
+                fForceCheckBalanceChanged = true;
+                return;
+            }
+            cachedNumBlocks = height;
+            cachedCoinJoinRounds = rounds;
+            // A newer transaction, ChainLock or synchronous send balance
+            // invalidates an older in-flight result instead of overwriting it.
+            checkBalanceChanged(balances);
+            if (transactionTableModel) transactionTableModel->updateConfirmations();
+        });
+    }, Qt::QueuedConnection);
+    balancePollThread->start();
+
+    // This timer schedules work; it never traverses wallet balances itself.
     pollTimer = new QTimer(this);
     connect(pollTimer, SIGNAL(timeout()), this, SLOT(pollBalanceChanged()));
     pollTimer->start(MODEL_UPDATE_DELAY);
@@ -60,7 +90,12 @@ WalletModel::WalletModel(std::unique_ptr<interfaces::Wallet> wallet, interfaces:
 
 WalletModel::~WalletModel()
 {
+    pollTimer->stop();
     unsubscribeFromCoreSignals();
+    balancePollThread->quit();
+    // The interface/wallet must outlive a calculation already in progress.
+    // Receiver-bound callbacks are discarded when this model is destroyed.
+    balancePollThread->wait();
 }
 
 void WalletModel::updateStatus()
@@ -74,6 +109,7 @@ void WalletModel::updateStatus()
 
 void WalletModel::pollBalanceChanged()
 {
+    if (balancePollInFlight) return;
     // The old loop recomputed every balance before deciding whether to use it.
     // During header-only sync, height/rounds often do not change at all. Check
     // that cheap condition first, using a nonblocking validation-lock attempt.
@@ -82,32 +118,14 @@ void WalletModel::pollBalanceChanged()
         TRY_LOCK(cs_main, locked_chain);
         if (!locked_chain || node().getNumBlocks() == cachedNumBlocks) return;
     }
-    // Try to get balances and return early if locks can't be acquired. This
-    // avoids the GUI from getting stuck on periodical polls if the core is
-    // holding the locks for a longer time - for example, during a wallet
-    // rescan.
-    interfaces::WalletBalances new_balances;
-    int numBlocks = -1;
-    if (!m_wallet->tryGetBalances(new_balances, numBlocks)) {
-        return;
-    }
-
-    if(fForceCheckBalanceChanged || numBlocks != cachedNumBlocks || node().coinJoinOptions().getRounds() != cachedCoinJoinRounds)
-    {
-        fForceCheckBalanceChanged = false;
-
-        // Balance and number of transactions might have changed
-        cachedNumBlocks = numBlocks;
-        cachedCoinJoinRounds = node().coinJoinOptions().getRounds();
-
-        checkBalanceChanged(new_balances);
-        if(transactionTableModel)
-            transactionTableModel->updateConfirmations();
-    }
+    balancePollInFlight = true;
+    fForceCheckBalanceChanged = false;
+    Q_EMIT requestedBalancePoll(node().coinJoinOptions().getRounds(), balancePollRevision);
 }
 
 void WalletModel::checkBalanceChanged(const interfaces::WalletBalances& new_balances)
 {
+    ++balancePollRevision;
     if(!balanceSnapshotReady || new_balances.balanceChanged(m_cached_balances)) {
         m_cached_balances = new_balances;
         balanceSnapshotReady = true;
@@ -117,6 +135,7 @@ void WalletModel::checkBalanceChanged(const interfaces::WalletBalances& new_bala
 
 void WalletModel::updateTransaction()
 {
+    ++balancePollRevision;
     // Balance and number of transactions might have changed
     fForceCheckBalanceChanged = true;
 }
@@ -128,6 +147,7 @@ void WalletModel::updateNumISLocks()
 
 void WalletModel::updateChainLockHeight(int chainLockHeight)
 {
+    ++balancePollRevision;
     if (transactionTableModel)
         transactionTableModel->updateChainLockHeight(chainLockHeight);
     // Number and status of confirmations might have changed (WalletModel::pollBalanceChanged handles this as well)

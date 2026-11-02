@@ -32,6 +32,7 @@
 #include <QLinearGradient>
 #include <QLocale>
 #include <QStyle>
+#include <QEvent>
 #include <cmath>
 #include <algorithm>
 
@@ -238,7 +239,13 @@ OverviewPage::OverviewPage(QWidget* parent) :
     heroBalance(nullptr)
 {
     ui->setupUi(this);
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+    // The inherited .ui file still has a hard 960px minimum. The desktop
+    // scroll/reflow layout, rather than an invisible page, determines width.
+    setMinimumWidth(0);
+#else
     setMinimumWidth(640);
+#endif
     ui->topLayout->setContentsMargins(22, 8, 22, 22);
     ui->topLayout->setSpacing(20);
     ui->horizontalLayout->setSpacing(18);
@@ -256,6 +263,8 @@ OverviewPage::OverviewPage(QWidget* parent) :
     totalLayout->addWidget(totalCaption);
     heroBalance = new QLabel(ui->labelTotal->text(), hero);
     heroBalance->setObjectName("heroTotal");
+    heroBalance->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    heroBalance->setWordWrap(true);
     heroBalance->setTextInteractionFlags(Qt::TextSelectableByMouse);
     totalLayout->addWidget(heroBalance);
     QLabel* balanceHint = new QLabel(tr("Total balance · Spendable and pending amounts are shown below."), hero);
@@ -264,6 +273,7 @@ OverviewPage::OverviewPage(QWidget* parent) :
     totalLayout->addWidget(balanceHint);
     heroLayout->addLayout(totalLayout, 1);
     QLabel* coin = new QLabel(hero);
+    coin->setObjectName("heroCoin");
     const QPixmap brand(":/images/babacoin_brand_gold");
     const qreal ratio = devicePixelRatioF();
     QPixmap coinImage = (brand.isNull() ? QPixmap(":/icons/babacoin") : brand.copy(0, 0, brand.height(), brand.height()))
@@ -275,7 +285,7 @@ OverviewPage::OverviewPage(QWidget* parent) :
     ui->topLayout->insertWidget(1, hero);
 
     auto* networkStrip = new QWidget(this);
-    auto* networkLayout = new QHBoxLayout(networkStrip);
+    networkLayout = new QHBoxLayout(networkStrip);
     networkLayout->setContentsMargins(0, 0, 0, 0);
     networkLayout->setSpacing(14);
     auto addMetric = [&](const QString& title, const QString& name) {
@@ -285,6 +295,7 @@ OverviewPage::OverviewPage(QWidget* parent) :
         layout->setContentsMargins(18, 14, 18, 14);
         auto* caption = new QLabel(title, card);
         caption->setObjectName("metricCaption");
+        caption->setWordWrap(true);
         auto* value = new QLabel(tr("Waiting..."), card);
         value->setObjectName(name);
         value->setWordWrap(true);
@@ -362,6 +373,18 @@ OverviewPage::OverviewPage(QWidget* parent) :
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setWidgetResizable(true);
     scroll->setWidget(body);
+    dashboardScroll = scroll;
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+    // Retain existing widgets/model connections while allowing the two card
+    // columns to stack. Fixed side spacers would become wasted vertical space.
+    for (int i = ui->horizontalLayout->count() - 1; i >= 0; --i) {
+        if (ui->horizontalLayout->itemAt(i)->spacerItem())
+            delete ui->horizontalLayout->takeAt(i);
+    }
+    ui->horizontalLayout->setSpacing(18);
+    scroll->viewport()->installEventFilter(this);
+    QTimer::singleShot(0, this, [this] { updateDashboardLayout(); });
+#endif
     QVBoxLayout* root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
     root->addWidget(scroll);
@@ -429,6 +452,53 @@ OverviewPage::~OverviewPage()
 {
     if(timer) disconnect(timer, SIGNAL(timeout()), this, SLOT(coinJoinStatus()));
     delete ui;
+}
+
+bool OverviewPage::eventFilter(QObject* object, QEvent* event)
+{
+    if (dashboardScroll && object == dashboardScroll->viewport() &&
+        event->type() == QEvent::Resize && !dashboardLayoutPending) {
+        dashboardLayoutPending = true;
+        QTimer::singleShot(0, this, [this] {
+            dashboardLayoutPending = false;
+            updateDashboardLayout();
+        });
+    }
+    return QWidget::eventFilter(object, event);
+}
+
+void OverviewPage::updateDashboardLayout()
+{
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+    if (!dashboardScroll) return;
+    const bool stacked = dashboardScroll->viewport()->width() <
+        std::max(720, fontMetrics().width(QString(90, QLatin1Char('0'))));
+    const bool compact = stacked || dashboardScroll->viewport()->height() < 520;
+    if (property("compact").isValid() && compact == compactDashboard &&
+        property("stacked").toBool() == stacked) return;
+    compactDashboard = compact;
+    setProperty("compact", compact);
+    setProperty("stacked", stacked);
+    ui->horizontalLayout->setDirection(stacked ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
+    for (auto* card : findChildren<QFrame*>("networkMetricCard")) {
+        card->layout()->setContentsMargins(compact ? 12 : 18, compact ? 10 : 14,
+                                          compact ? 12 : 18, compact ? 10 : 14);
+        GUIUtil::setFont({card->findChild<QLabel*>("metricCaption")}, GUIUtil::FontWeight::Normal, compact ? 8 : 9);
+    }
+    GUIUtil::setFont({connectionValue, blockHeightValue, syncValue}, GUIUtil::FontWeight::Bold, compact ? 11 : 13);
+    auto* hero = findChild<QFrame*>("balanceHero");
+    hero->setMinimumHeight(compact ? 124 : 176);
+    hero->layout()->setContentsMargins(compact ? 18 : 30, compact ? 16 : 26,
+                                      compact ? 18 : 30, compact ? 16 : 26);
+    findChild<QLabel*>("heroCoin")->setVisible(!compact);
+    GUIUtil::setFont({heroBalance}, GUIUtil::FontWeight::Bold, compact ? 22 : 30);
+    GUIUtil::updateFonts();
+    for (auto* widget : findChildren<QWidget*>()) {
+        widget->style()->unpolish(widget);
+        widget->style()->polish(widget);
+    }
+    ui->topLayout->invalidate();
+#endif
 }
 
 void OverviewPage::setBalance(const interfaces::WalletBalances& balances)
@@ -611,6 +681,9 @@ void OverviewPage::updateNetworkOverview()
 
 void OverviewPage::updateCoinJoinProgress()
 {
+    // Hidden mixing statistics must not query or lock the wallet on ordinary
+    // balance updates when CoinJoin is disabled.
+    if (!clientModel || !clientModel->coinJoinOptions().isEnabled()) return;
     if (!walletModel || !clientModel || clientModel->node().shutdownRequested() || !clientModel->smartnodeSync().isBlockchainSynced()) return;
     // Statistics may query wallet/chain state. Keep the last display while a
     // header batch holds the chain lock; the normal refresh retries later.

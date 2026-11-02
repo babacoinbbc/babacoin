@@ -46,6 +46,9 @@ using namespace boost::placeholders;
 
 #include <QAction>
 #include <QApplication>
+#include <QScrollArea>
+#include <QResizeEvent>
+#include <QStyle>
 #include <QButtonGroup>
 #include <QComboBox>
 #include <QDateTime>
@@ -890,6 +893,7 @@ void BitcoinGUI::createToolBars()
         });
         toolbar->addWidget(appearanceButton);
         QToolButton* settingsButton = new QToolButton(toolbar);
+        settingsButton->setObjectName("walletSettings");
         settingsButton->setText(tr("Settings"));
         setNavigationIcon(settingsButton, "configure");
         connect(settingsButton, &QToolButton::clicked, optionsAction, &QAction::trigger);
@@ -913,12 +917,13 @@ void BitcoinGUI::createToolBars()
         heading->setSpacing(3);
         QLabel* title = new QLabel(tr("Overview"), header);
         title->setObjectName("walletPageTitle");
+        title->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        title->setWordWrap(true);
         heading->addWidget(title);
         QLabel* subtitle = new QLabel(tr("Babacoin · BBC"), header);
         subtitle->setObjectName("walletPageSubtitle");
         heading->addWidget(subtitle);
-        headerLayout->addLayout(heading);
-        headerLayout->addStretch();
+        headerLayout->addLayout(heading, 1);
         const QString chain = QString::fromStdString(Params().NetworkIDString());
         QLabel* networkBadge = new QLabel(chain == "main" ? tr("Main network") : chain.toUpper(), header);
         networkBadge->setObjectName("walletNetworkBadge");
@@ -939,9 +944,29 @@ void BitcoinGUI::createToolBars()
         GUIUtil::setFont({networkBadge}, GUIUtil::FontWeight::Normal, 8);
         GUIUtil::setFont({quickReceive, quickSend}, GUIUtil::FontWeight::Bold, 10);
         pageLayout->addWidget(header);
-        pageLayout->addWidget(walletFrame, 1);
+        QWidget* walletContent = walletFrame;
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+        auto* contentScroll = new QScrollArea(page);
+        contentScroll->setObjectName("walletContentScroll");
+        contentScroll->setFrameShape(QFrame::NoFrame);
+        contentScroll->setWidgetResizable(true);
+        contentScroll->setWidget(walletFrame);
+        walletContent = contentScroll;
+#endif
+        pageLayout->addWidget(walletContent, 1);
         QHBoxLayout* layout = new QHBoxLayout;
-        layout->addWidget(toolbar);
+        QWidget* navigation = toolbar;
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+        m_sidebarScroll = new QScrollArea(this);
+        m_sidebarScroll->setObjectName("walletSidebarScroll");
+        m_sidebarScroll->setFrameShape(QFrame::NoFrame);
+        m_sidebarScroll->setWidgetResizable(true);
+        m_sidebarScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        m_sidebarScroll->setWidget(toolbar);
+        toolbar->installEventFilter(this);
+        navigation = m_sidebarScroll;
+#endif
+        layout->addWidget(navigation);
         layout->addWidget(page, 1);
         layout->setSpacing(0);
         layout->setContentsMargins(0, 0, 0, 0);
@@ -950,6 +975,7 @@ void BitcoinGUI::createToolBars()
         containerWidget->setLayout(layout);
         setCentralWidget(containerWidget);
         GUIUtil::updateFonts();
+        QTimer::singleShot(0, this, [this] { updateShellLayout(); });
     }
 #endif // ENABLE_WALLET
 }
@@ -1520,8 +1546,82 @@ void BitcoinGUI::updateWidth()
     }
     // Navigation is vertical now; do not multiply label widths or reset the
     // user's chosen window width when a tab is enabled or disabled.
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+    setMinimumWidth(640);
+#else
     setMinimumWidth(960);
+#endif
     if (width() < minimumWidth()) resize(minimumWidth(), height());
+}
+
+void BitcoinGUI::resizeEvent(QResizeEvent* event)
+{
+    QMainWindow::resizeEvent(event);
+    if (!m_shellLayoutPending) {
+        m_shellLayoutPending = true;
+        QTimer::singleShot(0, this, [this] {
+            m_shellLayoutPending = false;
+            updateShellLayout();
+        });
+    }
+}
+
+void BitcoinGUI::updateShellLayout()
+{
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+    if (!m_sidebarScroll || !appToolBar) return;
+    const bool compact = height() < 760 || width() < 1180;
+    if (!appToolBar->property("compact").isValid() || appToolBar->property("compact").toBool() != compact) {
+        appToolBar->setProperty("compact", compact);
+        auto* header = findChild<QWidget*>("walletHeader");
+        header->setProperty("compact", compact);
+        header->layout()->setContentsMargins(compact ? 14 : 28, compact ? 10 : 18,
+                                            compact ? 14 : 28, compact ? 10 : 18);
+        header->findChild<QLabel*>("walletPageSubtitle")->setVisible(!compact);
+        GUIUtil::setFont({header->findChild<QLabel*>("walletPageTitle")}, GUIUtil::FontWeight::Bold, compact ? 16 : 18);
+        GUIUtil::updateFonts();
+        for (auto* child : header->findChildren<QWidget*>()) {
+            child->style()->unpolish(child);
+            child->style()->polish(child);
+            child->updateGeometry();
+        }
+        auto* brand = appToolBar->findChild<QWidget*>("walletBrand");
+        brand->layout()->setContentsMargins(12, compact ? 10 : 20, 12, compact ? 10 : 22);
+        auto* icon = brand->findChild<QLabel*>("walletBrandIcon");
+        const int size = compact ? 48 : 88;
+        icon->setFixedSize(size, size);
+        const QPixmap source(":/images/babacoin_brand_gold");
+        if (!source.isNull()) {
+            const qreal ratio = devicePixelRatioF();
+            QPixmap coin = source.copy(0, 0, source.height(), source.height()).scaled(
+                qRound(size * ratio), qRound(size * ratio), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            coin.setDevicePixelRatio(ratio);
+            icon->setPixmap(coin);
+        }
+        brand->findChild<QLabel*>("walletBrandCaption")->setVisible(!compact);
+        for (auto* action : appToolBar->actions()) {
+            auto* widget = appToolBar->widgetForAction(action);
+            if (widget && widget->objectName() == "sidebarFooter") action->setVisible(!compact);
+        }
+        for (auto* child : appToolBar->findChildren<QWidget*>()) {
+            child->style()->unpolish(child);
+            child->style()->polish(child);
+            child->updateGeometry();
+        }
+    }
+    int contentHeight = 8;
+    int contentWidth = 192;
+    for (auto* action : appToolBar->actions()) {
+        auto* widget = appToolBar->widgetForAction(action);
+        if (!widget || !action->isVisible() || widget->isHidden()) continue;
+        contentHeight += std::max(0, widget->sizeHint().height()) + 2;
+        contentWidth = std::max(contentWidth, widget->sizeHint().width());
+    }
+    // QToolBar otherwise hides overflowing actions behind its extension menu.
+    // Give every action room and scroll the navigation as a single column.
+    if (appToolBar->minimumHeight() != contentHeight) appToolBar->setMinimumHeight(contentHeight);
+    m_sidebarScroll->setFixedWidth(std::min(340, contentWidth + 18));
+#endif
 }
 
 void BitcoinGUI::updateCachedBlockTip()
@@ -2006,6 +2106,13 @@ void BitcoinGUI::dropEvent(QDropEvent *event)
 
 bool BitcoinGUI::eventFilter(QObject *object, QEvent *event)
 {
+    if (object == appToolBar && event->type() == QEvent::LayoutRequest && !m_shellLayoutPending) {
+        m_shellLayoutPending = true;
+        QTimer::singleShot(0, this, [this] {
+            m_shellLayoutPending = false;
+            updateShellLayout();
+        });
+    }
     // Catch status tip events
     if (event->type() == QEvent::StatusTip)
     {

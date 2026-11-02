@@ -42,6 +42,7 @@ class Node;
 
 QT_BEGIN_NAMESPACE
 class QTimer;
+class QThread;
 QT_END_NAMESPACE
 
 class SendCoinsRecipient
@@ -337,6 +338,7 @@ public:
 
     bool isMultiwallet();
 private:
+    friend class WalletTests;
     std::unique_ptr<interfaces::Wallet> m_wallet;
     std::unique_ptr<interfaces::Handler> m_handler_unload;
     std::unique_ptr<interfaces::Handler> m_handler_status_changed;
@@ -368,12 +370,17 @@ private:
     int cachedCoinJoinRounds;
 
     QTimer *pollTimer;
+    QThread* balancePollThread;
+    QObject* balancePollWorker;
+    bool balancePollInFlight{false};
+    quint64 balancePollRevision{0};
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
     void checkBalanceChanged(const interfaces::WalletBalances& new_balances);
 
 Q_SIGNALS:
+    void requestedBalancePoll(int rounds, quint64 revision);
     // Signal that balance in wallet changed
     void balanceChanged(const interfaces::WalletBalances& balances);
 

@@ -45,6 +45,12 @@ qt_test_test_babacoin_qt_SOURCES = \
   $(TEST_QT_H) \
   $(TEST_BITCOIN_CPP) \
   $(TEST_BITCOIN_H)
+if TARGET_DARWIN
+# Full-window Qt tests also exercise Dock, App Nap and notification helpers.
+# Link the same native implementations used by the application.
+qt_test_test_babacoin_qt_SOURCES += $(BITCOIN_MM)
+qt_test_test_babacoin_qt_OBJCXXFLAGS = $(AM_OBJCXXFLAGS) $(QT_PIE_FLAGS)
+endif
 if ENABLE_WALLET
 qt_test_test_babacoin_qt_SOURCES += \
   qt/test/paymentservertests.cpp \

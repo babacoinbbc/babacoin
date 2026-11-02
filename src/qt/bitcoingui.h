@@ -57,6 +57,7 @@ class QProgressDialog;
 class QToolButton;
 class QShortcut;
 class QStackedWidget;
+class QScrollArea;
 QT_END_NAMESPACE
 
 /**
@@ -95,6 +96,7 @@ protected:
     void changeEvent(QEvent *e);
     void closeEvent(QCloseEvent *event);
     void showEvent(QShowEvent *event);
+    void resizeEvent(QResizeEvent* event) override;
     void dragEnterEvent(QDragEnterEvent *event);
     void dropEvent(QDropEvent *event);
     bool eventFilter(QObject *object, QEvent *event);
@@ -108,6 +110,9 @@ private:
     std::vector<std::pair<QPointer<QAction>, QList<QKeySequence>>> m_startupActionShortcuts;
     std::vector<std::pair<QPointer<QShortcut>, bool>> m_startupShortcuts;
     bool m_startupStatusHidden{false};
+    QScrollArea* m_sidebarScroll{nullptr};
+    bool m_shellLayoutPending{false};
+    void updateShellLayout();
     interfaces::Node& m_node;
     std::unique_ptr<interfaces::Handler> m_handler_message_box;
     std::unique_ptr<interfaces::Handler> m_handler_question;

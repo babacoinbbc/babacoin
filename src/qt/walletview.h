@@ -8,7 +8,7 @@
 #include <amount.h>
 #include <qt/smartnodelist.h>
 
-#include <QStackedWidget>
+#include <qt/currentpagestack.h>
 
 class BitcoinGUI;
 class ClientModel;
@@ -33,7 +33,7 @@ QT_END_NAMESPACE
   It communicates with both the client and the wallet models to give the user an up-to-date view of the
   current core state.
 */
-class WalletView : public QStackedWidget
+class WalletView : public CurrentPageStack
 {
     Q_OBJECT
 

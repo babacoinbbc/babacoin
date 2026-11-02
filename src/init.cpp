@@ -646,7 +646,7 @@ void SetupServerArgs()
 
 std::string LicenseInfo()
 {
-    const std::string URL_SOURCE_CODE = "<https://github.com/Raptor3um/babacoin>";
+    const std::string URL_SOURCE_CODE = "<https://github.com/babacoinbbc/babacoin>";
     const std::string URL_WEBSITE = "<https://babacoin.network>";
 
     return CopyrightHolders(_("Copyright (C)"), 2014, COPYRIGHT_YEAR) + "\n" +

@@ -7,6 +7,7 @@
 
 #include <qt/bitcoingui.h>
 #include <qt/walletview.h>
+#include <qt/currentpagestack.h>
 
 #include <cassert>
 #include <cstdio>
@@ -21,7 +22,7 @@ WalletFrame::WalletFrame(BitcoinGUI* _gui) :
     // Leave HBox hook for adding a list view later
     QHBoxLayout *walletFrameLayout = new QHBoxLayout(this);
     setContentsMargins(0,0,0,0);
-    walletStack = new QStackedWidget(this);
+    walletStack = new CurrentPageStack(this);
     walletFrameLayout->setContentsMargins(0,0,0,0);
     walletFrameLayout->addWidget(walletStack);
 
