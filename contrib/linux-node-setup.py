@@ -64,7 +64,7 @@ def profile(os_id, version, machine):
 
 def read_os(path='/etc/os-release'):
     values = {}
-    for line in Path(path).read_text().splitlines():
+    for line in Path(path).read_text(encoding='utf-8').splitlines():
         key, sep, value = line.partition('=')
         if sep and key in ('ID', 'VERSION_ID'):
             parts = shlex.split(value)
@@ -96,7 +96,7 @@ def download(url, target, limit, sha=None):
 
 
 def get_json(url, directory, name, limit=8*1024*1024):
-    return json.loads(download(url, directory/name, limit).read_text())
+    return json.loads(download(url, directory/name, limit).read_text(encoding='utf-8'))
 
 
 def asset(release, name):
@@ -185,7 +185,7 @@ def require_mainnet(data, args):
     if not conf.is_absolute(): conf = data/conf
     if conf.exists():
         section = ''
-        for line in conf.read_text(errors='strict').splitlines():
+        for line in conf.read_text(encoding='utf-8', errors='strict').splitlines():
             line = line.split('#', 1)[0].strip()
             if line.startswith('['): section = line
             key, sep, value = line.partition('=')
@@ -204,7 +204,7 @@ def require_mainnet(data, args):
 def stop_node(node, timeout=300):
     if identity(node['pid']) != node['token']: fail('Daemon identity changed; refusing to signal it.')
     if node['unit']:
-        pid = subprocess.check_output(['systemctl', 'show', node['unit'], '-p', 'MainPID', '--value'], universal_newlines=True).strip()
+        pid = subprocess.check_output(['systemctl', 'show', node['unit'], '-p', 'MainPID', '--value'], universal_newlines=True, encoding='utf-8').strip()
         if pid != str(node['pid']): fail('Systemd service MainPID does not match this daemon.')
         subprocess.check_call(['systemctl', 'stop', '--no-block', node['unit']])
     else:
@@ -214,7 +214,7 @@ def stop_node(node, timeout=300):
         if time.monotonic() > until: fail('Normal shutdown timed out. No forced kill or executable replacement performed.')
         time.sleep(.5)
     if node['unit']:
-        state = subprocess.check_output(['systemctl', 'show', node['unit'], '-p', 'ActiveState', '--value'], universal_newlines=True).strip()
+        state = subprocess.check_output(['systemctl', 'show', node['unit'], '-p', 'ActiveState', '--value'], universal_newlines=True, encoding='utf-8').strip()
         if state not in ('inactive', 'failed'): fail('Service has not finished stopping; nothing replaced.')
 
 
@@ -236,7 +236,7 @@ def backup_wallet(data, destination):
         value = digest(p)
         if value != digest(target): fail('Wallet backup verification failed.')
         records[p.relative_to(data).as_posix()] = value
-    (destination/'SHA256.json').write_text(json.dumps(records, indent=2))
+    (destination/'SHA256.json').write_text(json.dumps(records, indent=2), encoding='utf-8')
     return records
 
 
@@ -319,7 +319,7 @@ def write_launchers(root, binary_dir, data, args, user, unit):
         path = root/name
         if path.is_symlink(): fail('Unsafe launcher destination.')
         guard = 'if [[ $EUID -ne 0 ]]; then exec sudo -- "$0" "$@"; fi\n' if unit and name != 'babacoin-cli.sh' else owner_guard
-        path.write_text('#!/usr/bin/env bash\n# Managed by Babacoin node setup.\nset -euo pipefail\n'+guard+'exec '+quote(command)+' "$@"\n')
+        path.write_text('#!/usr/bin/env bash\n# Managed by Babacoin node setup.\nset -euo pipefail\n'+guard+'exec '+quote(command)+' "$@"\n', encoding='utf-8', errors='surrogateescape')
         path.chmod(0o700); os.chown(str(path), owner.pw_uid, owner.pw_gid)
     return daemon_args
 
@@ -360,7 +360,7 @@ def main():
     state_path = root/'INSTALLATION.json'
     if state_path.exists():
         if state_path.is_symlink() or state_path.stat().st_uid != account.pw_uid: fail('Unexpected installation state ownership.')
-        stored = json.loads(state_path.read_text())
+        stored = json.loads(state_path.read_text(encoding='utf-8'))
         if stored.get('user') != account.pw_name: fail('Installation belongs to another account.')
     data = node['data'] if node else (explicit or Path(stored.get('data_dir', str(Path(account.pw_dir)/'.babacoin'))))
     data = data.resolve()
@@ -389,7 +389,7 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
         if release.get('draft') or release.get('prerelease') or not re.fullmatch(r'v[2-9][0-9]*\.[0-9]+\.[0-9]+(?:\.[0-9]+)?', tag): fail('Latest release is not a supported stable V2+ release.')
         name = 'babacoin-{}-{}-{}-{}.tar.gz'.format(tag, os_id, version, arch)
         asset(release, name)  # Reject unsupported release/ABI BEFORE apt or shutdown.
-        manifest = json.loads(fetch_asset(release, 'RELEASE-MANIFEST.json', work, limit=8*1024*1024).read_text())
+        manifest = json.loads(fetch_asset(release, 'RELEASE-MANIFEST.json', work, limit=8*1024*1024).read_text(encoding='utf-8'))
         if manifest['tag'] != tag or not re.fullmatch(r'[a-f0-9]{40}', manifest['source_commit']): fail('Invalid release source manifest.')
         records = [p for p in manifest['packages'] if p['name'] == name]
         if len(records) != 1: fail('Package is not uniquely pinned in the release manifest.')
@@ -401,16 +401,16 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
         spec = importlib.util.spec_from_file_location('bbc_archive', str(Path(__file__).with_name('verify-release-archive.py')))
         verifier = importlib.util.module_from_spec(spec); spec.loader.exec_module(verifier)
         unpacked = work/'unpacked'; verifier.extract(archive, unpacked, arch)
-        if (unpacked/'SOURCE_COMMIT').read_text().strip() != manifest['source_commit']: fail('Package source mismatch.')
+        if (unpacked/'SOURCE_COMMIT').read_text(encoding='utf-8').strip() != manifest['source_commit']: fail('Package source mismatch.')
         for program in PROGRAMS:
             if digest(unpacked/program) != record['binaries_sha256'][program]: fail('Executable checksum mismatch.')
-        linked = subprocess.check_output(['ldd', str(unpacked/'babacoind')], stderr=subprocess.STDOUT, universal_newlines=True)
+        linked = subprocess.check_output(['ldd', str(unpacked/'babacoind')], stderr=subprocess.STDOUT, universal_newlines=True, encoding='utf-8', errors='replace')
         if 'not found' in linked: fail('Native dependencies are unresolved:\n'+linked)
-        print(subprocess.check_output([str(unpacked/'babacoind'), '--version'], universal_newlines=True).splitlines()[0], flush=True)
+        print(subprocess.check_output([str(unpacked/'babacoind'), '--version'], universal_newlines=True, encoding='utf-8', errors='replace').splitlines()[0], flush=True)
         bootstrap = None
         need_bootstrap = args.bootstrap == 'always' or (args.bootstrap == 'auto' and not (data/'blocks').exists() and not (data/'chainstate').exists())
         if need_bootstrap and not (data/'bootstrap.dat').exists() and not (data/'bootstrap.dat.old').exists():
-            bm = json.loads(fetch_asset(release, 'BOOTSTRAP-MANIFEST.json', work, limit=8*1024*1024).read_text())
+            bm = json.loads(fetch_asset(release, 'BOOTSTRAP-MANIFEST.json', work, limit=8*1024*1024).read_text(encoding='utf-8'))
             full = [r for r in bm['archives'] if r['archive_name'] == 'bootstrap.zip' and r['first_height'] == 0]
             if len(full) != 1: fail('No unique full bootstrap archive.')
             full = full[0]
@@ -426,6 +426,14 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
         replaced = []
         owners = {}
         stopped = False
+        start_attempted = False
+        controls = {}
+        for name in ('INSTALLATION.json', 'start-babacoin.sh', 'stop-babacoin.sh', 'babacoin-cli.sh'):
+            path = root/name
+            if path.is_symlink(): fail('Unsafe control-file destination.')
+            if path.exists() and (not path.is_file() or path.stat().st_size > 1024*1024): fail('Unexpected control-file destination.')
+            if path.exists() and name.endswith('.sh') and b'# Managed by Babacoin node setup.' not in path.read_bytes()[:128]: fail('Refusing to overwrite an unrelated launcher.')
+            controls[name] = path.read_bytes() if path.exists() else None
         try:
             # All downloads, integrity checks and staging precede shutdown.
             if node:
@@ -456,19 +464,34 @@ def install(args, os_id, version, arch, packages, root, data, node, account, sto
             daemon_args = write_launchers(root, binary_dir, data, original_args, account.pw_name, context['unit'] if context else None)
             state = dict(release=tag, source_commit=manifest['source_commit'], binary_dir=str(binary_dir), data_dir=str(data), backup=str(backup), user=account.pw_name,
                          args=original_args, unit=context['unit'] if context else None, cwd=str(node['cwd'] if node else account.pw_dir))
-            (root/'INSTALLATION.json').write_text(json.dumps(state, indent=2)); os.chown(str(root/'INSTALLATION.json'), account.pw_uid, account.pw_gid)
+            (root/'INSTALLATION.json').write_text(json.dumps(state, indent=2), encoding='utf-8')
+            (root/'INSTALLATION.json').chmod(0o600); os.chown(str(root/'INSTALLATION.json'), account.pw_uid, account.pw_gid)
             for p in backup.rglob('*'):
                 os.chown(str(p), account.pw_uid, account.pw_gid)
             os.chown(str(backup), account.pw_uid, account.pw_gid)
-            if not args.no_start: start_node(context, binary_dir, data, daemon_args, account.pw_name)
+            if not args.no_start:
+                start_attempted = True
+                start_node(context, binary_dir, data, daemon_args, account.pw_name)
             stopped = False
             print('Installed {}. Start: {}\nCLI: {}\nBackup: {}'.format(tag, root/'start-babacoin.sh', root/'babacoin-cli.sh', backup), flush=True)
             print('Startup/import can take time. Check the data debug.log and CLI getblockchaininfo; no validation checks were disabled.', flush=True)
         except BaseException:
+            if start_attempted:
+                # The new process may already have opened/upgraded databases.
+                # Never silently downgrade files underneath it after launch.
+                print('Startup needs review. Verified new programs and backups retained; inspect debug.log. No automatic downgrade after a start attempt.', file=sys.stderr)
+                raise
             for program in reversed(replaced):
                 saved = backup/'programs'/program
                 if saved.exists(): atomic_copy(saved, binary_dir/program, *owners[program])
                 else: (binary_dir/program).unlink()
+            for name, contents in controls.items():
+                path = root/name
+                if contents is None:
+                    if path.exists(): path.unlink()
+                else:
+                    path.write_bytes(contents); path.chmod(0o700 if name.endswith('.sh') else 0o600)
+                    os.chown(str(path), account.pw_uid, account.pw_gid)
             if stopped and not args.no_start:
                 try: start_node(node, binary_dir, data, ['-datadir='+str(data), '-daemon=1']+[a for a in original_args if not a.startswith(('-datadir=', '-daemon='))], account.pw_name)
                 except Exception: print('Automatic recovery could not restart the old daemon. Programs restored; inspect debug.log.', file=sys.stderr)

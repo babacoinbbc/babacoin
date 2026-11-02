@@ -74,7 +74,10 @@ data location. For an unmanaged stopped installation, explicitly select its
 data path; inactive arbitrary third-party services are not automatically adopted.
 No existing wallet, configuration, chain data, firewall or service unit is deleted
 or rewritten. Existing executable files are backed up before replacement;
-replacement failures restore the old programs and attempt normal restart.
+replacement failures restore the old programs/control files and attempt normal
+restart. Once a new process has been launched, setup does not silently downgrade
+programs beneath it; a startup failure leaves the verified new programs and
+backups available for diagnosis through `debug.log`.
 
 ## Bootstrap
 
