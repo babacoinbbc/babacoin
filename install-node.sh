@@ -18,7 +18,7 @@ case "${ID:-}:${VERSION_ID:-}" in
 esac
 case $(uname -m) in x86_64|aarch64) ;; *) echo 'Only x86_64 and aarch64 are supported.' >&2; exit 1 ;; esac
 if [[ $EUID -ne 0 && ${1:-} != --plan ]]; then
-    exec sudo bash "$bbc_here/$(basename -- "${BASH_SOURCE[0]}")" "$@"
+    exec sudo --preserve-env=BBC_SETUP_SOURCE bash "$bbc_here/$(basename -- "${BASH_SOURCE[0]}")" "$@"
 fi
 if ! command -v python3 >/dev/null || ! command -v curl >/dev/null || [[ ! -r /etc/ssl/certs/ca-certificates.crt ]]; then
     [[ ${1:-} != --plan ]] || { echo 'Python 3 and curl are required for --plan.' >&2; exit 1; }
@@ -32,9 +32,16 @@ fi
 # immutable source commit. Never mix helpers from moving branch revisions.
 bbc_tmp=$(mktemp -d "${TMPDIR:-/tmp}/bbc-node-setup.XXXXXXXX")
 trap 'rm -rf -- "$bbc_tmp"' EXIT
-bbc_source=$(curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 \
-    https://api.github.com/repos/babacoinbbc/babacoin/commits/main \
-    | python3 -c 'import json,sys; print(json.load(sys.stdin)["sha"])')
+bbc_source=${BBC_SETUP_SOURCE:-}
+if [[ -z $bbc_source ]]; then
+    if ! command -v git >/dev/null; then
+        apt-get update
+        apt-get install -y --no-install-recommends git
+    fi
+    bbc_source=$(git -c credential.helper= ls-remote \
+        https://github.com/babacoinbbc/babacoin.git refs/heads/main \
+        | awk '$2 == "refs/heads/main" { print $1 }')
+fi
 [[ $bbc_source =~ ^[a-f0-9]{40}$ ]] || { echo 'Invalid setup source identity.' >&2; exit 1; }
 for bbc_file in linux-node-setup.py verify-release-archive.py; do
     curl -fSL --retry 3 --proto '=https' --proto-redir '=https' --tlsv1.2 \

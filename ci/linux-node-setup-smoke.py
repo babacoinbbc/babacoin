@@ -6,6 +6,7 @@ import json
 import os
 import pwd
 import shlex
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -18,7 +19,10 @@ if os.environ.get('BBC_DISPOSABLE_BUILD') != '1': raise SystemExit('Disposable c
 source = Path(__file__).resolve().parents[1]
 work = Path(tempfile.mkdtemp(prefix='bbc-installer-smoke-'))
 install = work/'app'; data = work/'data'
-command = ['bash', str(source/'install-node.sh'), '--install-root', str(install), '--data-dir', str(data), '--bootstrap', 'never']
+entry = source/'install-node.sh'
+if os.environ.get('BBC_STANDALONE_SMOKE') == '1':
+    entry = work/'install-node.sh'; shutil.copyfile(str(source/'install-node.sh'), str(entry))
+command = ['bash', str(entry), '--install-root', str(install), '--data-dir', str(data), '--bootstrap', 'never']
 subprocess.check_call(command+['--no-start'])
 state = json.loads((install/'INSTALLATION.json').read_text())
 binary = Path(state['binary_dir'])/'babacoind'

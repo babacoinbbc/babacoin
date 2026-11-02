@@ -44,3 +44,15 @@ jobs:
           BBC_DISPOSABLE_BUILD: '1'
           BBC_SYSTEMD_SMOKE: '1'
         run: python3 ci/linux-node-setup-smoke.py
+  standalone-download:
+    needs: safety
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the single downloaded Bash file with pinned remote helpers
+        run: |
+          docker run --rm --init -e BBC_DISPOSABLE_BUILD=1 -e BBC_STANDALONE_SMOKE=1 \
+            -e 'BBC_SETUP_SOURCE=${{ github.event.pull_request.head.sha || github.sha }}' \
+            --mount "type=bind,source=$PWD,target=/src,readonly" \
+            ubuntu:24.04 bash -c 'apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates && python3 /src/ci/linux-node-setup-smoke.py'

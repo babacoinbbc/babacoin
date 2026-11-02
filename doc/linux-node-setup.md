@@ -20,6 +20,8 @@ Inspect downloaded administration scripts before running them. Setup uses
 `sudo` for package installation and process/service management when necessary.
 The standalone entry point fetches its two helpers from one immutable source
 commit. A Git checkout uses its adjacent helpers instead.
+Public Git references and stable-release download redirects are used instead
+of GitHub REST API polling, so normal installation needs no GitHub token.
 
 Run the same command for future updates. There is no version number to edit.
 Setup requests normal shutdown of the selected running daemon, waits for it
