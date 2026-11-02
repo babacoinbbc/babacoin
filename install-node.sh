@@ -35,6 +35,7 @@ trap 'rm -rf -- "$bbc_tmp"' EXIT
 bbc_source=${BBC_SETUP_SOURCE:-}
 if [[ -z $bbc_source ]]; then
     if ! command -v git >/dev/null; then
+        [[ ${1:-} != --plan ]] || { echo 'Install git or use a Git checkout to preview standalone setup.' >&2; exit 1; }
         apt-get update
         apt-get install -y --no-install-recommends git
     fi

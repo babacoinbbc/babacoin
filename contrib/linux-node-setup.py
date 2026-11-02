@@ -84,6 +84,7 @@ def download(url, target, limit, sha=None):
     opener = urllib.request.build_opener(HTTPSRedirect())
     request = urllib.request.Request(url, headers={'User-Agent': 'Babacoin-node-setup'})
     count = 0
+    last_report = time.monotonic()
     with opener.open(request, timeout=90) as response, Path(target).open('xb') as output:
         while True:
             chunk = response.read(1024 * 1024)
@@ -91,6 +92,9 @@ def download(url, target, limit, sha=None):
             count += len(chunk)
             if count > limit: fail('Download exceeds its declared size limit.')
             output.write(chunk)
+            if time.monotonic()-last_report >= 3:
+                print('Downloading {}: {} MiB received'.format(Path(target).name, count//(1024*1024)), flush=True)
+                last_report = time.monotonic()
     if sha and digest(target) != sha: fail('SHA-256 mismatch: '+Path(target).name)
     return Path(target)
 

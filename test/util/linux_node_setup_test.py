@@ -4,8 +4,11 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import tempfile
+import tarfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -132,6 +135,54 @@ class NodeSetupTests(unittest.TestCase):
             path, record = self.zip_bootstrap(name)
             with self.assertRaises(RuntimeError): setup.unpack_bootstrap(path, record, self.root/'output')
             self.assertFalse((self.root/'output').exists())
+
+    def upgrade_fixture(self):
+        app = self.root/'app'; app.mkdir()
+        old = self.root/'old-bin'; old.mkdir()
+        data = self.root/'data'; data.mkdir()
+        (data/'wallet.dat').write_bytes(b'IRREPLACEABLE-TEST-WALLET')
+        original = {}
+        for name in setup.PROGRAMS:
+            original[name] = ('old-'+name).encode(); (old/name).write_bytes(original[name])
+        header = b'\x7fELF\x02\x01'+b'\0'*12+(62).to_bytes(2,'little')+b'NEW-PROGRAM'
+        commit = 'a'*40
+        archive = self.root/'package.tar.gz'
+        with tarfile.open(str(archive),'w:gz') as bundle:
+            for name, content in [(n,header) for n in ('babacoind','babacoin-cli','babacoin-tx','babacoin-qt')]+[('SOURCE_COMMIT',commit.encode())]:
+                member = tarfile.TarInfo(name); member.size=len(content); bundle.addfile(member,io.BytesIO(content))
+        manifest = dict(tag='v2.0.2',source_commit=commit,packages=[dict(name='babacoin-v2.0.2-ubuntu-24.04-x86_64.tar.gz',sha256=setup.digest(archive),binaries_sha256={n:hashlib.sha256(header).hexdigest() for n in setup.PROGRAMS})])
+        args = SimpleNamespace(bootstrap='never',no_start=False)
+        account = SimpleNamespace(pw_name='test-owner',pw_uid=0,pw_gid=0,pw_dir=str(self.root))
+        node = dict(binary=old/'babacoind',args=[],unit=None,cwd=self.root,pid=123,token='same')
+        return app, old, data, original, archive, manifest, args, account, node, header
+
+    def test_failed_replacement_restores_programs_and_restarts_old_node(self):
+        app,old,data,original,archive,manifest,args,account,node,header = self.upgrade_fixture()
+        real_copy = setup.atomic_copy
+        def failing_copy(source,target,*owner):
+            if source.name=='babacoin-cli' and source.parent.name=='unpacked': raise OSError('synthetic disk write failure')
+            return real_copy(source,target,*owner)
+        with patch.object(setup,'get_json',return_value=manifest), patch.object(setup,'fetch_asset',return_value=archive), \
+             patch.object(setup.subprocess,'check_call'), patch.object(setup.subprocess,'check_output',side_effect=['all found','v2.0.2']), \
+             patch.object(setup,'stop_node') as stop, patch.object(setup,'ensure_unlocked'), \
+             patch.object(setup.os,'chown',create=True), patch.object(setup,'atomic_copy',side_effect=failing_copy), \
+             patch.object(setup,'start_node') as restart:
+            with self.assertRaises(OSError): setup.install(args,'ubuntu','24.04','x86_64',[],app,data,node,account,{})
+            stop.assert_called_once_with(node); restart.assert_called_once()
+        for name, content in original.items(): self.assertEqual((old/name).read_bytes(),content)
+        self.assertEqual((data/'wallet.dat').read_bytes(),b'IRREPLACEABLE-TEST-WALLET')
+
+    def test_start_failure_never_downgrades_under_new_process(self):
+        app,old,data,original,archive,manifest,args,account,node,header = self.upgrade_fixture()
+        with patch.object(setup,'get_json',return_value=manifest), patch.object(setup,'fetch_asset',return_value=archive), \
+             patch.object(setup.subprocess,'check_call'), patch.object(setup.subprocess,'check_output',side_effect=['all found','v2.0.2']), \
+             patch.object(setup,'stop_node'), patch.object(setup,'ensure_unlocked'), patch.object(setup.os,'chown',create=True), \
+             patch.object(setup,'write_launchers',return_value=[]), patch.object(setup,'start_node',side_effect=RuntimeError('synthetic startup failure')) as restart:
+            with self.assertRaises(RuntimeError): setup.install(args,'ubuntu','24.04','x86_64',[],app,data,node,account,{})
+            restart.assert_called_once()
+        self.assertEqual((old/'babacoind').read_bytes(),header)
+        self.assertEqual((data/'wallet.dat').read_bytes(),b'IRREPLACEABLE-TEST-WALLET')
+        self.assertEqual(next((app/'backups').rglob('programs/babacoind')).read_bytes(),original['babacoind'])
 
 
 if __name__ == '__main__': unittest.main()
