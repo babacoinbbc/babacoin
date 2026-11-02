@@ -40,6 +40,8 @@
 #include <QTimer>
 #include <QClipboard>
 #include <QApplication>
+#include <QScreen>
+#include <QWindow>
 
 StartupPanel::StartupPanel(const QString& version, const QString& network, const QString& dataDirectory, QWidget* parent) :
     QWidget(parent), m_version(version), m_network(network), m_directory(dataDirectory)
@@ -206,6 +208,11 @@ HelpMessageDialog::HelpMessageDialog(interfaces::Node& node, QWidget *parent, He
 
         /// HTML-format the license message from the core
         QString licenseInfo = QString::fromStdString(LicenseInfo());
+        QStringList lines = licenseInfo.split('\n');
+        for (int i = lines.size() - 1; i > 0; --i) {
+            if (!lines[i].isEmpty() && lines[i] == lines[i - 1]) lines.removeAt(i);
+        }
+        licenseInfo = lines.join('\n');
         QString licenseInfoHTML = licenseInfo;
 
         // Make URLs clickable
@@ -220,7 +227,22 @@ HelpMessageDialog::HelpMessageDialog(interfaces::Node& node, QWidget *parent, He
         text = version + "\n" + licenseInfo;
         ui->aboutMessage->setText(version + "<br><br>" + licenseInfoHTML);
         ui->aboutMessage->setWordWrap(true);
+        ui->aboutMessage->setMinimumWidth(0);
+        ui->aboutMessage->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        // Changing QSizePolicy clears QLabel's height-for-width flag. Restore
+        // wrapping afterwards so the scroll area reserves all license text.
+        ui->aboutMessage->setWordWrap(false);
+        ui->aboutMessage->setWordWrap(true);
+        ui->scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         ui->helpMessage->setVisible(false);
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+        setMaximumHeight(QWIDGETSIZE_MAX);
+        QScreen* screen = parent && parent->windowHandle() ? parent->windowHandle()->screen() : QGuiApplication::primaryScreen();
+        if (screen) {
+            const QSize available = screen->availableGeometry().size() - QSize(48, 64);
+            resize(QSize(780, 520).boundedTo(available));
+        }
+#endif
     } else if (helpMode == cmdline) {
         setWindowTitle(tr("Command-line options"));
         QString header = "Usage:\n"

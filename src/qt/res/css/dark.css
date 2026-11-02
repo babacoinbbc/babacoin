@@ -1098,3 +1098,12 @@ QAbstractItemView { selection-background-color: #e4be60; selection-color: #14232
 
 QPushButton:focus { border: 2px solid #14232a; }
 QToolButton#walletQuickSend:disabled, QToolButton#walletQuickReceive:disabled { background: #bcc5c7; color: #53676f; border-color: #bcc5c7; }
+QScrollArea#walletContentScroll { background: #0d161c; }
+QScrollArea#walletSidebarScroll { background: #10232d; }
+QWizard[desktopWizard="true"], QWizard[desktopWizard="true"] QWizardPage,
+QWizard[desktopWizard="true"] QWidget#smartnodePageContent,
+QWizard[desktopWizard="true"] QWidget#smartnodePageBody,
+QWizard[desktopWizard="true"] QScrollArea { background: #0d161c; color: #e3edf0; }
+QWizard[desktopWizard="true"] { border-color: #2b414b; }
+QLabel#smartnodePageTitle { color: #efce80; }
+QLabel#smartnodePageDescription { color: #a0b4bd; }

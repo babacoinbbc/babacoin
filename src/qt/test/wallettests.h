@@ -15,6 +15,7 @@ private Q_SLOTS:
     void legacyConfigExportSafety();
     void syncUiResponsiveness();
     void balancePollResponsiveness();
+    void desktopLayout();
 };
 
 #endif // BITCOIN_QT_TEST_WALLETTESTS_H

@@ -16,6 +16,8 @@ class TxViewDelegate;
 class WalletModel;
 class WalletActivityGraph;
 class QLabel;
+class QBoxLayout;
+class QScrollArea;
 
 namespace Ui {
     class OverviewPage;
@@ -46,6 +48,9 @@ Q_SIGNALS:
     void transactionClicked(const QModelIndex &index);
     void outOfSyncWarningClicked();
 
+protected:
+    bool eventFilter(QObject* object, QEvent* event) override;
+
 private:
     QTimer *timer;
     Ui::OverviewPage *ui;
@@ -66,6 +71,11 @@ private:
     QLabel* syncValue;
     bool outOfSync{true};
     int dashboardHeight{-1};
+    QBoxLayout* networkLayout{nullptr};
+    QScrollArea* dashboardScroll{nullptr};
+    bool compactDashboard{false};
+    bool dashboardLayoutPending{false};
+    void updateDashboardLayout();
     std::unique_ptr<TransactionFilterProxy> filter;
 
     void SetupTransactionList(int nNumItems);

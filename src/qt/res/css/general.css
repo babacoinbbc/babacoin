@@ -2031,3 +2031,25 @@ QFrame#webWalletCard { border: 1px solid transparent; border-radius: 16px; }
 QPushButton#webWalletOpenButton { background: #e4be60; color: #14232a; border-radius: 8px; padding: 12px 22px; }
 QPushButton#webWalletOpenButton:disabled { background: #bcc5c7; color: #53676f; }
 QWizard#smartnodeSetupWizard QPushButton:disabled { background: #bcc5c7; color: #53676f; border-color: #bcc5c7; }
+
+/* Compact desktop layouts keep navigation and form actions reachable. */
+<os="windows,macosx">
+QToolBar#walletSidebar, QToolBar#walletSidebar QToolButton { max-height: 100000px; }
+</os>
+QToolBar#walletSidebar[compact="true"] QToolButton {
+    padding: 8px 10px; margin: 2px 8px; min-height: 1.2em;
+}
+QScrollArea#walletSidebarScroll, QScrollArea#walletContentScroll { border: none; padding: 0; }
+QWidget#walletHeader[compact="true"] QToolButton#walletQuickReceive,
+QWidget#walletHeader[compact="true"] QToolButton#walletQuickSend { min-width: 46px; padding: 7px 10px; }
+QWidget#OverviewPage[compact="true"] QFrame#frame,
+QWidget#OverviewPage[compact="true"] QFrame#frame_2 { min-width: 0px; padding: 8px; }
+QWidget#OverviewPage[compact="true"] QLabel#emptyTransactions { min-height: 110px; padding: 14px; }
+QWizard[desktopWizard="true"] { border: 1px solid transparent; }
+QWizard[desktopWizard="true"] QLabel { border: none; }
+QWizard[desktopWizard="true"] QScrollArea { border: none; }
+QWizard[desktopWizard="true"] QPushButton { padding: 8px 14px; min-height: 20px; }
+QWizard[desktopWizard="true"] QLineEdit,
+QWizard[desktopWizard="true"] QComboBox { min-width: 0px; padding: 7px 9px; }
+QLabel#smartnodePageTitle { padding: 0; }
+QLabel#smartnodePageDescription { padding: 0 0 8px 0; }

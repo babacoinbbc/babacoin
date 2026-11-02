@@ -1,4 +1,4 @@
-# Windows wallet responsiveness
+# Windows and macOS wallet responsiveness
 
 The node's blockchain synchronization and the wallet's transaction scan are
 separate operations. Replacing `wallet.dat` can require a scan of blocks already
@@ -34,3 +34,36 @@ history, enabled mixing statistics and explicit wallet operations can still
 require investigation. Do not delete wallet or blockchain files to diagnose a
 slow window. Back up a wallet before replacing it, and replace wallet files only
 after a normal, completed application shutdown.
+
+## Small screens and large fonts
+
+The Windows/macOS shell uses scrollable navigation so bottom actions remain
+reachable on short displays. Its compact mode reduces branding and header
+spacing while retaining labeled navigation and network information. Dashboard
+cards stack when the content area is narrow. Hidden tabs no longer impose their
+minimum width on the current page; other forms can scroll when necessary.
+These layout changes are enabled for Windows and macOS. Linux/ARM daemon
+packaging and network rules are outside this UI change.
+
+The Smartnode wizard keeps its headings and descriptions inside themed,
+scrollable pages. The native white ModernStyle header is not used by these
+desktop builds. Controls remain accessible on shorter windows; long collateral
+identifiers do not enlarge the dialog. A disabled Next button still means that
+the required confirmed, eligible collateral or synchronization is unavailable.
+Registration signing, fee checks, explicit broadcast consent and collateral
+rules remain in effect.
+
+The About dialog links to the official
+[Babacoin repository](https://github.com/babacoinbbc/babacoin), shows repeated
+inherited attribution lines once, and permits scrolling/resizing. The source
+link is corrected in the shared license information too.
+
+## Qt version
+
+The current Windows build uses open-source Qt 5.15.19, listed in the official
+[Qt 5.15 archive](https://download.qt.io/archive/qt/5.15/). Qt 6.12.0 is available
+in the [Qt 6.12 releases](https://download.qt.io/official_releases/qt/6.12/).
+Open-source Qt is available under its applicable LGPL/GPL licenses. This UI
+repair retains Qt 5 compatibility; it does not claim to complete a Qt 6 port.
+Moving to Qt 6 requires a separate port of removed APIs and build dependencies,
+followed by platform and upgrade validation.
