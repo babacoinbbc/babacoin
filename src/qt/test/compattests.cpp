@@ -11,6 +11,14 @@
 #include <qt/explorerpeers.h>
 #include <qt/bitcoinunits.h>
 #include <qt/utilitydialog.h>
+#include <qt/intro.h>
+#include <interfaces/node.h>
+#include <util.h>
+#include <QDialogButtonBox>
+#include <QElapsedTimer>
+#include <QTimer>
+#include <QDir>
+#include <QFileInfo>
 #include <QSignalSpy>
 #include <QProgressBar>
 #include <QPushButton>
@@ -36,6 +44,150 @@ void CompatTests::bswapTests()
 	QVERIFY(bswap_16(u1) == e1);
 	QVERIFY(bswap_32(u2) == e2);
 	QVERIFY(bswap_64(u3) == e3);
+}
+
+void CompatTests::movedDataDirectoryRecovery()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QSettings settings;
+    struct Restore {
+        std::map<QString, QVariant> values;
+        std::string dataDir{gArgs.GetArg("-datadir", "")};
+        std::string choose{gArgs.GetArg("-choosedatadir", "")};
+        bool hadData{gArgs.IsArgSet("-datadir")}, hadChoose{gArgs.IsArgSet("-choosedatadir")};
+        ~Restore() {
+            QSettings settings;
+            settings.remove("strDataDir"); settings.remove("strDataDirDefault");
+            settings.remove("DataDirectoryRelocations");
+            for (const auto& value : values) settings.setValue(value.first, value.second);
+            if (hadData) gArgs.ForceSetArg("-datadir", dataDir); else gArgs.ForceRemoveArg("-datadir");
+            if (hadChoose) gArgs.ForceSetArg("-choosedatadir", choose); else gArgs.ForceRemoveArg("-choosedatadir");
+            ClearDatadirCache();
+        }
+    } restore;
+    for (const auto& key : settings.allKeys()) {
+        if (key == "strDataDir" || key == "strDataDirDefault" || key.startsWith("DataDirectoryRelocations/")) {
+            restore.values.emplace(key, settings.value(key));
+        }
+    }
+    settings.remove("strDataDir"); settings.remove("strDataDirDefault"); settings.remove("DataDirectoryRelocations");
+    gArgs.ForceSetArg("-choosedatadir", "0");
+    const QString missing = root.filePath("old disconnected drive");
+    const QString moved = root.filePath(QString::fromUtf8("moved wallet \xc3\x96"));
+    const QString empty = root.filePath("empty folder");
+    QVERIFY(QDir().mkpath(moved)); QVERIFY(QDir().mkpath(empty));
+    const QByteArray marker("private test marker, not an actual wallet\n");
+    auto writeMarker = [&](const QString& directory) {
+        QFile file(directory + "/wallet.dat");
+        return file.open(QIODevice::WriteOnly) && file.write(marker) == marker.size();
+    };
+    QVERIFY(writeMarker(moved));
+    auto node = interfaces::MakeNode();
+    auto forceDirectory = [&](const QString& path) {
+        gArgs.ForceSetArg("-datadir", GUIUtil::qstringToBoostPath(path).string());
+        ClearDatadirCache();
+    };
+    auto currentDirectory = [&] {
+        return QDir::fromNativeSeparators(GUIUtil::boostPathToQString(GetDataDir(false)));
+    };
+    struct PickResult { bool accepted; bool shown; bool recovery; bool timedOut; bool okEnabled; };
+    auto pick = [&](const QString& destination, bool cancel, bool reconnect = false) {
+        PickResult result{false, false, false, false, false};
+        bool reconnected = false;
+        QElapsedTimer elapsed; elapsed.start();
+        QTimer driver;
+        QObject::connect(&driver, &QTimer::timeout, [&] {
+            for (auto* widget : QApplication::topLevelWidgets()) {
+                auto* intro = qobject_cast<Intro*>(widget);
+                if (!intro || !intro->isVisible()) continue;
+                result.shown = true;
+                result.recovery = intro->property("dataDirectoryRecovery").toBool();
+                if (intro->getDataDirectory() != destination) intro->setDataDirectory(destination);
+                auto* buttons = intro->findChild<QDialogButtonBox*>("buttonBox");
+                if (!buttons) { intro->reject(); driver.stop(); return; }
+                if (reconnect && !reconnected && elapsed.elapsed() > 200) {
+                    reconnected = true;
+                    if (!QDir().mkpath(destination) || !writeMarker(destination)) { intro->reject(); driver.stop(); return; }
+                    auto* retry = intro->findChild<QPushButton*>("recheckDataDirectory");
+                    if (!retry) { intro->reject(); driver.stop(); return; }
+                    retry->click();
+                }
+                result.okEnabled = buttons->button(QDialogButtonBox::Ok)->isEnabled();
+                if (elapsed.elapsed() > 5000) {
+                    result.timedOut = true; intro->reject(); driver.stop();
+                } else if (cancel && elapsed.elapsed() > 200) {
+                    intro->reject(); driver.stop();
+                } else if (!cancel && result.okEnabled) {
+                    buttons->button(QDialogButtonBox::Ok)->click(); driver.stop();
+                }
+            }
+        });
+        driver.start(10);
+        result.accepted = Intro::pickDataDirectory(*node);
+        driver.stop();
+        return result;
+    };
+
+    forceDirectory(missing);
+    const auto cancelled = pick(empty, true);
+    QVERIFY(cancelled.shown && cancelled.recovery && !cancelled.accepted && !cancelled.timedOut);
+    QVERIFY(!cancelled.okEnabled);
+    QVERIFY(!QFileInfo::exists(missing));
+    QVERIFY(!settings.contains("strDataDir"));
+    QVERIFY(QDir(empty).entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
+
+    const auto selected = pick(moved, false);
+    QVERIFY(selected.shown && selected.recovery && selected.accepted && !selected.timedOut);
+    QCOMPARE(QString::fromStdString(gArgs.GetArg("-datadir", "")), QString::fromStdString(GUIUtil::qstringToBoostPath(moved).string()));
+    QCOMPARE(settings.value("strDataDir").toString(), moved);
+    QCOMPARE(currentDirectory(), moved);
+    QVERIFY(!QFileInfo::exists(missing));
+
+    // The same stale installed shortcut reuses the consented relocation.
+    forceDirectory(missing);
+    QVERIFY(Intro::pickDataDirectory(*node));
+    QCOMPARE(currentDirectory(), moved);
+
+    // Reconnecting the old disk must not silently switch back to an old wallet.
+    QVERIFY(QDir().mkpath(missing)); QVERIFY(writeMarker(missing));
+    forceDirectory(missing);
+    const auto reconnected = pick(missing, false);
+    QVERIFY(reconnected.shown && reconnected.recovery && reconnected.accepted && !reconnected.timedOut);
+    forceDirectory(missing);
+    QVERIFY(Intro::pickDataDirectory(*node)); // valid explicit path: no dialog
+    QCOMPARE(currentDirectory(), missing);
+
+    // Missing saved GUI settings use the same recovery screen without a CLI path.
+    gArgs.ForceRemoveArg("-datadir"); ClearDatadirCache();
+    settings.setValue("strDataDir", root.filePath("another missing location"));
+    settings.setValue("strDataDirDefault", Intro::getDefaultDataDirectory());
+    const auto saved = pick(moved, false);
+    QVERIFY(saved.shown && saved.recovery && saved.accepted && !saved.timedOut);
+    QCOMPARE(currentDirectory(), moved);
+
+    const QString reattached = root.filePath("reattached drive");
+    forceDirectory(reattached);
+    const auto retried = pick(reattached, false, true);
+    QVERIFY(retried.shown && retried.recovery && retried.accepted && !retried.timedOut);
+    QCOMPARE(currentDirectory(), reattached);
+
+    // Use the same default-wallet base as the backend. Unrelated files in
+    // wallets/ must not allow a new empty default wallet to be created.
+    const QString nested = root.filePath("nested data");
+    QVERIFY(QDir().mkpath(nested + "/wallets"));
+    QVERIFY(writeMarker(nested)); // ignored by the backend when wallets/ exists
+    QFile unrelated(nested + "/wallets/README.txt");
+    QVERIFY(unrelated.open(QIODevice::WriteOnly)); unrelated.write("not a wallet"); unrelated.close();
+    forceDirectory(root.filePath("missing nested source"));
+    const auto rejectedNested = pick(nested, true);
+    QVERIFY(rejectedNested.shown && !rejectedNested.accepted && !rejectedNested.okEnabled);
+    QVERIFY(writeMarker(nested + "/wallets"));
+    const auto acceptedNested = pick(nested, false);
+    QVERIFY(acceptedNested.shown && acceptedNested.accepted && !acceptedNested.timedOut);
+    QCOMPARE(currentDirectory(), nested);
+
+    QFile file(moved + "/wallet.dat"); QVERIFY(file.open(QIODevice::ReadOnly)); QCOMPARE(file.readAll(), marker);
 }
 
 void CompatTests::pixelSizedFont()

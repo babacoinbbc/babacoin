@@ -35,6 +35,7 @@ public:
 
     QString getDataDirectory();
     void setDataDirectory(const QString &dataDir);
+    void setRecoveryMode(const QString& previousDirectory, bool oldShortcut);
 
     /**
      * Determine data directory. Let the user choose if the current one doesn't exist.
@@ -71,6 +72,7 @@ private:
     QMutex mutex;
     bool signalled;
     QString pathToCheck;
+    bool recoveringDataDirectory{false};
 
     void startThread();
     void checkPath(const QString &dataDir);
