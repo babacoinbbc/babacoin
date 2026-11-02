@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Safety/ABI regressions for the Linux installer. No apt, signals or network."""
+import contextlib
 import hashlib
 import importlib.util
 import io
@@ -10,6 +11,7 @@ import tempfile
 import tarfile
 from types import SimpleNamespace
 import unittest
+import urllib.error
 from unittest.mock import patch
 import zipfile
 
@@ -217,6 +219,98 @@ class NodeSetupTests(unittest.TestCase):
         self.assertEqual((old/'babacoind').read_bytes(),header)
         self.assertEqual((data/'wallet.dat').read_bytes(),b'IRREPLACEABLE-TEST-WALLET')
         self.assertEqual(next((app/'backups').rglob('programs/babacoind')).read_bytes(),original['babacoind'])
+
+
+    def exercise_bootstrap_install(self, existing=None, failure=None, mode='auto'):
+        app, old, data, original, archive, manifest, args, account, node, header = self.upgrade_fixture()
+        args.bootstrap = mode
+        if existing in ('blocks', 'chainstate'):
+            (data/existing).mkdir()
+            (data/existing/'sentinel').write_bytes(b'EXISTING-CHAIN')
+        elif existing:
+            (data/existing).write_bytes(b'EXISTING-BOOTSTRAP')
+        zipped, record = self.zip_bootstrap()
+        record.update(archive_name='bootstrap.zip', archive_bytes=zipped.stat().st_size,
+                      archive_sha256=setup.digest(zipped))
+        bm = self.root/'BOOTSTRAP-MANIFEST.json'
+        bm.write_text(json.dumps(dict(archives=[record])))
+        events = []
+
+        def fetch(release, name, *unused, **kwargs):
+            events.append(name)
+            if name == 'BOOTSTRAP-MANIFEST.json':
+                if failure == 'missing':
+                    raise urllib.error.HTTPError('https://example.invalid', 404, 'missing', {}, None)
+                return bm
+            if name == 'bootstrap.zip':
+                if failure == 'download': raise OSError('synthetic interrupted download')
+                return zipped
+            return archive
+
+        def stop(selected):
+            events.append('stop')
+
+        def start(*unused):
+            events.append('start')
+            if not existing and not failure and mode != 'never':
+                self.assertEqual(setup.digest(data/'bootstrap.dat'), record['payload_sha256'])
+
+        with contextlib.ExitStack() as stack:
+            for name, kwargs in [
+                ('get_json', dict(return_value=manifest)),
+                ('fetch_asset', dict(side_effect=fetch)),
+                ('install_dependencies', {}), ('ensure_unlocked', {}),
+                ('write_launchers', dict(return_value=[])),
+                ('stop_node', dict(side_effect=stop)), ('start_node', dict(side_effect=start))]:
+                stack.enter_context(patch.object(setup, name, **kwargs))
+            if failure in ('space', 'separate-space'):
+                free = 512*1024**2 + record['archive_bytes'] + record['payload_bytes']
+                stack.enter_context(patch.object(setup.shutil, 'disk_usage', return_value=SimpleNamespace(free=free)))
+                if failure == 'separate-space':
+                    real_stat = Path.stat
+                    def separate_staging_device(path, *args, **kwargs):
+                        result = real_stat(path, *args, **kwargs)
+                        if path == app:
+                            fields = list(result); fields[2] += 1
+                            return os.stat_result(fields)
+                        return result
+                    stack.enter_context(patch.object(Path, 'stat', separate_staging_device))
+            stack.enter_context(patch.object(setup.os, 'chown', create=True))
+            stack.enter_context(patch.object(setup.subprocess, 'check_output', side_effect=['all found', 'v2.0.2']))
+            if failure in ('download', 'space'):
+                with self.assertRaises(OSError if failure == 'download' else RuntimeError):
+                    setup.install(args, 'ubuntu', '24.04', 'x86_64', [], app, data, node, account, {})
+            else:
+                setup.install(args, 'ubuntu', '24.04', 'x86_64', [], app, data, node, account, {})
+        self.assertEqual((data/'wallet.dat').read_bytes(), b'IRREPLACEABLE-TEST-WALLET')
+        if failure in ('download', 'space'):
+            self.assertNotIn('stop', events)
+            self.assertNotIn('start', events)
+            for name, content in original.items(): self.assertEqual((old/name).read_bytes(), content)
+        else:
+            self.assertEqual(events[-2:], ['stop', 'start'])
+        if existing or mode == 'never': self.assertNotIn('BOOTSTRAP-MANIFEST.json', events)
+        if existing in ('blocks', 'chainstate'):
+            self.assertEqual((data/existing/'sentinel').read_bytes(), b'EXISTING-CHAIN')
+        elif existing:
+            self.assertEqual((data/existing).read_bytes(), b'EXISTING-BOOTSTRAP')
+        if failure == 'separate-space':
+            self.assertEqual(setup.digest(data/'bootstrap.dat'), record['payload_sha256'])
+
+    def test_auto_new_data_publishes_before_start(self): self.exercise_bootstrap_install()
+    def test_auto_existing_blocks(self): self.exercise_bootstrap_install(existing='blocks')
+    def test_auto_existing_chainstate(self): self.exercise_bootstrap_install(existing='chainstate')
+    def test_auto_existing_input(self): self.exercise_bootstrap_install(existing='bootstrap.dat')
+    def test_auto_completed_input(self): self.exercise_bootstrap_install(existing='bootstrap.dat.old')
+    def test_auto_missing_archive_falls_back_to_peers(self): self.exercise_bootstrap_install(failure='missing')
+    def test_download_failure_keeps_old_node_running(self): self.exercise_bootstrap_install(failure='download')
+    def test_never_does_not_download(self): self.exercise_bootstrap_install(mode='never')
+
+    def test_shared_disk_counts_both_bootstrap_copies_before_shutdown(self):
+        self.exercise_bootstrap_install(failure='space')
+
+    def test_separate_disks_budget_their_respective_bootstrap_copies(self):
+        self.exercise_bootstrap_install(failure='separate-space')
 
 
 if __name__ == '__main__': unittest.main()

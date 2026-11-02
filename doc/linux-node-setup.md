@@ -91,6 +91,12 @@ size checks. Setup never deletes wallets, chain files, backups or system logs
 to make space. If a VPS reports space but writes still fail, check provider
 storage quotas as well.
 
+Bootstrap staging retains the downloaded ZIP and extracted input while a
+separate copy is placed in the node-data directory. When these locations share
+a filesystem, setup checks their combined peak space requirement before
+downloading the bootstrap or stopping the node. Separate filesystems are checked
+for their respective copies; the reserve is not a full-chain capacity estimate.
+
 For `No space left on device`, start with these administrative diagnostics:
 
 ```bash
