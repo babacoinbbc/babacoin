@@ -42,6 +42,8 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QTimer>
+#include <QThread>
+#include <QElapsedTimer>
 #include <QVBoxLayout>
 #include <QTextEdit>
 #include <QListView>
@@ -161,6 +163,76 @@ void WalletTests::syncUiResponsiveness()
     QVERIFY(progress->value() < progress->maximum());
     uiInterface.ShowBlockImportProgress(BlockImportProgress(BlockImportProgress::IDLE));
     QTRY_COMPARE(info->text(), warning);
+}
+
+void WalletTests::balancePollResponsiveness()
+{
+    TestChain100Setup chain;
+    auto wallet = std::make_shared<CWallet>(WalletLocation(), WalletDatabase::CreateMock());
+    AddWallet(wallet);
+    struct Cleanup {
+        std::shared_ptr<CWallet> wallet;
+        ~Cleanup() { RemoveWallet(wallet); }
+    } cleanup{wallet};
+    bool firstRun;
+    wallet->LoadWallet(firstRun);
+    auto node = interfaces::MakeNode();
+    OptionsModel options(*node);
+    WalletModel model(std::move(node->getWallets()[0]), *node, &options);
+    model.pollTimer->stop();
+    QVERIFY(model.balancePollThread != QThread::currentThread());
+
+    // A deliberately slow worker task models an expensive balance traversal.
+    // The GUI must keep ticking and must not queue one traversal per timer tick.
+    std::atomic<bool> busy{false}, release{false}, timedOut{false};
+    QTimer::singleShot(0, model.balancePollWorker, [&] {
+        busy.store(true);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!release.load() && std::chrono::steady_clock::now() < deadline)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        timedOut.store(!release.load());
+        busy.store(false);
+    });
+    QTRY_VERIFY(busy.load());
+    int requests = 0, heartbeats = 0;
+    QObject::connect(&model, &WalletModel::requestedBalancePoll, [&] { ++requests; });
+    QTimer heartbeat;
+    QObject::connect(&heartbeat, &QTimer::timeout, [&] { if (busy.load()) ++heartbeats; });
+    heartbeat.start(1);
+    QElapsedTimer elapsed;
+    elapsed.start();
+    for (int i = 0; i < 100; ++i) model.pollBalanceChanged();
+    const auto scheduleMillis = elapsed.elapsed();
+    model.updateTransaction(); // must survive completion of an older request
+    QTest::qWait(100);
+    release.store(true);
+    QTRY_VERIFY(!model.balancePollInFlight);
+    heartbeat.stop();
+    QVERIFY(!timedOut.load());
+    QVERIFY(heartbeats > 0);
+    QVERIFY(scheduleMillis < 500);
+    QCOMPARE(requests, 1);
+    QVERIFY(!model.hasBalanceSnapshot()); // the older in-flight result was rejected
+    QVERIFY(model.fForceCheckBalanceChanged);
+    model.pollBalanceChanged();
+    QTRY_VERIFY(!model.balancePollInFlight);
+    QCOMPARE(requests, 2);
+    QVERIFY(model.hasBalanceSnapshot());
+    QCOMPARE(model.getCachedBalances().balance, wallet->GetBalance());
+    QVERIFY(!model.fForceCheckBalanceChanged);
+    // Unchanged height/options do not schedule another wallet traversal.
+    for (int i = 0; i < 100; ++i) model.pollBalanceChanged();
+    QCOMPARE(requests, 2);
+    qDebug() << "Balance poll: 100 requests scheduled in" << scheduleMillis
+             << "ms; GUI heartbeats during worker delay:" << heartbeats;
+
+    // Unloading with a queued result must join the worker and discard its
+    // receiver-bound completion rather than access a destroyed wallet/model.
+    auto* unloading = new WalletModel(std::move(node->getWallets()[0]), *node, &options);
+    unloading->pollTimer->stop();
+    unloading->pollBalanceChanged();
+    delete unloading;
+    QTest::qWait(20);
 }
 
 void WalletTests::smartnodeFundingSafety()

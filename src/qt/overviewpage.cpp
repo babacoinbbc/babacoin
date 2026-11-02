@@ -611,6 +611,9 @@ void OverviewPage::updateNetworkOverview()
 
 void OverviewPage::updateCoinJoinProgress()
 {
+    // Hidden mixing statistics must not query or lock the wallet on ordinary
+    // balance updates when CoinJoin is disabled.
+    if (!clientModel || !clientModel->coinJoinOptions().isEnabled()) return;
     if (!walletModel || !clientModel || clientModel->node().shutdownRequested() || !clientModel->smartnodeSync().isBlockchainSynced()) return;
     // Statistics may query wallet/chain state. Keep the last display while a
     // header batch holds the chain lock; the normal refresh retries later.
