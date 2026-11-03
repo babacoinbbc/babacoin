@@ -9,6 +9,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -120,6 +121,16 @@ def run(binary, work, wallet_network="regtest"):
         net = node.rpc("getnetworkinfo")
         # A final-source build must not still identify itself as an RC at runtime.
         release_source = (Path(__file__).resolve().parents[2] / "configure.ac").read_text()
+        version_parts = [int(re.search(r'define\(_CLIENT_VERSION_' + name + r', ([0-9]+)\)', release_source)[1])
+                         for name in ('MAJOR', 'MINOR', 'REVISION', 'BUILD')]
+        expected_version = sum(n*scale for n, scale in zip(version_parts, (1000000, 10000, 100, 1)))
+        require(net['version'] == expected_version, 'runtime version contradicts configure.ac')
+        require(net['subversion'] == '/Babacoin Core:' + '.'.join(map(str, version_parts)) + '/',
+                'runtime user agent contradicts configure.ac')
+        source_commit = os.environ.get('BBC_SOURCE_COMMIT') or os.environ.get('GITHUB_SHA')
+        if source_commit:
+            require(re.fullmatch('[a-f0-9]{40}', source_commit) is not None, 'invalid CI source commit')
+            require(source_commit[:7] in net['buildversion'], 'runtime build identity contradicts CI source')
         if "define(_CLIENT_VERSION_IS_RELEASE, true)" in release_source:
             require("pre-release test build" not in net.get("warnings", ""),
                     "final-source binary still reports the prerelease warning")
@@ -130,7 +141,7 @@ def run(binary, work, wallet_network="regtest"):
         require(powhash == MAIN_GENESIS_POW, "mainnet genesis GhostRider PoW mismatch")
         require(node.rpc("getconnectioncount") == 0, "unexpected P2P connection")
         require(not net["localaddresses"], "unexpected advertised network address")
-        report.update(version=net["version"], subversion=net["subversion"],
+        report.update(version=net["version"], buildversion=net["buildversion"], subversion=net["subversion"],
                       protocolversion=net["protocolversion"], genesis_powhash=powhash)
         report["checks"].append("offline mainnet identity and zero P2P connections")
     regtest = wallet_network == "regtest"
