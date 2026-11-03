@@ -43,8 +43,14 @@ def main():
                           b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca'):
             continue
         listing = subprocess.check_output(['otool', '-L', str(path)], text=True)
+        # -L includes a dylib's own LC_ID_DYLIB as well as its dependencies.
+        # A retained build-machine ID is not a runtime load dependency.
+        install_ids = {line.strip() for line in
+                       subprocess.check_output(['otool', '-D', str(path)], text=True).splitlines()[1:]}
         for line in listing.splitlines()[1:]:
             dependency = line.strip().split(' (', 1)[0]
+            if dependency in install_ids:
+                continue
             if dependency.startswith('/'):
                 assert dependency.startswith(('/System/Library/', '/usr/lib/')), dependency
             else:
