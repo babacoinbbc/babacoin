@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import plistlib
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -75,7 +76,18 @@ def main():
                           QT_PLUGIN_PATH=str(app/'Contents/PlugIns'),
                           QT_QPA_PLATFORM_PLUGIN_PATH=str(app/'Contents/PlugIns/platforms'),
                           HOME=str(work), XDG_CONFIG_HOME=str(work/'settings'))
-        with Node(binary, work/'data', True) as node:
+        settings = work/'settings'
+        (settings/'Babacoin').mkdir(parents=True)
+        (settings/'Babacoin/Babacoin-Qt-regtest.ini').write_text(
+            '[General]\nfAppearanceSetupDone=true\ntheme=Dark\n')
+        # Configure only this synthetic GUI profile. An unattended smoke test
+        # must not wait at the first-run appearance dialog or use runner prefs.
+        launcher = work/'start-bundled-app.sh'
+        launcher.write_text('#!/bin/sh\nexec ' + shlex.quote(str(binary)) +
+                            ' -uiconfigdir=' + shlex.quote(str(settings)) +
+                            ' -choosedatadir=0 -explorerpeers=0 -enablecoinjoin=0 -walletbroadcast=0 "$@"\n')
+        launcher.chmod(0o700)
+        with Node(launcher, work/'data', True) as node:
             network = node.rpc('getnetworkinfo')
             assert network['version'] == version
             assert 'pre-release test build' not in network.get('warnings', '')
@@ -85,7 +97,7 @@ def main():
             assert node.rpc('getaddressinfo', address)['ismine']
             report.update(version=version, subversion=network['subversion'])
         assert node.process.returncode == 0
-        with Node(binary, work/'data', True) as node:
+        with Node(launcher, work/'data', True) as node:
             assert node.rpc('getaddressinfo', address)['ismine']
             assert node.rpc('getconnectioncount') == 0
         assert node.process.returncode == 0
