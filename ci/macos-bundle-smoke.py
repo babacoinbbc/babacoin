@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate a deployed macOS app on a disposable native CI runner only."""
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -14,6 +15,15 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'test/util'))
 from isolated_smoke import Node
+
+
+def retain_diagnostics(work, output):
+    for source, name in [(work/'data/smoke-process.log', 'bundled-app-process.log'),
+                         (work/'data/regtest/debug.log', 'bundled-app-debug.log')]:
+        if source.is_file():
+            data = source.read_bytes()[-2*1024*1024:]
+            (output/name).write_bytes(data)
+            print(name+':\n'+data[-6000:].decode(errors='replace'))
 
 
 def main():
@@ -73,8 +83,9 @@ def main():
                           'bundled Qt platform plugin startup',
                           'fresh regtest wallet opens with zero P2P connections',
                           'owned address survives clean GUI restart'])
-    with tempfile.TemporaryDirectory(prefix='bbc-bundled-app-') as temp:
+    with tempfile.TemporaryDirectory(prefix='bbc-bundled-app-') as temp, contextlib.ExitStack() as diagnostics:
         work = Path(temp)
+        diagnostics.callback(retain_diagnostics, work, args.report.parent)
         for key in list(os.environ):
             if key.startswith(('DYLD_', 'QT_')):
                 os.environ.pop(key)
