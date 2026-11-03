@@ -38,8 +38,8 @@ class ReleaseStatusTests(unittest.TestCase):
                 require_release_identity(tag, source)
 
     def test_current_source_is_final_v2(self):
-        check_source('v2.0.2')
-        check_source('v2.0.2-mainnet')
+        check_source('v2.0.3')
+        check_source('v2.0.3-mainnet')
 
 
 if __name__ == '__main__':
