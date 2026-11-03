@@ -18,6 +18,7 @@ from isolated_smoke import Node
 
 
 def retain_diagnostics(work, output):
+    print('Synthetic GUI profiles: '+json.dumps([str(p.relative_to(work)) for p in work.glob('settings/**/*.ini')]))
     for source, name in [(work/'data/smoke-process.log', 'bundled-app-process.log'),
                          (work/'data/regtest/debug.log', 'bundled-app-debug.log')]:
         if source.is_file():
@@ -94,8 +95,10 @@ def main():
                           QT_QPA_PLATFORM_PLUGIN_PATH=str(app/'Contents/PlugIns/platforms'),
                           HOME=str(work), XDG_CONFIG_HOME=str(work/'settings'))
         settings = work/'settings'
-        (settings/'Babacoin').mkdir(parents=True)
-        (settings/'Babacoin/Babacoin-Qt-regtest.ini').write_text(
+        # Default QSettings uses organizationDomain on macOS, including this
+        # isolated INI profile; Windows uses the organizationName instead.
+        (settings/'babacoin.network').mkdir(parents=True)
+        (settings/'babacoin.network/Babacoin-Qt-regtest.ini').write_text(
             '[General]\nfAppearanceSetupDone=true\ntheme=Dark\n')
         # Configure only this synthetic GUI profile. An unattended smoke test
         # must not wait at the first-run appearance dialog or use runner prefs.
