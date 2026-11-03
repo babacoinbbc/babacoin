@@ -103,10 +103,19 @@ def main():
         # Configure only this synthetic GUI profile. An unattended smoke test
         # must not wait at the first-run appearance dialog or use runner prefs.
         launcher = work/'start-bundled-app.sh'
-        launcher.write_text('#!/bin/sh\nexec ' + shlex.quote(str(binary)) +
-                            ' -uiconfigdir=' + shlex.quote(str(settings)) +
-                            ' -choosedatadir=0 -explorerpeers=0 -enablecoinjoin=0 -walletbroadcast=0 "$@"\n')
-        launcher.chmod(0o700)
+        def prepare_launch(name):
+            # Keep automatic backups enabled. Separate synthetic destinations
+            # avoid the intentional same-minute backup-collision consent dialog
+            # during this rapid unattended restart, without changing wallet data.
+            backups = work/name
+            backups.mkdir()
+            launcher.write_text('#!/bin/sh\nexec ' + shlex.quote(str(binary)) +
+                                ' -uiconfigdir=' + shlex.quote(str(settings)) +
+                                ' -walletbackupsdir=' + shlex.quote(str(backups)) +
+                                ' -choosedatadir=0 -explorerpeers=0 -enablecoinjoin=0 -walletbroadcast=0 "$@"\n')
+            launcher.chmod(0o700)
+            return backups
+        first_backups = prepare_launch('backups-first')
         with Node(launcher, work/'data', True) as node:
             network = node.rpc('getnetworkinfo')
             assert network['version'] == version
@@ -117,10 +126,14 @@ def main():
             assert node.rpc('getaddressinfo', address)['ismine']
             report.update(version=version, subversion=network['subversion'])
         assert node.process.returncode == 0
+        assert any(p.is_file() and p.stat().st_size > 0 for p in first_backups.glob('wallet.dat.*'))
+        second_backups = prepare_launch('backups-second')
         with Node(launcher, work/'data', True) as node:
             assert node.rpc('getaddressinfo', address)['ismine']
             assert node.rpc('getconnectioncount') == 0
         assert node.process.returncode == 0
+        assert any(p.is_file() and p.stat().st_size > 0 for p in second_backups.glob('wallet.dat.*'))
+        report['automatic_backups_on_both_launches'] = True
     args.report.write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps(report))
 
