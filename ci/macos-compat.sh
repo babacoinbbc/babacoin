@@ -49,9 +49,19 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp src/qt/babacoin-qt "$app/Contents/MacOS/Babacoin-Qt"
 cp share/qt/Info.plist "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile babacoin.icns" "$app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :LSArchitecturePriority:0 $(uname -m)" "$app/Contents/Info.plist"
+minimum_os=$(xcrun vtool -show-build "$app/Contents/MacOS/Babacoin-Qt" | awk '$1 == "minos" {print $2}')
+[[ "$minimum_os" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]
+/usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion $minimum_os" "$app/Contents/Info.plist"
 cp src/qt/res/icons/babacoin.icns "$app/Contents/Resources/"
-macdeployqt "$app" -always-overwrite -verbose=2
+# Keep an explicitly deployed minimal plugin for the isolated headless app
+# startup check; the normal desktop still selects its bundled Cocoa plugin.
+mkdir -p "$app/Contents/PlugIns/platforms"
+cp "$(brew --prefix qt@5)/plugins/platforms/libqminimal.dylib" "$app/Contents/PlugIns/platforms/"
+macdeployqt "$app" -always-overwrite -verbose=2 -executable="$app/Contents/PlugIns/platforms/libqminimal.dylib"
+python3 ci/deploy-macos-libraries.py --app "$app" --prefix "$p" --report "$output/bundled-libraries.json"
 codesign --force --deep --sign - "$app"
+python3 ci/macos-bundle-smoke.py --app "$app" --report "$output/bundled-app-smoke.json"
 sw_vers > "$output/build-environment.txt"
 uname -a >> "$output/build-environment.txt"
 clang++ --version >> "$output/build-environment.txt"

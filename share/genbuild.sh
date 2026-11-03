@@ -24,7 +24,19 @@ git_check_in_repo() {
 
 DESC=""
 SUFFIX=""
+case "${BBC_SOURCE_COMMIT:-}" in
+    "") ;;
+    *[!0-9a-f]*) echo 'BBC_SOURCE_COMMIT must be a full lowercase Git commit ID' >&2; exit 1 ;;
+    *) if [ "${#BBC_SOURCE_COMMIT}" -ne 40 ]; then
+           echo 'BBC_SOURCE_COMMIT must be a full lowercase Git commit ID' >&2
+           exit 1
+       fi ;;
+esac
 if [ "${BITCOIN_GENBUILD_NO_GIT}" != "1" -a -e "$(which git 2>/dev/null)" -a "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = "true" ] && git_check_in_repo share/genbuild.sh; then
+    if [ -n "${BBC_SOURCE_COMMIT:-}" ] && [ "$BBC_SOURCE_COMMIT" != "$(git rev-parse HEAD)" ]; then
+        echo 'BBC_SOURCE_COMMIT contradicts the checked-out Git commit' >&2
+        exit 1
+    fi
     # clean 'dirty' status of touched files that haven't been modified
     git diff >/dev/null 2>/dev/null 
 
@@ -37,6 +49,10 @@ if [ "${BITCOIN_GENBUILD_NO_GIT}" != "1" -a -e "$(which git 2>/dev/null)" -a "$(
     # otherwise generate suffix from git, i.e. string like "59887e8-dirty"
     SUFFIX=$(git rev-parse --short HEAD)
     git diff-index --quiet HEAD -- || SUFFIX="$SUFFIX-dirty"
+elif [ -n "${BBC_SOURCE_COMMIT:-}" ]; then
+    # Disposable Linux builds intentionally omit .git. Preserve the immutable
+    # CI source identity rather than falling back to an inherited archive ID.
+    SUFFIX=$(printf '%.7s' "$BBC_SOURCE_COMMIT")
 fi
 
 if [ -n "$DESC" ]; then
