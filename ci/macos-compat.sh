@@ -54,7 +54,11 @@ minimum_os=$(xcrun vtool -show-build "$app/Contents/MacOS/Babacoin-Qt" | awk '$1
 [[ "$minimum_os" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]
 /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion $minimum_os" "$app/Contents/Info.plist"
 cp src/qt/res/icons/babacoin.icns "$app/Contents/Resources/"
-macdeployqt "$app" -always-overwrite -verbose=2
+# Keep an explicitly deployed minimal plugin for the isolated headless app
+# startup check; the normal desktop still selects its bundled Cocoa plugin.
+mkdir -p "$app/Contents/PlugIns/platforms"
+cp "$(brew --prefix qt@5)/plugins/platforms/libqminimal.dylib" "$app/Contents/PlugIns/platforms/"
+macdeployqt "$app" -always-overwrite -verbose=2 -executable="$app/Contents/PlugIns/platforms/libqminimal.dylib"
 codesign --force --deep --sign - "$app"
 python3 ci/macos-bundle-smoke.py --app "$app" --report "$output/bundled-app-smoke.json"
 sw_vers > "$output/build-environment.txt"
